@@ -57,7 +57,7 @@ impl TryFrom<RawAppSettings> for AppSettings {
         } else {
             settings.aliases_file = aliases_path.to_owned()
         }
-        if !(std::fs::metadata(scripts_path)?.is_file()) {
+        if !(std::fs::metadata(scripts_path)?.is_dir()) {
             return Err(ConfigError::ErrorPathNotDirectory(scripts_path.to_owned()));
         } else {
             settings.scripts_dir = scripts_path.to_owned()
