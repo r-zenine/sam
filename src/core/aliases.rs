@@ -23,6 +23,12 @@ impl Alias {
     }
 }
 
+impl<'a> Into<String> for &'a Alias {
+    fn into(self) -> String {
+        format!("{}\t{}", &self.name, &self.description)
+    }
+}
+
 impl Into<ShellCommand<String>> for Alias {
     // todo: implement command parsing logic to support pipes and logical symbols etc....
     fn into(self) -> ShellCommand<String> {

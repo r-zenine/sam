@@ -36,6 +36,16 @@ impl Script {
     }
 }
 
+impl<'a> Into<String> for &'a Script {
+    fn into(self) -> String {
+        format!(
+            "{}\t{}",
+            &self.name,
+            &self.description.as_deref().unwrap_or("")
+        )
+    }
+}
+
 impl Display for Script {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
