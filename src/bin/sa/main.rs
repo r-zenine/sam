@@ -1,7 +1,9 @@
 use ssam::io::readers::{read_aliases_from_file, read_scripts, ErrorAliasRead, ErrorScriptRead};
 use std::fmt::Display;
+use std::process::Command;
 
 mod config;
+mod userinterface;
 
 use crate::config::{AppSettings, ConfigError};
 
@@ -15,14 +17,11 @@ fn run() -> Result<()> {
     let cfg = AppSettings::load()?;
     let scripts = read_scripts(cfg.scripts_dir())?;
     let aliases = read_aliases_from_file(cfg.aliases_file())?;
-    println!("Scripts:");
-    for s in scripts {
-        println!("{}", s)
-    }
-    println!("\n\nAliases");
-    for a in aliases {
-        println!("{}", a)
-    }
+    let ui_interface = userinterface::UserInterface::new()?;
+    let mut command: Command = ui_interface.run(aliases, scripts)?.into();
+    let output = command.output()?;
+    eprint!("{}", String::from_utf8(output.stderr)?);
+    print!("{}", String::from_utf8(output.stdout)?);
     Ok(())
 }
 
@@ -33,6 +32,27 @@ enum SAError {
     ErrorConfig(ConfigError),
     ErrorScriptRead(ErrorScriptRead),
     ErrorAliasRead(ErrorAliasRead),
+    ErrorUI(userinterface::UIError),
+    ErrorSubCommand(std::io::Error),
+    ErrorSubCommandOutput(std::string::FromUtf8Error),
+}
+
+impl From<std::string::FromUtf8Error> for SAError {
+    fn from(v: std::string::FromUtf8Error) -> Self {
+        SAError::ErrorSubCommandOutput(v)
+    }
+}
+
+impl From<std::io::Error> for SAError {
+    fn from(v: std::io::Error) -> Self {
+        SAError::ErrorSubCommand(v)
+    }
+}
+
+impl From<userinterface::UIError> for SAError {
+    fn from(v: userinterface::UIError) -> Self {
+        SAError::ErrorUI(v)
+    }
 }
 
 impl From<ErrorAliasRead> for SAError {
@@ -52,6 +72,21 @@ impl Display for SAError {
             SAError::ErrorAliasRead(e) => {
                 writeln!(f, "an error occured when reading aliases.\n{}", e)
             }
+            SAError::ErrorUI(e) => writeln!(
+                f,
+                "an error occured when launching the terminal user interface\n{:?}",
+                e
+            ),
+            SAError::ErrorSubCommand(e) => writeln!(
+                f,
+                "an error occured when launching the selected command\n{:?}",
+                e
+            ),
+            SAError::ErrorSubCommandOutput(e) => writeln!(
+                f,
+                "an error occured when launching the selected command\n{:?}",
+                e
+            ),
         }
     }
 }
