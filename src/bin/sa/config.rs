@@ -19,13 +19,19 @@ type Result<T> = std::result::Result<T, ConfigError>;
 impl RawAppSettings {
     pub fn load() -> Result<RawAppSettings> {
         let home_dir_o = dirs::home_dir().map(|e| e.join(".ssam_rc.toml"));
-        let mut settings = config::Config::default();
-        settings.merge(config::File::with_name("ssam_rc.toml"))?;
-        if let Some(home_dir) = home_dir_o {
-            settings.merge(config::File::from(home_dir))?;
+        let mut initial_config = config::Config::default();
+        let mut settings_r = Ok(&mut initial_config);
+        if let Ok(_) = std::fs::metadata("ssam_rc.toml") {
+            settings_r =
+                settings_r.and_then(|conf| conf.merge(config::File::with_name("ssam_rc.toml")));
         }
-        settings.merge(config::Environment::with_prefix("ssam"))?;
-        settings
+        if let Some(home_dir) = home_dir_o {
+            if home_dir.exists() {
+                settings_r = settings_r.and_then(|conf| conf.merge(config::File::from(home_dir)));
+            }
+        }
+        settings_r?
+            .to_owned()
             .try_into::<RawAppSettings>()
             .map_err(|op| op.into())
     }
