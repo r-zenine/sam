@@ -2,4 +2,4 @@
 
 pub mod core;
 pub mod io;
-mod utils;
+pub mod utils;
