@@ -2,17 +2,11 @@ use std::ffi::OsStr;
 use std::process::Command;
 
 #[derive(Debug)]
-pub struct ShellCommand<T>
-where
-    T: AsRef<OsStr>,
-{
+pub struct ShellCommand<T> {
     command: T,
 }
 
-impl<T> ShellCommand<T>
-where
-    T: AsRef<OsStr>,
-{
+impl<T> ShellCommand<T> {
     pub fn new(command: T) -> Self {
         Self { command }
     }
@@ -21,6 +15,7 @@ where
     pub fn as_command<U>(u: U) -> Command
     where
         U: Into<ShellCommand<T>>,
+        T: AsRef<OsStr>,
     {
         let sh_cmd: ShellCommand<T> = u.into();
         sh_cmd.into()
