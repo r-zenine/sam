@@ -6,15 +6,37 @@ mod config;
 mod userinterface;
 
 use crate::config::{AppSettings, ConfigError};
+use clap::App;
+
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
+const ABOUT: &'static str = "ssa lets you search trough your aliases and one-liner scripts.";
+const ABOUT_SUB_RUN: &'static str = "show your aliases and scripts.";
+const ABOUT_SUB_BASHRC : &'static str = "output's a collection of aliases definitions into your bashrc. use 'source `ssa bashrc`' in your bashrc file";
 
 fn main() {
-    match run() {
+    let matches = App::new("ssa")
+        .version(VERSION)
+        .author(AUTHORS)
+        .about(ABOUT)
+        .subcommand(App::new("run").about(ABOUT_SUB_RUN))
+        .subcommand(App::new("bashrc").about(ABOUT_SUB_BASHRC))
+        .get_matches();
+    let result = match matches.subcommand() {
+        ("run", Some(_)) => run(),
+        ("bashrc", Some(_)) => bashrc(),
+        (&_, _) => {
+            println!("{}", matches.usage());
+            Ok(0)
+        }
+    };
+    match result {
         Err(e) => eprintln!("Could not run the program as expected because {}", e),
-        Ok(status) => std::process::exit(status.code().unwrap_or(0)),
+        Ok(status) => std::process::exit(status),
     }
 }
 
-fn run() -> Result<std::process::ExitStatus> {
+fn run() -> Result<i32> {
     let cfg = AppSettings::load()?;
     let scripts = read_scripts(cfg.scripts_dir())?;
     let aliases = read_aliases_from_file(cfg.aliases_file())?;
@@ -23,13 +45,24 @@ fn run() -> Result<std::process::ExitStatus> {
     let exit_status = command.status()?;
     //eprint!("{}", String::from_utf8(output.stderr)?);
     //print!("{}", String::from_utf8(output.stdout)?);
-    Ok(exit_status)
+    exit_status.code().ok_or(SAError::ErrorExitCode)
+}
+
+fn bashrc() -> Result<i32> {
+    let cfg = AppSettings::load()?;
+    let aliases = read_aliases_from_file(cfg.aliases_file())?;
+    println!("alias am='ssa run'");
+    for alias in aliases {
+        println!("{}", alias);
+    }
+    Ok(0)
 }
 
 // Error handling for the sa app.
 type Result<T> = std::result::Result<T, SAError>;
 #[derive(Debug)]
 enum SAError {
+    ErrorExitCode,
     ErrorConfig(ConfigError),
     ErrorScriptRead(ErrorScriptRead),
     ErrorAliasRead(ErrorAliasRead),
@@ -88,6 +121,9 @@ impl Display for SAError {
                 "an error occured when launching the selected command\n{:?}",
                 e
             ),
+            SAError::ErrorExitCode => {
+                writeln!(f, "an error occured when trying to return the exit code.")
+            }
         }
     }
 }
