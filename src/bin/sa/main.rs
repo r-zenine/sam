@@ -8,21 +8,22 @@ mod userinterface;
 use crate::config::{AppSettings, ConfigError};
 
 fn main() {
-    if let Err(e) = run() {
-        eprintln!("Could not run the program as expected because {}", e)
-    };
+    match run() {
+        Err(e) => eprintln!("Could not run the program as expected because {}", e),
+        Ok(status) => std::process::exit(status.code().unwrap_or(0)),
+    }
 }
 
-fn run() -> Result<()> {
+fn run() -> Result<std::process::ExitStatus> {
     let cfg = AppSettings::load()?;
     let scripts = read_scripts(cfg.scripts_dir())?;
     let aliases = read_aliases_from_file(cfg.aliases_file())?;
     let ui_interface = userinterface::UserInterface::new()?;
     let mut command: Command = ui_interface.run(aliases, scripts)?.into();
-    let output = command.output()?;
-    eprint!("{}", String::from_utf8(output.stderr)?);
-    print!("{}", String::from_utf8(output.stdout)?);
-    Ok(())
+    let exit_status = command.status()?;
+    //eprint!("{}", String::from_utf8(output.stderr)?);
+    //print!("{}", String::from_utf8(output.stdout)?);
+    Ok(exit_status)
 }
 
 // Error handling for the sa app.
