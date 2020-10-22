@@ -55,8 +55,10 @@ impl TryFrom<RawAppSettings> for AppSettings {
 
     fn try_from(value: RawAppSettings) -> std::result::Result<Self, Self::Error> {
         let mut settings = AppSettings::default();
-        let aliases_path = Path::new(&value.aliases_file);
-        let scripts_path = Path::new(&value.scripts_dir);
+        let aliases_file = replace_home_variable(value.aliases_file);
+        let scripts_dirs = replace_home_variable(value.scripts_dir);
+        let aliases_path = Path::new(&aliases_file);
+        let scripts_path = Path::new(&scripts_dirs);
 
         if !(std::fs::metadata(aliases_path)?.is_file()) {
             return Err(ConfigError::ErrorPathNotFile(aliases_path.to_owned()));
@@ -71,6 +73,16 @@ impl TryFrom<RawAppSettings> for AppSettings {
 
         Ok(settings)
     }
+}
+
+fn replace_home_variable(path: String) -> String {
+    let home_dir_o = dirs::home_dir().and_then(|e| e.into_os_string().into_string().ok());
+    if let Some(home_dir) = home_dir_o {
+        if path.contains("$HOME") {
+            return path.replace("$HOME", &home_dir);
+        }
+    }
+    path
 }
 
 #[derive(Debug)]
