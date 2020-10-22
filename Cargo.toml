@@ -5,8 +5,8 @@ authors = ["Ryad ZENINE <r.zenine@gmail.com>"]
 edition = "2018"
 
 [[bin]]
-name = "sa"
-path = "src/bin/sa/main.rs"
+name = "ssa"
+path = "src/bin/ssa/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
