@@ -51,6 +51,14 @@ fn run() -> Result<i32> {
 fn bashrc() -> Result<i32> {
     let cfg = AppSettings::load()?;
     let aliases = read_aliases_from_file(cfg.aliases_file())?;
+    println!("# *************** IMPORTANT *******************");
+    println!("#                                             *");
+    println!("# Put the following line in your (bash/zsh)rc *");
+    println!("#                                             *");
+    println!("# eval \"$(ssa bashrc)\"                        *");
+    println!("#                                             *");
+    println!("# *********************************************");
+    println!("");
     println!("alias am='ssa run'");
     for alias in aliases {
         println!("{}", alias);
