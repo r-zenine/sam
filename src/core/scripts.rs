@@ -20,7 +20,7 @@ impl Script {
     {
         Self {
             name: name.into(),
-            description: description.map(|e| e.into()),
+            description: description.map(|e| e.into()).map(|e| e.replace("# ", "")),
             path: path.into(),
         }
     }
