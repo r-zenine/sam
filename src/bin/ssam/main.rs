@@ -15,10 +15,11 @@ const ABOUT_SUB_RUN: &'static str = "show your aliases and scripts.";
 const ABOUT_SUB_BASHRC : &'static str = "output's a collection of aliases definitions into your bashrc. use 'source `ssa bashrc`' in your bashrc file";
 
 fn main() {
-    let matches = App::new("ssa")
+    let matches = App::new("ssam")
         .version(VERSION)
         .author(AUTHORS)
         .about(ABOUT)
+        .setting(clap::AppSettings::ArgRequiredElseHelp)
         .subcommand(App::new("run").about(ABOUT_SUB_RUN))
         .subcommand(App::new("bashrc").about(ABOUT_SUB_BASHRC))
         .get_matches();
