@@ -43,8 +43,6 @@ fn run() -> Result<i32> {
     let ui_interface = userinterface::UserInterface::new()?;
     let mut command: Command = ui_interface.run(aliases, scripts)?.into();
     let exit_status = command.status()?;
-    //eprint!("{}", String::from_utf8(output.stderr)?);
-    //print!("{}", String::from_utf8(output.stdout)?);
     exit_status.code().ok_or(SAError::ErrorExitCode)
 }
 
@@ -55,11 +53,11 @@ fn bashrc() -> Result<i32> {
     println!("#                                             *");
     println!("# Put the following line in your (bash/zsh)rc *");
     println!("#                                             *");
-    println!("# eval \"$(ssa bashrc)\"                        *");
+    println!("# eval \"$(ssam bashrc)\"                       *");
     println!("#                                             *");
     println!("# *********************************************");
     println!("");
-    println!("alias am='ssa run'");
+    println!("alias am='ssam run'");
     for alias in aliases {
         println!("{}", alias);
     }
