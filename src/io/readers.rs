@@ -14,7 +14,6 @@ pub fn read_aliases_from_file(path: &'_ Path) -> Result<Vec<Alias>, ErrorAliasRe
     read_aliases(buf)
 }
 
-#[allow(dead_code)]
 pub fn read_aliases<T>(r: T) -> Result<Vec<Alias>, ErrorAliasRead>
 where
     T: Read,
@@ -253,8 +252,6 @@ mod tests {
         for line in content {
             writeln!(f, "{}", *line)?;
         }
-        // writeln!(f, "#!/bin/sh")?;
-        // writeln!(f, "# some description of the script.")?;
         Ok(temp_file)
     }
 }

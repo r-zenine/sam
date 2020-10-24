@@ -11,7 +11,6 @@ impl<T> ShellCommand<T> {
         Self { command }
     }
 
-    #[allow(dead_code)]
     pub fn as_command<U>(u: U) -> Command
     where
         U: Into<ShellCommand<T>>,
