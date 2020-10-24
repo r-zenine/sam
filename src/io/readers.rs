@@ -1,5 +1,6 @@
 use crate::core::aliases::Alias;
 use crate::core::scripts::Script;
+use crate::core::vars::Var;
 use std::fmt::Display;
 use std::fs::read_dir;
 use std::fs::File;
@@ -21,7 +22,19 @@ where
     serde_yaml::from_reader(r).map_err(ErrorAliasRead::from)
 }
 
-#[allow(dead_code)]
+pub fn read_vars_from_file(path: &'_ Path) -> Result<Vec<Var>, ErrorVarRead> {
+    let f = File::open(path)?;
+    let buf = BufReader::new(f);
+    read_vars(buf)
+}
+
+pub fn read_vars<T>(r: T) -> Result<Vec<Var>, ErrorVarRead>
+where
+    T: Read,
+{
+    serde_yaml::from_reader(r).map_err(ErrorVarRead::from)
+}
+
 pub fn read_scripts<'a>(path: &'a Path) -> Result<Vec<Script>, ErrorScriptRead> {
     if path.is_dir() {
         let mut out = vec![];
@@ -89,6 +102,23 @@ impl Display for ErrorAliasRead {
         }
     }
 }
+#[derive(Debug)]
+pub enum ErrorVarRead {
+    ErrorAliasSerde(serde_yaml::Error),
+    ErrorAliasIO(std::io::Error),
+}
+
+impl From<std::io::Error> for ErrorVarRead {
+    fn from(v: std::io::Error) -> Self {
+        ErrorVarRead::ErrorAliasIO(v)
+    }
+}
+
+impl From<serde_yaml::Error> for ErrorVarRead {
+    fn from(v: serde_yaml::Error) -> Self {
+        ErrorVarRead::ErrorAliasSerde(v)
+    }
+}
 
 #[derive(Debug)]
 pub enum ErrorScriptRead {
@@ -120,9 +150,10 @@ impl From<std::io::Error> for ErrorScriptRead {
 
 #[cfg(test)]
 mod tests {
-    use super::{read_aliases, read_scripts};
+    use super::{read_aliases, read_scripts, read_vars};
     use crate::core::aliases::Alias;
     use crate::core::scripts::Script;
+    use crate::core::vars::{Choice, Var};
     use std::env;
     use std::fs::File;
     use std::io;
@@ -132,12 +163,43 @@ mod tests {
     use std::path::{Path, PathBuf};
     use tempdir::TempDir;
     #[test]
+    fn test_read_vars() {
+        let vars_str = "
+            - desc: 'desc1'
+              name: 'name1'
+              choices:
+              - value: 'val1'
+                desc: val1 description
+            - desc: 'desc2'
+              name: 'name2'
+              choices:
+              - value: 'val2'
+                desc: val2 description
+              - value: 'val1'
+                desc: val1 description"
+            .as_bytes();
+
+        let r = BufReader::new(vars_str);
+        let vars_r = read_vars(r);
+        assert!(vars_r.is_ok());
+        let vars = vars_r.unwrap();
+        assert_eq!(vars.len(), 2);
+        let exp_choices_1 = vec![Choice::new("val1", "val1 description")];
+        let exp_choices_2 = vec![
+            Choice::new("val2", "val2 description"),
+            Choice::new("val1", "val1 description"),
+        ];
+        let exp_var_1 = Var::new("name1", "desc1", exp_choices_1);
+        let exp_var_2 = Var::new("name2", "desc2", exp_choices_2);
+        assert_eq!(vars, vec![exp_var_1, exp_var_2]);
+    }
+    #[test]
     fn test_read_aliases() {
         let aliase_str = "
-            - description: 'desc1'
+            - desc: 'desc1'
               name: 'name1'
               alias: 'alias1'
-            - description: 'desc2'
+            - desc: 'desc2'
               name: 'name2'
               alias: 'alias2'"
             .as_bytes();
@@ -150,15 +212,16 @@ mod tests {
         assert_eq!(aliases[1], Alias::new("name2", "desc2", "alias2"));
 
         let aliase_str = "
-            - description: 'desc1'
+            - desc: 'desc1'
               alias: 'alias1'
-            - description: 'desc2'
+            - desc: 'desc2'
               alias: 'alias2'"
             .as_bytes();
         let r = BufReader::new(aliase_str);
         let aliases_r = read_aliases(r);
         assert!(aliases_r.is_err());
     }
+
     #[test]
     fn test_read_scripts() {
         let temp_dir_r =
