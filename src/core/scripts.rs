@@ -11,7 +11,6 @@ pub struct Script {
 }
 
 impl Script {
-    #[allow(dead_code)]
     pub fn new<S, SS, P>(name: S, description: Option<SS>, path: P) -> Self
     where
         S: Into<String>,
