@@ -57,6 +57,6 @@ eval "$(ssam bashrc)"
 ### Using ssam:
 Once the configuration is done, try launching `saam` as follow:
 ``` bash 
-ssa run # if you did not setup your bashrc as showed previously
+ssam run # if you did not setup your bashrc as showed previously
 am # otherwise 
 ```
