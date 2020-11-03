@@ -1,45 +1,45 @@
 use serde::{Deserialize, Serialize};
-use std::convert::{TryFrom, TryInto};
+use ssam::utils::fsutils;
+use ssam::utils::fsutils::ErrorsFS;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
-#[derive(Debug, Serialize, Deserialize, Default)]
+// Todo
+// 1. get rid of RawAppSettings.
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct AppSettings {
     scripts_dir: PathBuf,
     aliases_file: PathBuf,
+    vars_file: PathBuf,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct RawAppSettings {
-    scripts_dir: String,
-    aliases_file: String,
-}
-
-type Result<T> = std::result::Result<T, ConfigError>;
-
-impl RawAppSettings {
-    pub fn load() -> Result<RawAppSettings> {
-        let home_dir_o = dirs::home_dir().map(|e| e.join(".ssam_rc.toml"));
-        let mut initial_config = config::Config::default();
-        let mut settings_r = Ok(&mut initial_config);
-        if let Ok(_) = std::fs::metadata("ssam_rc.toml") {
-            settings_r =
-                settings_r.and_then(|conf| conf.merge(config::File::with_name("ssam_rc.toml")));
-        }
-        if let Some(home_dir) = home_dir_o {
-            if home_dir.exists() {
-                settings_r = settings_r.and_then(|conf| conf.merge(config::File::from(home_dir)));
-            }
-        }
-        settings_r?
-            .to_owned()
-            .try_into::<RawAppSettings>()
-            .map_err(|op| op.into())
-    }
-}
+type Result<T> = std::result::Result<T, ErrorsConfig>;
 
 impl AppSettings {
+    fn load_from_path(path: PathBuf) -> Result<config::Config> {
+        let path = fsutils::ensure_exists(path)
+            .and_then(fsutils::ensure_is_file)
+            .and_then(fsutils::ensure_sufficient_permisions)?;
+        let mut conf = config::Config::default();
+        conf.merge(config::File::from(path.as_path()))
+            .map_err(ErrorsConfig::from)?;
+        Ok(conf)
+    }
+
     pub fn load() -> Result<Self> {
-        RawAppSettings::load().and_then(|op| op.try_into())
+        let home_dir_o = dirs::home_dir()
+            .map(|e| e.join(".ssam_rc.toml"))
+            .ok_or(ErrorsConfig::ErrorCantFindHomeDirectory)?;
+        let current_dir_o = std::env::current_dir()
+            .map_err(|_| ErrorsConfig::ErrorCantFindCurrentDirectory)
+            .map(|e| e.join("ssam_rc.toml"))?;
+
+        let config_home_dir = Self::load_from_path(home_dir_o);
+        let config_current_dir = Self::load_from_path(current_dir_o);
+        config_home_dir
+            .or(config_current_dir)?
+            .try_into::<Self>()
+            .map_err(ErrorsConfig::from)
+            .and_then(AppSettings::validate)
     }
 
     pub fn scripts_dir(&self) -> &'_ Path {
@@ -48,112 +48,67 @@ impl AppSettings {
     pub fn aliases_file(&self) -> &'_ Path {
         self.aliases_file.as_ref()
     }
-}
-
-impl TryFrom<RawAppSettings> for AppSettings {
-    type Error = self::ConfigError;
-
-    fn try_from(value: RawAppSettings) -> std::result::Result<Self, Self::Error> {
-        let mut settings = AppSettings::default();
-        let aliases_file = replace_home_variable(value.aliases_file);
-        let scripts_dirs = replace_home_variable(value.scripts_dir);
-        let aliases_path = Path::new(&aliases_file);
-        let scripts_path = Path::new(&scripts_dirs);
-
-        if !(std::fs::metadata(aliases_path)?.is_file()) {
-            return Err(ConfigError::ErrorPathNotFile(aliases_path.to_owned()));
-        } else {
-            settings.aliases_file = aliases_path.to_owned()
-        }
-        if !(std::fs::metadata(scripts_path)?.is_dir()) {
-            return Err(ConfigError::ErrorPathNotDirectory(scripts_path.to_owned()));
-        } else {
-            settings.scripts_dir = scripts_path.to_owned()
-        }
-
-        Ok(settings)
+    pub fn vars_file(&self) -> &'_ Path {
+        self.vars_file.as_ref()
     }
-}
 
-fn replace_home_variable(path: String) -> String {
-    let home_dir_o = dirs::home_dir().and_then(|e| e.into_os_string().into_string().ok());
-    if let Some(home_dir) = home_dir_o {
-        if path.contains("$HOME") {
-            return path.replace("$HOME", &home_dir);
-        }
+    fn validate(orig: AppSettings) -> Result<AppSettings> {
+        let mut s = orig.clone();
+
+        s.aliases_file = fsutils::ensure_exists(s.aliases_file)
+            .and_then(fsutils::ensure_is_file)
+            .and_then(fsutils::ensure_sufficient_permisions)?;
+
+        s.vars_file = fsutils::ensure_exists(s.vars_file)
+            .and_then(fsutils::ensure_is_file)
+            .and_then(fsutils::ensure_sufficient_permisions)?;
+
+        s.scripts_dir = fsutils::ensure_exists(s.scripts_dir.clone())
+            .and_then(fsutils::ensure_is_directory)
+            .and_then(fsutils::ensure_sufficient_permisions)?;
+
+        Ok(s.to_owned())
     }
-    path
 }
 
 #[derive(Debug)]
-pub enum ConfigError {
+pub enum ErrorsConfig {
     ErrorReadConfig(config::ConfigError),
-    ErrorPathNotDirectory(PathBuf),
-    ErrorPathNotFile(PathBuf),
-    ErrorPathInsufficientPermission(std::io::Error),
-    ErrorPathDoesNotExist(std::io::Error),
-    ErrorUnexpectedIOError(std::io::Error),
+    ErrorFS(ErrorsFS),
+    ErrorCantFindHomeDirectory,
+    ErrorCantFindCurrentDirectory,
 }
 
-impl Display for ConfigError {
+impl Display for ErrorsConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "while loading and validating the configuration, ")?;
         match self {
-            ConfigError::ErrorReadConfig(erc) => {
-                writeln!(f, "reading the configuration failed because {}", erc)
+            ErrorsConfig::ErrorReadConfig(erc) => {
+                writeln!(f, "got the following error: \n -> {}", erc)
             }
-            ConfigError::ErrorPathNotDirectory(p) => writeln!(
+            ErrorsConfig::ErrorCantFindHomeDirectory => writeln!(
                 f,
-                "configuration invalid: the provided path {} should be a directory.",
-                p.display()
+                "we were unable to locate the home directory for the current user."
             ),
-            ConfigError::ErrorPathNotFile(p) => writeln!(
-                f,
-                "configuration invalid: the provided path {} should be a file.",
-                p.display()
-            ),
-            ConfigError::ErrorPathInsufficientPermission(e) => {
-                writeln!(f, "configuration invalid: missing permissions {}", e)
+            ErrorsConfig::ErrorFS(fs_error) => {
+                writeln!(f, "got the following error: \n -> {}", fs_error)
             }
-            ConfigError::ErrorPathDoesNotExist(e) => {
-                writeln!(f, "configuration invalid: path does not exist {}", e)
-            }
-            ConfigError::ErrorUnexpectedIOError(e) => writeln!(
+            ErrorsConfig::ErrorCantFindCurrentDirectory => writeln!(
                 f,
-                "configuration invalid: an expected io error happened {}",
-                e
+                "we were unable to locate the current directory for the current user."
             ),
         }
     }
 }
 
-impl From<std::io::Error> for ConfigError {
-    fn from(v: std::io::Error) -> Self {
-        match v.kind() {
-            std::io::ErrorKind::NotFound => ConfigError::ErrorPathDoesNotExist(v),
-            std::io::ErrorKind::PermissionDenied => ConfigError::ErrorPathInsufficientPermission(v),
-            std::io::ErrorKind::ConnectionRefused
-            | std::io::ErrorKind::ConnectionReset
-            | std::io::ErrorKind::ConnectionAborted
-            | std::io::ErrorKind::NotConnected
-            | std::io::ErrorKind::AddrInUse
-            | std::io::ErrorKind::AddrNotAvailable
-            | std::io::ErrorKind::BrokenPipe
-            | std::io::ErrorKind::AlreadyExists
-            | std::io::ErrorKind::WouldBlock
-            | std::io::ErrorKind::InvalidInput
-            | std::io::ErrorKind::InvalidData
-            | std::io::ErrorKind::TimedOut
-            | std::io::ErrorKind::WriteZero
-            | std::io::ErrorKind::Interrupted
-            | std::io::ErrorKind::Other
-            | std::io::ErrorKind::UnexpectedEof
-            | _ => ConfigError::ErrorUnexpectedIOError(v),
-        }
+impl From<ErrorsFS> for ErrorsConfig {
+    fn from(v: ErrorsFS) -> Self {
+        ErrorsConfig::ErrorFS(v)
     }
 }
 
-impl From<config::ConfigError> for ConfigError {
+impl From<config::ConfigError> for ErrorsConfig {
     fn from(v: config::ConfigError) -> Self {
-        ConfigError::ErrorReadConfig(v)
+        ErrorsConfig::ErrorReadConfig(v)
     }
 }
