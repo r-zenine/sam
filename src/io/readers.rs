@@ -126,6 +126,7 @@ pub enum ErrorVarRead {
     ErrorVarIO(std::io::Error),
     ErrorVarRepositoryInitialisation(ErrorsVarsRepository),
 }
+
 #[derive(Debug)]
 pub enum ErrorChoiceRead {
     ErrorChoiceIO(std::io::Error),
@@ -152,6 +153,20 @@ impl From<std::io::Error> for ErrorVarRead {
 impl From<serde_yaml::Error> for ErrorVarRead {
     fn from(v: serde_yaml::Error) -> Self {
         ErrorVarRead::ErrorVarSerde(v)
+    }
+}
+
+impl Display for ErrorVarRead {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ErrorVarRead::ErrorVarSerde(e) => writeln!(f, "parsing error for vars file\n -> {}", e),
+            ErrorVarRead::ErrorVarIO(e) => {
+                writeln!(f, "while reading the vars file got error {}", e)
+            }
+            ErrorVarRead::ErrorVarRepositoryInitialisation(e) => {
+                writeln!(f, "while validating the vars file got error {}", e)
+            }
+        }
     }
 }
 
