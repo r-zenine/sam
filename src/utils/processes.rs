@@ -19,6 +19,9 @@ impl<T> ShellCommand<T> {
         let sh_cmd: ShellCommand<T> = u.into();
         sh_cmd.into()
     }
+    pub fn value(&self) -> &T {
+        &self.command
+    }
 }
 
 impl<T> Into<Command> for ShellCommand<T>
