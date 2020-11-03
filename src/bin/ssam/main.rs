@@ -40,6 +40,7 @@ fn main() {
         }
     };
     match result {
+        Err(SAError::ErrorUI(userinterface::ErrorsUI::SkimAborted)) => {}
         Err(e) => eprintln!("Could not run the program as expected because {}", e),
         Ok(status) => std::process::exit(status),
     }
