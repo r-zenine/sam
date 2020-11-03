@@ -1,0 +1,3 @@
+scripts_dir="./examples/oneliners/scripts"
+aliases_file="./examples/oneliners/aliases.yaml"
+vars_file="./examples/oneliners/vars.yaml"
