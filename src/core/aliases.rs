@@ -1,3 +1,4 @@
+use crate::core::vars::{Dependencies, VarName};
 use crate::utils::processes::ShellCommand;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -19,6 +20,16 @@ impl Alias {
             desc: description.into(),
             alias: alias.into(),
         }
+    }
+
+    pub fn vars<'alias>(&'alias self) -> Vec<VarName> {
+        VarName::parse_from_str(&self.alias)
+}
+}
+
+impl Dependencies for &Alias {
+    fn command(&self) -> &str {
+        self.alias.as_str()
     }
 }
 
