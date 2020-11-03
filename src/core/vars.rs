@@ -4,6 +4,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::fmt::Display;
 use std::hash::Hash;
 
 lazy_static! {
@@ -99,6 +100,12 @@ impl AsRef<str> for VarName {
 impl PartialEq<&VarName> for VarName {
     fn eq(&self, other: &&VarName) -> bool {
         other.inner == self.inner
+    }
+}
+
+impl Display for VarName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_ref())
     }
 }
 
@@ -276,6 +283,19 @@ pub enum ErrorsVarResolver {
     ErrorNoChoiceWasSelected(VarName),
 }
 
+impl Display for ErrorsVarResolver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ErrorsVarResolver::ErrorNoChoiceWasAvailable(name) => {
+                writeln!(f, "no choice is available for var {}", name.as_ref())
+            }
+            ErrorsVarResolver::ErrorNoChoiceWasSelected(name) => {
+                writeln!(f, "no choice was selected for var {}", name.as_ref())
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct VarsRepository {
     vars: HashSet<Var>,
@@ -397,6 +417,20 @@ pub enum ErrorsVarsRepository {
     ErrorNoChoiceForVar(ErrorsVarResolver),
 }
 
+impl Display for ErrorsVarsRepository {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ErrorsVarsRepository::ErrorMissingDependencies(vars) => {
+                write!(f, "missing dependencies :")?;
+                for dep in vars {
+                    write!(f, " {} ", dep)?;
+                }
+                write!(f, "\n")
+            }
+            ErrorsVarsRepository::ErrorNoChoiceForVar(e) => writeln!(f, "{}", e),
+        }
+    }
+}
 impl From<ErrorsVarResolver> for ErrorsVarsRepository {
     fn from(v: ErrorsVarResolver) -> Self {
         ErrorsVarsRepository::ErrorNoChoiceForVar(v)
