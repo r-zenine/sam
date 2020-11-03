@@ -1,0 +1,7 @@
+- name: list stuff
+  desc: list current directory. 
+  alias: cd {{directory}} && {{pager}} {{file}}
+
+
+
+
