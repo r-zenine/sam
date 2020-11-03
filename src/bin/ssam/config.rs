@@ -28,9 +28,9 @@ impl AppSettings {
     pub fn load() -> Result<Self> {
         let home_dir_o = dirs::home_dir()
             .map(|e| e.join(".ssam_rc.toml"))
-            .ok_or(ErrorsConfig::ErrorCantFindHomeDirectory)?;
+            .ok_or(ErrorsConfig::CantFindHomeDirectory)?;
         let current_dir_o = std::env::current_dir()
-            .map_err(|_| ErrorsConfig::ErrorCantFindCurrentDirectory)
+            .map_err(|_| ErrorsConfig::CantFindCurrentDirectory)
             .map(|e| e.join("ssam_rc.toml"))?;
 
         let config_home_dir = Self::load_from_path(home_dir_o);
@@ -73,27 +73,25 @@ impl AppSettings {
 
 #[derive(Debug)]
 pub enum ErrorsConfig {
-    ErrorReadConfig(config::ConfigError),
-    ErrorFS(ErrorsFS),
-    ErrorCantFindHomeDirectory,
-    ErrorCantFindCurrentDirectory,
+    ReadConfig(config::ConfigError),
+    FileSystem(ErrorsFS),
+    CantFindHomeDirectory,
+    CantFindCurrentDirectory,
 }
 
 impl Display for ErrorsConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "while loading and validating the configuration, ")?;
         match self {
-            ErrorsConfig::ErrorReadConfig(erc) => {
-                writeln!(f, "got the following error: \n -> {}", erc)
-            }
-            ErrorsConfig::ErrorCantFindHomeDirectory => writeln!(
+            ErrorsConfig::ReadConfig(erc) => writeln!(f, "got the following error: \n -> {}", erc),
+            ErrorsConfig::CantFindHomeDirectory => writeln!(
                 f,
                 "we were unable to locate the home directory for the current user."
             ),
-            ErrorsConfig::ErrorFS(fs_error) => {
+            ErrorsConfig::FileSystem(fs_error) => {
                 writeln!(f, "got the following error: \n -> {}", fs_error)
             }
-            ErrorsConfig::ErrorCantFindCurrentDirectory => writeln!(
+            ErrorsConfig::CantFindCurrentDirectory => writeln!(
                 f,
                 "we were unable to locate the current directory for the current user."
             ),
@@ -103,12 +101,12 @@ impl Display for ErrorsConfig {
 
 impl From<ErrorsFS> for ErrorsConfig {
     fn from(v: ErrorsFS) -> Self {
-        ErrorsConfig::ErrorFS(v)
+        ErrorsConfig::FileSystem(v)
     }
 }
 
 impl From<config::ConfigError> for ErrorsConfig {
     fn from(v: config::ConfigError) -> Self {
-        ErrorsConfig::ErrorReadConfig(v)
+        ErrorsConfig::ReadConfig(v)
     }
 }

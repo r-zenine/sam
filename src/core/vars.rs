@@ -34,7 +34,7 @@ pub trait Dependencies {
                     .replace(command.as_str(), chce.value.as_str())
                     .to_string();
             } else {
-                return Err(ErrorsVarResolver::ErrorNoChoiceWasAvailable(dep));
+                return Err(ErrorsVarResolver::NoChoiceWasAvailable(dep));
             }
         }
         Ok(command)
@@ -178,11 +178,11 @@ impl Var {
             let command = self.substitute_for_choices(choices)?;
             resolver
                 .resolve_dynamic(self.name.clone(), ShellCommand::new(command))
-                .map_err(ErrorsVarsRepository::ErrorNoChoiceForVar)
+                .map_err(ErrorsVarsRepository::NoChoiceForVar)
         } else {
             resolver
                 .resolve_static(self.name.clone(), self.choices.clone().into_iter())
-                .map_err(ErrorsVarsRepository::ErrorNoChoiceForVar)
+                .map_err(ErrorsVarsRepository::NoChoiceForVar)
         }
     }
 
@@ -202,7 +202,7 @@ impl Var {
                     .replace(command.as_str(), chce.value.as_str())
                     .to_string();
             } else {
-                return Err(ErrorsVarResolver::ErrorNoChoiceWasAvailable(dep));
+                return Err(ErrorsVarResolver::NoChoiceWasAvailable(dep));
             }
         }
         Ok(command)
@@ -279,17 +279,17 @@ pub trait VarResolver {
 
 #[derive(Debug, PartialEq)]
 pub enum ErrorsVarResolver {
-    ErrorNoChoiceWasAvailable(VarName),
-    ErrorNoChoiceWasSelected(VarName),
+    NoChoiceWasAvailable(VarName),
+    NoChoiceWasSelected(VarName),
 }
 
 impl Display for ErrorsVarResolver {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ErrorsVarResolver::ErrorNoChoiceWasAvailable(name) => {
+            ErrorsVarResolver::NoChoiceWasAvailable(name) => {
                 writeln!(f, "no choice is available for var {}", name.as_ref())
             }
-            ErrorsVarResolver::ErrorNoChoiceWasSelected(name) => {
+            ErrorsVarResolver::NoChoiceWasSelected(name) => {
                 writeln!(f, "no choice was selected for var {}", name.as_ref())
             }
         }
@@ -326,7 +326,7 @@ impl VarsRepository {
         if missing.is_empty() {
             Ok(VarsRepository { vars })
         } else {
-            Err(ErrorsVarsRepository::ErrorMissingDependencies(missing))
+            Err(ErrorsVarsRepository::MissingDependencies(missing))
         }
     }
 
@@ -343,7 +343,7 @@ impl VarsRepository {
         if missing.is_empty() {
             Ok(())
         } else {
-            Err(ErrorsVarsRepository::ErrorMissingDependencies(missing))
+            Err(ErrorsVarsRepository::MissingDependencies(missing))
         }
     }
 
@@ -378,7 +378,7 @@ impl VarsRepository {
             }
         }
         if !missing.is_empty() {
-            Err(ErrorsVarsRepository::ErrorMissingDependencies(missing))
+            Err(ErrorsVarsRepository::MissingDependencies(missing))
         } else {
             Ok(ExecutionSequence {
                 inner: execution_seq.into_iter().collect(),
@@ -402,8 +402,8 @@ impl VarsRepository {
                 let choice = var.resolve(resolver, &choices)?;
                 choices.insert(var_name.to_owned(), choice);
             } else {
-                return Err(ErrorsVarsRepository::ErrorMissingDependencies(vec![
-                    var_name.to_owned(),
+                return Err(ErrorsVarsRepository::MissingDependencies(vec![
+                    var_name.to_owned()
                 ]));
             }
         }
@@ -413,27 +413,27 @@ impl VarsRepository {
 
 #[derive(Debug, PartialEq)]
 pub enum ErrorsVarsRepository {
-    ErrorMissingDependencies(Vec<VarName>),
-    ErrorNoChoiceForVar(ErrorsVarResolver),
+    MissingDependencies(Vec<VarName>),
+    NoChoiceForVar(ErrorsVarResolver),
 }
 
 impl Display for ErrorsVarsRepository {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ErrorsVarsRepository::ErrorMissingDependencies(vars) => {
+            ErrorsVarsRepository::MissingDependencies(vars) => {
                 write!(f, "missing dependencies :")?;
                 for dep in vars {
                     write!(f, " {} ", dep)?;
                 }
                 write!(f, "\n")
             }
-            ErrorsVarsRepository::ErrorNoChoiceForVar(e) => writeln!(f, "{}", e),
+            ErrorsVarsRepository::NoChoiceForVar(e) => writeln!(f, "{}", e),
         }
     }
 }
 impl From<ErrorsVarResolver> for ErrorsVarsRepository {
     fn from(v: ErrorsVarResolver) -> Self {
-        ErrorsVarsRepository::ErrorNoChoiceForVar(v)
+        ErrorsVarsRepository::NoChoiceForVar(v)
     }
 }
 
@@ -504,7 +504,7 @@ mod tests {
         let r2 = var.substitute_for_choices(&missing_choices);
         assert!(r2.is_err());
         assert_eq!(
-            ErrorsVarResolver::ErrorNoChoiceWasAvailable(VAR_DIRECTORY_NAME.clone()),
+            ErrorsVarResolver::NoChoiceWasAvailable(VAR_DIRECTORY_NAME.clone()),
             r2.unwrap_err()
         );
     }
@@ -550,7 +550,7 @@ mod tests {
         assert!(repo_err.is_err());
         assert_eq!(
             repo_err.unwrap_err(),
-            ErrorsVarsRepository::ErrorMissingDependencies(vec![VAR_PATTERN_NAME.clone()])
+            ErrorsVarsRepository::MissingDependencies(vec![VAR_PATTERN_NAME.clone()])
         );
     }
     #[test]
@@ -567,7 +567,7 @@ mod tests {
         assert!(ok.is_err());
         assert_eq!(
             ok.unwrap_err(),
-            ErrorsVarsRepository::ErrorMissingDependencies(vec![VAR_MISSING_NAME.clone()])
+            ErrorsVarsRepository::MissingDependencies(vec![VAR_MISSING_NAME.clone()])
         );
     }
     #[test]
@@ -643,7 +643,7 @@ mod tests {
             self.dynamic_res
                 .get(query)
                 .map(|e| e.to_owned())
-                .ok_or(ErrorsVarResolver::ErrorNoChoiceWasAvailable(var))
+                .ok_or(ErrorsVarResolver::NoChoiceWasAvailable(var))
         }
         fn resolve_static(
             &self,
@@ -653,7 +653,7 @@ mod tests {
             self.static_res
                 .get(&var)
                 .map(|c| c.to_owned())
-                .ok_or(ErrorsVarResolver::ErrorNoChoiceWasSelected(var))
+                .ok_or(ErrorsVarResolver::NoChoiceWasSelected(var))
         }
     }
     mod fixtures {
