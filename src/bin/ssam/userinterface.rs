@@ -14,7 +14,7 @@ use std::process::Command;
 pub struct UserInterface {}
 
 impl UserInterface {
-    fn skim_options(prompt: &'_ str) -> Result<SkimOptions, UIError> {
+    fn skim_options(prompt: &'_ str) -> Result<SkimOptions, ErrorsUI> {
         SkimOptionsBuilder::default()
             .prompt(Some(prompt))
             .tabstop(Some("8"))
@@ -22,7 +22,7 @@ impl UserInterface {
             .no_hscroll(false)
             .algorithm(FuzzyAlgorithm::SkimV2)
             .build()
-            .map_err(|op| UIError::ErrorSkimConfig(op))
+            .map_err(|op| ErrorsUI::SkimConfig(op))
     }
 
     pub fn run(
@@ -30,7 +30,7 @@ impl UserInterface {
         prompt: &'_ str,
         aliases: Vec<Alias>,
         scripts: Vec<Script>,
-    ) -> Result<UIItem, UIError> {
+    ) -> Result<UIItem, ErrorsUI> {
         let aliases_strings = aliases.clone().into_iter().map(UIItem::make_alias);
         let scripts_strings = scripts.clone().into_iter().map(UIItem::make_script);
         let choices = aliases_strings.chain(scripts_strings);
@@ -39,23 +39,23 @@ impl UserInterface {
             scripts
                 .get(idx - aliases.len())
                 .map(|e| UIItem::from_script(e.to_owned()))
-                .ok_or(UIError::ErrorSkimNoSelection)
+                .ok_or(ErrorsUI::SkimNoSelection)
         } else {
             aliases
                 .get(idx)
                 .map(|e| UIItem::from_alias(e.to_owned()))
-                .ok_or(UIError::ErrorSkimNoSelection)
+                .ok_or(ErrorsUI::SkimNoSelection)
         }
     }
 
-    pub fn choose(&self, choices: Vec<Arc<dyn SkimItem>>, prompt: &str) -> Result<usize, UIError> {
+    pub fn choose(&self, choices: Vec<Arc<dyn SkimItem>>, prompt: &str) -> Result<usize, ErrorsUI> {
         let (s, r) = bounded(choices.len());
         let source = choices.clone();
         UserInterface::send_from_iterator(source.into_iter(), s)?;
         let options = UserInterface::skim_options(prompt)?;
-        let output = Skim::run_with(&options, Some(r)).ok_or(UIError::ErrorSkimNoSelection)?;
+        let output = Skim::run_with(&options, Some(r)).ok_or(ErrorsUI::SkimNoSelection)?;
         if output.is_abort {
-            return Err(UIError::ErrorSkimAborted);
+            return Err(ErrorsUI::SkimAborted);
         }
         let selection: &dyn SkimItem = output.selected_items[0].as_ref();
 
@@ -67,31 +67,31 @@ impl UserInterface {
 
         match item {
             Some((idx, _)) => Ok(idx),
-            None => Err(UIError::ErrorSkimNoSelection),
+            None => Err(ErrorsUI::SkimNoSelection),
         }
     }
-    fn send_from_iterator<I>(it: I, s: Sender<Arc<dyn SkimItem>>) -> Result<(), UIError>
+    fn send_from_iterator<I>(it: I, s: Sender<Arc<dyn SkimItem>>) -> Result<(), ErrorsUI>
     where
         I: Iterator<Item = Arc<dyn SkimItem>>,
     {
         it.fold(Ok(()), |acc, e| {
             acc.and_then(|_| {
                 s.send(e)
-                    .map_err(|op| UIError::ErrorSkimSend(op.clone().to_string()))
+                    .map_err(|op| ErrorsUI::SkimSend(op.clone().to_string()))
             })
         })?;
         Ok(())
     }
 }
 #[derive(Debug)]
-pub enum UIError {
-    ErrorSkimConfig(String),
-    ErrorSkimSend(String),
-    ErrorSkimNoSelection,
-    ErrorSkimAborted,
+pub enum ErrorsUI {
+    SkimConfig(String),
+    SkimSend(String),
+    SkimNoSelection,
+    SkimAborted,
 }
 
-impl From<crossbeam_channel::SendError<Arc<dyn skim::SkimItem>>> for UIError {
+impl From<crossbeam_channel::SendError<Arc<dyn skim::SkimItem>>> for ErrorsUI {
     fn from(_: crossbeam_channel::SendError<Arc<dyn skim::SkimItem>>) -> Self {
         todo!()
     }
@@ -194,10 +194,10 @@ impl VarResolver for UserInterface {
         let mut to_run = ShellCommand::as_command(cmd.into());
         let output = to_run
             .output()
-            .map_err(|_e| ErrorsVarResolver::ErrorNoChoiceWasAvailable(var.clone()))?;
+            .map_err(|_e| ErrorsVarResolver::NoChoiceWasAvailable(var.clone()))?;
         let choices = read_choices(output.stdout.as_slice());
         match choices {
-            Err(_err) => Err(ErrorsVarResolver::ErrorNoChoiceWasAvailable(var.clone())),
+            Err(_err) => Err(ErrorsVarResolver::NoChoiceWasAvailable(var.clone())),
             Ok(v) => self.resolve_static(var, v.into_iter()),
         }
     }
@@ -215,12 +215,12 @@ impl VarResolver for UserInterface {
             .collect();
         let prompt = format!("please make a choices for variable:\t{}", var.as_ref());
         self.choose(items, prompt.as_str())
-            .map_err(|_e| ErrorsVarResolver::ErrorNoChoiceWasSelected(var.clone()))
+            .map_err(|_e| ErrorsVarResolver::NoChoiceWasSelected(var.clone()))
             .and_then(|idx| {
                 choices
                     .get(idx)
                     .map(|e| e.to_owned())
-                    .ok_or(ErrorsVarResolver::ErrorNoChoiceWasSelected(var.clone()))
+                    .ok_or(ErrorsVarResolver::NoChoiceWasSelected(var.clone()))
             })
     }
 }

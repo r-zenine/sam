@@ -1,7 +1,7 @@
 use ssam::core::vars::{Choice, Dependencies, ErrorsVarsRepository, VarName};
 use ssam::io::readers::{
-    read_aliases_from_file, read_scripts, read_vars_repository, ErrorAliasRead, ErrorScriptRead,
-    ErrorVarRead,
+    read_aliases_from_file, read_scripts, read_vars_repository, ErrorScriptRead, ErrorsAliasRead,
+    ErrorsVarRead,
 };
 use ssam::utils::processes::ShellCommand;
 use std::collections::HashMap;
@@ -102,12 +102,33 @@ enum SAError {
     ErrorExitCode,
     ErrorConfig(ErrorsConfig),
     ErrorScriptRead(ErrorScriptRead),
-    ErrorAliasRead(ErrorAliasRead),
-    ErrorVarRead(ErrorVarRead),
+    ErrorAliasRead(ErrorsAliasRead),
+    ErrorVarRead(ErrorsVarRead),
     ErrorVarsRepository(ErrorsVarsRepository),
-    ErrorUI(userinterface::UIError),
+    ErrorUI(userinterface::ErrorsUI),
     ErrorSubCommand(std::io::Error),
     ErrorSubCommandOutput(std::string::FromUtf8Error),
+}
+
+impl Display for SAError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "an error occured when ")?;
+        match self {
+            SAError::ErrorConfig(e) => writeln!(f, "reading the configuration.\n{}", e),
+            SAError::ErrorScriptRead(e) => writeln!(f, "reading the scripts. \n{}", e),
+            SAError::ErrorAliasRead(e) => writeln!(f, "reading aliases.\n{}", e),
+            SAError::ErrorVarRead(e) => writeln!(f, "reading vars.\n{}", e),
+            SAError::ErrorUI(e) => writeln!(f, "launching the terminal user interface\n{:?}", e),
+            SAError::ErrorSubCommand(e) => writeln!(f, "launching the selected command\n{:?}", e),
+            SAError::ErrorSubCommandOutput(e) => {
+                writeln!(f, "launching the selected command\n{:?}", e)
+            }
+            SAError::ErrorExitCode => writeln!(f, "trying to return the exit code."),
+            SAError::ErrorVarsRepository(e) => {
+                writeln!(f, "computing figuring out dependencies {:?}.", e)
+            }
+        }
+    }
 }
 
 impl From<ErrorsVarsRepository> for SAError {
@@ -116,8 +137,8 @@ impl From<ErrorsVarsRepository> for SAError {
     }
 }
 
-impl From<ErrorVarRead> for SAError {
-    fn from(v: ErrorVarRead) -> Self {
+impl From<ErrorsVarRead> for SAError {
+    fn from(v: ErrorsVarRead) -> Self {
         SAError::ErrorVarRead(v)
     }
 }
@@ -134,57 +155,17 @@ impl From<std::io::Error> for SAError {
     }
 }
 
-impl From<userinterface::UIError> for SAError {
-    fn from(v: userinterface::UIError) -> Self {
+impl From<userinterface::ErrorsUI> for SAError {
+    fn from(v: userinterface::ErrorsUI) -> Self {
         SAError::ErrorUI(v)
     }
 }
 
-impl From<ErrorAliasRead> for SAError {
-    fn from(v: ErrorAliasRead) -> Self {
+impl From<ErrorsAliasRead> for SAError {
+    fn from(v: ErrorsAliasRead) -> Self {
         SAError::ErrorAliasRead(v)
     }
 }
-impl Display for SAError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SAError::ErrorConfig(e) => {
-                writeln!(f, "an error occured when reading the configuration.\n{}", e)
-            }
-            SAError::ErrorScriptRead(e) => {
-                writeln!(f, "an error occured when reading the scripts. \n{}", e)
-            }
-            SAError::ErrorAliasRead(e) => {
-                writeln!(f, "an error occured when reading aliases.\n{}", e)
-            }
-            SAError::ErrorVarRead(e) => writeln!(f, "an error occured when reading vars.\n{}", e),
-            SAError::ErrorUI(e) => writeln!(
-                f,
-                "an error occured when launching the terminal user interface\n{:?}",
-                e
-            ),
-            SAError::ErrorSubCommand(e) => writeln!(
-                f,
-                "an error occured when launching the selected command\n{:?}",
-                e
-            ),
-            SAError::ErrorSubCommandOutput(e) => writeln!(
-                f,
-                "an error occured when launching the selected command\n{:?}",
-                e
-            ),
-            SAError::ErrorExitCode => {
-                writeln!(f, "an error occured when trying to return the exit code.")
-            }
-            SAError::ErrorVarsRepository(e) => writeln!(
-                f,
-                "an error occured when computing figuring out dependencies {:?}.",
-                e
-            ),
-        }
-    }
-}
-
 impl From<ErrorsConfig> for SAError {
     fn from(v: ErrorsConfig) -> Self {
         SAError::ErrorConfig(v)

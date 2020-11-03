@@ -7,20 +7,20 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 
-pub fn read_aliases_from_file(path: &'_ Path) -> Result<Vec<Alias>, ErrorAliasRead> {
+pub fn read_aliases_from_file(path: &'_ Path) -> Result<Vec<Alias>, ErrorsAliasRead> {
     let f = File::open(path)?;
     let buf = BufReader::new(f);
     read_aliases(buf)
 }
 
-fn read_aliases<T>(r: T) -> Result<Vec<Alias>, ErrorAliasRead>
+fn read_aliases<T>(r: T) -> Result<Vec<Alias>, ErrorsAliasRead>
 where
     T: Read,
 {
-    serde_yaml::from_reader(r).map_err(ErrorAliasRead::from)
+    serde_yaml::from_reader(r).map_err(ErrorsAliasRead::from)
 }
 
-pub fn read_choices<T>(r: T) -> Result<Vec<Choice>, ErrorChoiceRead>
+pub fn read_choices<T>(r: T) -> Result<Vec<Choice>, ErrorsChoiceRead>
 where
     T: BufRead,
 {
@@ -37,18 +37,18 @@ where
     Ok(out)
 }
 
-pub fn read_vars_repository(path: &'_ Path) -> Result<VarsRepository, ErrorVarRead> {
+pub fn read_vars_repository(path: &'_ Path) -> Result<VarsRepository, ErrorsVarRead> {
     let f = File::open(path)?;
     let buf = BufReader::new(f);
     let vars = read_vars(buf)?;
     VarsRepository::new(vars.into_iter()).map_err(|e| e.into())
 }
 
-fn read_vars<T>(r: T) -> Result<Vec<Var>, ErrorVarRead>
+fn read_vars<T>(r: T) -> Result<Vec<Var>, ErrorsVarRead>
 where
     T: Read,
 {
-    serde_yaml::from_reader(r).map_err(ErrorVarRead::from)
+    serde_yaml::from_reader(r).map_err(ErrorsVarRead::from)
 }
 
 pub fn read_scripts<'a>(path: &'a Path) -> Result<Vec<Script>, ErrorScriptRead> {
@@ -64,7 +64,7 @@ pub fn read_scripts<'a>(path: &'a Path) -> Result<Vec<Script>, ErrorScriptRead> 
         }
         Ok(out)
     } else {
-        Err(ErrorScriptRead::ErrorScriptDirNotDirectory(
+        Err(ErrorScriptRead::ScriptDirNotDirectory(
             path.display().to_string(),
         ))
     }
@@ -83,7 +83,7 @@ fn read_script(path: PathBuf) -> Result<Script, ErrorScriptRead> {
         .file_name()
         .and_then(|e| e.to_str())
         .map(|e| e.to_string())
-        .ok_or(ErrorScriptRead::ErrorReadScriptName(format!(
+        .ok_or(ErrorScriptRead::ReadScriptName(format!(
             "could not extract file name from path {}",
             path.display()
         )))?;
@@ -91,79 +91,77 @@ fn read_script(path: PathBuf) -> Result<Script, ErrorScriptRead> {
     Ok(Script::new(name, description, path))
 }
 #[derive(Debug)]
-pub enum ErrorAliasRead {
-    ErrorAliasSerde(serde_yaml::Error),
-    ErrorAliasIO(std::io::Error),
+pub enum ErrorsAliasRead {
+    AliasSerde(serde_yaml::Error),
+    AliasIO(std::io::Error),
 }
 
-impl From<std::io::Error> for ErrorAliasRead {
+impl From<std::io::Error> for ErrorsAliasRead {
     fn from(v: std::io::Error) -> Self {
-        ErrorAliasRead::ErrorAliasIO(v)
+        ErrorsAliasRead::AliasIO(v)
     }
 }
 
-impl From<serde_yaml::Error> for ErrorAliasRead {
+impl From<serde_yaml::Error> for ErrorsAliasRead {
     fn from(v: serde_yaml::Error) -> Self {
-        ErrorAliasRead::ErrorAliasSerde(v)
+        ErrorsAliasRead::AliasSerde(v)
     }
 }
 
-impl Display for ErrorAliasRead {
+impl Display for ErrorsAliasRead {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ErrorAliasRead::ErrorAliasIO(err) => {
+            ErrorsAliasRead::AliasIO(err) => {
                 writeln!(f, "while trying to read aliases got error {}", err)
             }
-            ErrorAliasRead::ErrorAliasSerde(err) => {
+            ErrorsAliasRead::AliasSerde(err) => {
                 writeln!(f, "while trying to deserialize aliases got error {}", err)
             }
         }
     }
 }
 #[derive(Debug)]
-pub enum ErrorVarRead {
-    ErrorVarSerde(serde_yaml::Error),
-    ErrorVarIO(std::io::Error),
-    ErrorVarRepositoryInitialisation(ErrorsVarsRepository),
+pub enum ErrorsVarRead {
+    VarsSerde(serde_yaml::Error),
+    VarIO(std::io::Error),
+    VarsRepositoryInitialisation(ErrorsVarsRepository),
 }
 
 #[derive(Debug)]
-pub enum ErrorChoiceRead {
-    ErrorChoiceIO(std::io::Error),
+pub enum ErrorsChoiceRead {
+    ChoiceIO(std::io::Error),
 }
 
-impl From<std::io::Error> for ErrorChoiceRead {
+impl From<std::io::Error> for ErrorsChoiceRead {
     fn from(v: std::io::Error) -> Self {
-        ErrorChoiceRead::ErrorChoiceIO(v)
+        ErrorsChoiceRead::ChoiceIO(v)
     }
 }
 
-impl From<ErrorsVarsRepository> for ErrorVarRead {
+impl From<ErrorsVarsRepository> for ErrorsVarRead {
     fn from(v: ErrorsVarsRepository) -> Self {
-        ErrorVarRead::ErrorVarRepositoryInitialisation(v)
+        ErrorsVarRead::VarsRepositoryInitialisation(v)
     }
 }
 
-impl From<std::io::Error> for ErrorVarRead {
+impl From<std::io::Error> for ErrorsVarRead {
     fn from(v: std::io::Error) -> Self {
-        ErrorVarRead::ErrorVarIO(v)
+        ErrorsVarRead::VarIO(v)
     }
 }
 
-impl From<serde_yaml::Error> for ErrorVarRead {
+impl From<serde_yaml::Error> for ErrorsVarRead {
     fn from(v: serde_yaml::Error) -> Self {
-        ErrorVarRead::ErrorVarSerde(v)
+        ErrorsVarRead::VarsSerde(v)
     }
 }
 
-impl Display for ErrorVarRead {
+impl Display for ErrorsVarRead {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ErrorVarRead::ErrorVarSerde(e) => writeln!(f, "parsing error for vars file\n -> {}", e),
-            ErrorVarRead::ErrorVarIO(e) => {
-                writeln!(f, "while reading the vars file got error {}", e)
-            }
-            ErrorVarRead::ErrorVarRepositoryInitialisation(e) => {
+            ErrorsVarRead::VarsSerde(e) => writeln!(f, "parsing error for vars file\n -> {}", e),
+            ErrorsVarRead::VarIO(e) => writeln!(f, "while reading the vars file got error {}", e),
+            ErrorsVarRead::VarsRepositoryInitialisation(e) => {
                 writeln!(f, "while validating the vars file got error {}", e)
             }
         }
@@ -172,21 +170,21 @@ impl Display for ErrorVarRead {
 
 #[derive(Debug)]
 pub enum ErrorScriptRead {
-    ErrorReadScriptName(String),
-    ErrorScriptDirNotDirectory(String),
-    ErrorReadScriptContent(std::io::Error),
+    ReadScriptName(String),
+    ScriptDirNotDirectory(String),
+    ReadScriptContent(std::io::Error),
 }
 
 impl Display for ErrorScriptRead {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ErrorScriptRead::ErrorReadScriptName(err) => {
+            ErrorScriptRead::ReadScriptName(err) => {
                 writeln!(f, "while reading script name got error {}", err)
             }
-            ErrorScriptRead::ErrorReadScriptContent(err) => {
+            ErrorScriptRead::ReadScriptContent(err) => {
                 writeln!(f, "while reading script content got error {}", err)
             }
-            ErrorScriptRead::ErrorScriptDirNotDirectory(path) => writeln!(
+            ErrorScriptRead::ScriptDirNotDirectory(path) => writeln!(
                 f,
                 "the path provided to read scripts in not a directory. path was : {}",
                 path
@@ -196,7 +194,7 @@ impl Display for ErrorScriptRead {
 }
 impl From<std::io::Error> for ErrorScriptRead {
     fn from(v: std::io::Error) -> Self {
-        ErrorScriptRead::ErrorReadScriptContent(v)
+        ErrorScriptRead::ReadScriptContent(v)
     }
 }
 
