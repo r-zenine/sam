@@ -40,7 +40,7 @@ fn main() {
         }
     };
     match result {
-        Err(SAError::ErrorUI(userinterface::ErrorsUI::SkimAborted)) => {}
+        Err(ErrorsSSAM::UI(userinterface::ErrorsUI::SkimAborted)) => {}
         Err(e) => eprintln!("Could not run the program as expected because {}", e),
         Ok(status) => std::process::exit(status),
     }
@@ -58,7 +58,7 @@ fn run() -> Result<i32> {
             let script = item.as_script().unwrap().to_owned();
             let mut command: Command = ShellCommand::as_command(script);
             let exit_status = command.status()?;
-            return exit_status.code().ok_or(SAError::ErrorExitCode);
+            return exit_status.code().ok_or(ErrorsSSAM::ExitCode);
         }
         userinterface::UIItemKind::Alias => {
             let alias = item.as_alias().unwrap();
@@ -70,7 +70,7 @@ fn run() -> Result<i32> {
             let final_command = alias.substitute_for_choices(&choices).unwrap();
             let mut command: Command = ShellCommand::new(final_command).into();
             let exit_status = command.status()?;
-            return exit_status.code().ok_or(SAError::ErrorExitCode);
+            return exit_status.code().ok_or(ErrorsSSAM::ExitCode);
         }
     }
 }
@@ -97,84 +97,84 @@ fn bashrc() -> Result<i32> {
 }
 
 // Error handling for the sa app.
-type Result<T> = std::result::Result<T, SAError>;
+type Result<T> = std::result::Result<T, ErrorsSSAM>;
 #[derive(Debug)]
-enum SAError {
-    ErrorExitCode,
-    ErrorConfig(ErrorsConfig),
-    ErrorScriptRead(ErrorScriptRead),
-    ErrorAliasRead(ErrorsAliasRead),
-    ErrorVarRead(ErrorsVarRead),
-    ErrorVarsRepository(ErrorsVarsRepository),
-    ErrorUI(userinterface::ErrorsUI),
-    ErrorSubCommand(std::io::Error),
-    ErrorSubCommandOutput(std::string::FromUtf8Error),
+enum ErrorsSSAM {
+    ExitCode,
+    Config(ErrorsConfig),
+    ScriptRead(ErrorScriptRead),
+    AliasRead(ErrorsAliasRead),
+    VarRead(ErrorsVarRead),
+    VarsRepository(ErrorsVarsRepository),
+    UI(userinterface::ErrorsUI),
+    SubCommand(std::io::Error),
+    SubCommandOutput(std::string::FromUtf8Error),
 }
 
-impl Display for SAError {
+impl Display for ErrorsSSAM {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "an error occured when ")?;
         match self {
-            SAError::ErrorConfig(e) => writeln!(f, "reading the configuration.\n{}", e),
-            SAError::ErrorScriptRead(e) => writeln!(f, "reading the scripts. \n{}", e),
-            SAError::ErrorAliasRead(e) => writeln!(f, "reading aliases.\n{}", e),
-            SAError::ErrorVarRead(e) => writeln!(f, "reading vars.\n{}", e),
-            SAError::ErrorUI(e) => writeln!(f, "launching the terminal user interface\n{:?}", e),
-            SAError::ErrorSubCommand(e) => writeln!(f, "launching the selected command\n{:?}", e),
-            SAError::ErrorSubCommandOutput(e) => {
+            ErrorsSSAM::Config(e) => writeln!(f, "reading the configuration.\n{}", e),
+            ErrorsSSAM::ScriptRead(e) => writeln!(f, "reading the scripts. \n{}", e),
+            ErrorsSSAM::AliasRead(e) => writeln!(f, "reading aliases.\n{}", e),
+            ErrorsSSAM::VarRead(e) => writeln!(f, "reading vars.\n{}", e),
+            ErrorsSSAM::UI(e) => writeln!(f, "launching the terminal user interface\n{:?}", e),
+            ErrorsSSAM::SubCommand(e) => writeln!(f, "launching the selected command\n{:?}", e),
+            ErrorsSSAM::SubCommandOutput(e) => {
                 writeln!(f, "launching the selected command\n{:?}", e)
             }
-            SAError::ErrorExitCode => writeln!(f, "trying to return the exit code."),
-            SAError::ErrorVarsRepository(e) => {
+            ErrorsSSAM::ExitCode => writeln!(f, "trying to return the exit code."),
+            ErrorsSSAM::VarsRepository(e) => {
                 writeln!(f, "computing figuring out dependencies {:?}.", e)
             }
         }
     }
 }
 
-impl From<ErrorsVarsRepository> for SAError {
+impl From<ErrorsVarsRepository> for ErrorsSSAM {
     fn from(v: ErrorsVarsRepository) -> Self {
-        SAError::ErrorVarsRepository(v)
+        ErrorsSSAM::VarsRepository(v)
     }
 }
 
-impl From<ErrorsVarRead> for SAError {
+impl From<ErrorsVarRead> for ErrorsSSAM {
     fn from(v: ErrorsVarRead) -> Self {
-        SAError::ErrorVarRead(v)
+        ErrorsSSAM::VarRead(v)
     }
 }
 
-impl From<std::string::FromUtf8Error> for SAError {
+impl From<std::string::FromUtf8Error> for ErrorsSSAM {
     fn from(v: std::string::FromUtf8Error) -> Self {
-        SAError::ErrorSubCommandOutput(v)
+        ErrorsSSAM::SubCommandOutput(v)
     }
 }
 
-impl From<std::io::Error> for SAError {
+impl From<std::io::Error> for ErrorsSSAM {
     fn from(v: std::io::Error) -> Self {
-        SAError::ErrorSubCommand(v)
+        ErrorsSSAM::SubCommand(v)
     }
 }
 
-impl From<userinterface::ErrorsUI> for SAError {
+impl From<userinterface::ErrorsUI> for ErrorsSSAM {
     fn from(v: userinterface::ErrorsUI) -> Self {
-        SAError::ErrorUI(v)
+        ErrorsSSAM::UI(v)
     }
 }
 
-impl From<ErrorsAliasRead> for SAError {
+impl From<ErrorsAliasRead> for ErrorsSSAM {
     fn from(v: ErrorsAliasRead) -> Self {
-        SAError::ErrorAliasRead(v)
+        ErrorsSSAM::AliasRead(v)
     }
 }
-impl From<ErrorsConfig> for SAError {
+impl From<ErrorsConfig> for ErrorsSSAM {
     fn from(v: ErrorsConfig) -> Self {
-        SAError::ErrorConfig(v)
+        ErrorsSSAM::Config(v)
     }
 }
 
-impl From<ErrorScriptRead> for SAError {
+impl From<ErrorScriptRead> for ErrorsSSAM {
     fn from(v: ErrorScriptRead) -> Self {
-        SAError::ErrorScriptRead(v)
+        ErrorsSSAM::ScriptRead(v)
     }
 }
