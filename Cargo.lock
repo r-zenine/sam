@@ -531,6 +531,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "maplit"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
+
+[[package]]
 name = "maybe-uninit"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -940,7 +946,10 @@ dependencies = [
  "crossbeam 0.8.0",
  "crossbeam-channel 0.5.0",
  "dirs 3.0.1",
+ "lazy_static",
+ "maplit",
  "rand 0.7.3",
+ "regex",
  "serde 1.0.117",
  "serde_yaml",
  "skim",
