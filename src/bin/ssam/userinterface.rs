@@ -2,19 +2,22 @@ use crossbeam_channel;
 use skim::prelude::*;
 use ssam::core::aliases::Alias;
 use ssam::core::scripts::Script;
+use ssam::core::vars::{Choice, ErrorsVarResolver, VarName, VarResolver};
+use ssam::io::readers::read_choices;
 use ssam::utils::processes::ShellCommand;
 use std::process::Command;
 
+// Todo :
+// 1. use a Cell for options to allow for mutations.
+// 2. add a reset options to change the prompt from the resolver.
 pub struct UserInterface<'a> {
     options: SkimOptions<'a>,
 }
 
-const PROMPT: &'_ str = "Choose a script/alias > ";
-
 impl<'a> UserInterface<'a> {
-    pub fn new() -> Result<UserInterface<'a>, UIError> {
+    pub fn new(prompt: &'a str) -> Result<UserInterface<'a>, UIError> {
         let skimoptions = SkimOptionsBuilder::default()
-            .prompt(Some(PROMPT))
+            .prompt(Some(prompt))
             .tabstop(Some("8"))
             .multi(false)
             .no_hscroll(false)
@@ -28,37 +31,44 @@ impl<'a> UserInterface<'a> {
     }
 
     pub fn run(&self, aliases: Vec<Alias>, scripts: Vec<Script>) -> Result<UIItem, UIError> {
-        let (s, r) = bounded(&aliases.len() + &scripts.len());
         let aliases_strings = aliases.clone().into_iter().map(UIItem::make_alias);
         let scripts_strings = scripts.clone().into_iter().map(UIItem::make_script);
-        let source = aliases_strings.chain(scripts_strings);
-        UserInterface::send_from_iterator(source, s)?;
-        let output = Skim::run_with(&self.options, Some(r)).ok_or(UIError::ErrorSkimNoSelection)?;
-        let selection: &dyn SkimItem = output.selected_items[0].as_ref();
-        let item: &UIItem = selection
-            .as_any()
-            .downcast_ref::<UIItem>()
-            .ok_or(UIError::ErrorSkimDowncast)?;
-        match item.kind {
-            UIItemKind::Alias => {
-                let selected = aliases
-                    .into_iter()
-                    .find(|e| item.as_alias().as_ref().map(|r| *r == e).unwrap_or(false));
-                return selected
-                    .map(|a| UIItem::from_alias(a))
-                    .ok_or(UIError::ErrorSelection);
-            }
-            UIItemKind::Script => {
-                let selected = scripts
-                    .into_iter()
-                    .find(|e| item.as_script().as_ref().map(|r| *r == e).unwrap_or(false));
-                return selected
-                    .map(|s| UIItem::from_script(s))
-                    .ok_or(UIError::ErrorSelection);
-            }
+        let choices = aliases_strings.chain(scripts_strings);
+        let idx = self.choose(choices.clone().collect())?;
+        if idx >= aliases.len() {
+            scripts
+                .get(idx - aliases.len())
+                .map(|e| UIItem::from_script(e.to_owned()))
+                .ok_or(UIError::ErrorSkimNoSelection)
+        } else {
+            aliases
+                .get(idx)
+                .map(|e| UIItem::from_alias(e.to_owned()))
+                .ok_or(UIError::ErrorSkimNoSelection)
         }
     }
 
+    pub fn choose(&self, choices: Vec<Arc<dyn SkimItem>>) -> Result<usize, UIError> {
+        let (s, r) = bounded(choices.len());
+        let source = choices.clone();
+        UserInterface::send_from_iterator(source.into_iter(), s)?;
+        let output = Skim::run_with(&self.options, Some(r)).ok_or(UIError::ErrorSkimNoSelection)?;
+        if output.is_abort {
+            return Err(UIError::ErrorSkimAborted);
+        }
+        let selection: &dyn SkimItem = output.selected_items[0].as_ref();
+
+        let item = choices
+            .iter()
+            .enumerate()
+            .filter(|(_idx, value)| value.text() == selection.text())
+            .next();
+
+        match item {
+            Some((idx, _)) => Ok(idx),
+            None => Err(UIError::ErrorSkimNoSelection),
+        }
+    }
     fn send_from_iterator<I>(it: I, s: Sender<Arc<dyn SkimItem>>) -> Result<(), UIError>
     where
         I: Iterator<Item = Arc<dyn SkimItem>>,
@@ -72,14 +82,12 @@ impl<'a> UserInterface<'a> {
         Ok(())
     }
 }
-
 #[derive(Debug)]
 pub enum UIError {
-    ErrorSelection,
     ErrorSkimConfig(String),
     ErrorSkimSend(String),
     ErrorSkimNoSelection,
-    ErrorSkimDowncast,
+    ErrorSkimAborted,
 }
 
 impl From<crossbeam_channel::SendError<Arc<dyn skim::SkimItem>>> for UIError {
@@ -95,7 +103,7 @@ pub enum UIItemKind {
 
 #[derive(Clone, Debug)]
 pub struct UIItem {
-    kind: UIItemKind,
+    pub kind: UIItemKind,
     alias: Option<Alias>,
     script: Option<Script>,
 }
@@ -123,14 +131,14 @@ impl UIItem {
         Arc::new(Self::from_script(script))
     }
 
-    fn as_alias(&self) -> Option<&Alias> {
+    pub fn as_alias(&self) -> Option<&Alias> {
         match self.kind {
             UIItemKind::Alias => self.alias.as_ref(),
             UIItemKind::Script => None,
         }
     }
 
-    fn as_script(&self) -> Option<&Script> {
+    pub fn as_script(&self) -> Option<&Script> {
         match self.kind {
             UIItemKind::Alias => None,
             UIItemKind::Script => self.script.as_ref(),
@@ -154,6 +162,64 @@ impl SkimItem for UIItem {
                     .unwrap_or("".to_string()),
             ),
         }
+    }
+}
+
+struct ChoiceItem {
+    inner: Choice,
+}
+
+impl ChoiceItem {
+    fn from_choice(choice: Choice) -> Arc<dyn SkimItem> {
+        Arc::new(ChoiceItem { inner: choice })
+    }
+}
+
+impl SkimItem for ChoiceItem {
+    fn text(&self) -> Cow<str> {
+        Cow::Owned(format!(
+            "{} \t {}",
+            self.inner.value(),
+            self.inner.desc().unwrap_or(""),
+        ))
+    }
+}
+
+impl<'a> VarResolver for UserInterface<'a> {
+    fn resolve_dynamic<CMD>(&self, var: VarName, cmd: CMD) -> Result<Choice, ErrorsVarResolver>
+    where
+        CMD: Into<ShellCommand<String>>,
+    {
+        let mut to_run = ShellCommand::as_command(cmd.into());
+        let output = to_run
+            .output()
+            .map_err(|_e| ErrorsVarResolver::ErrorNoChoiceWasAvailable(var.clone()))?;
+        let choices = read_choices(output.stdout.as_slice());
+        match choices {
+            Err(_err) => Err(ErrorsVarResolver::ErrorNoChoiceWasAvailable(var.clone())),
+            Ok(v) => self.resolve_static(var, v.into_iter()),
+        }
+    }
+
+    fn resolve_static(
+        &self,
+        var: ssam::core::vars::VarName,
+        cmd: impl Iterator<Item = Choice>,
+    ) -> Result<Choice, ErrorsVarResolver> {
+        let choices: Vec<Choice> = cmd.collect();
+        let items: Vec<Arc<dyn SkimItem>> = choices
+            .clone()
+            .into_iter()
+            .map(ChoiceItem::from_choice)
+            .collect();
+        self.choose(items)
+            .map_err(|_e| ErrorsVarResolver::ErrorNoChoiceWasSelected(var.clone()))
+            .and_then(|idx| {
+                choices
+                    .get(idx)
+                    .map(|e| e.to_owned())
+                    .ok_or(ErrorsVarResolver::ErrorNoChoiceWasSelected(var.clone()))
+            })
     }
 }
 
