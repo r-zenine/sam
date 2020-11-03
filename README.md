@@ -18,9 +18,9 @@ Fist, you want to start by creating a repository that will hold your scripts and
 Ideally, we recommend it's stucture to be as follow : 
 ```bash
 ├── aliases.yaml
-└── scripts
-    ├── scripts1.sh
-    └── scripts2.sh
+├── scripts
+│   └── fancy_ls.sh
+└── vars.yaml
 ```
 Once it's done, you can continue by editing a configuration file in `$HOME/.ssam_rc.toml`
 that should look as follow: 
