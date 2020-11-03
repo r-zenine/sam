@@ -6,6 +6,7 @@ that helps you manage you **scripts** and **snippets** to manage aliases and scr
 
 * Fuzzy search command line interface based on skim to search through your aliases (think `fzf`, `peco` or `skim`). 
 * Your scripts and aliases can be in version control and still be available in your bashrc.
+* Generates configuration for `bash` and `zsh` automatically. 
 * Your aliases can be templated using variables and `ssam` will guide you and ask you to choose a value for each variable before runing your alias. 
 
 
