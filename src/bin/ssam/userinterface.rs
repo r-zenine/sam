@@ -10,31 +10,31 @@ use std::process::Command;
 // Todo :
 // 1. use a Cell for options to allow for mutations.
 // 2. add a reset options to change the prompt from the resolver.
-pub struct UserInterface<'a> {
-    options: SkimOptions<'a>,
-}
+#[derive(Debug, Default)]
+pub struct UserInterface {}
 
-impl<'a> UserInterface<'a> {
-    pub fn new(prompt: &'a str) -> Result<UserInterface<'a>, UIError> {
-        let skimoptions = SkimOptionsBuilder::default()
+impl UserInterface {
+    fn skim_options(prompt: &'_ str) -> Result<SkimOptions, UIError> {
+        SkimOptionsBuilder::default()
             .prompt(Some(prompt))
             .tabstop(Some("8"))
             .multi(false)
             .no_hscroll(false)
             .algorithm(FuzzyAlgorithm::SkimV2)
             .build()
-            .map_err(|op| UIError::ErrorSkimConfig(op))?;
-
-        Ok(UserInterface {
-            options: skimoptions,
-        })
+            .map_err(|op| UIError::ErrorSkimConfig(op))
     }
 
-    pub fn run(&self, aliases: Vec<Alias>, scripts: Vec<Script>) -> Result<UIItem, UIError> {
+    pub fn run(
+        &self,
+        prompt: &'_ str,
+        aliases: Vec<Alias>,
+        scripts: Vec<Script>,
+    ) -> Result<UIItem, UIError> {
         let aliases_strings = aliases.clone().into_iter().map(UIItem::make_alias);
         let scripts_strings = scripts.clone().into_iter().map(UIItem::make_script);
         let choices = aliases_strings.chain(scripts_strings);
-        let idx = self.choose(choices.clone().collect())?;
+        let idx = self.choose(choices.clone().collect(), prompt)?;
         if idx >= aliases.len() {
             scripts
                 .get(idx - aliases.len())
@@ -48,11 +48,12 @@ impl<'a> UserInterface<'a> {
         }
     }
 
-    pub fn choose(&self, choices: Vec<Arc<dyn SkimItem>>) -> Result<usize, UIError> {
+    pub fn choose(&self, choices: Vec<Arc<dyn SkimItem>>, prompt: &str) -> Result<usize, UIError> {
         let (s, r) = bounded(choices.len());
         let source = choices.clone();
         UserInterface::send_from_iterator(source.into_iter(), s)?;
-        let output = Skim::run_with(&self.options, Some(r)).ok_or(UIError::ErrorSkimNoSelection)?;
+        let options = UserInterface::skim_options(prompt)?;
+        let output = Skim::run_with(&options, Some(r)).ok_or(UIError::ErrorSkimNoSelection)?;
         if output.is_abort {
             return Err(UIError::ErrorSkimAborted);
         }
@@ -185,7 +186,7 @@ impl SkimItem for ChoiceItem {
     }
 }
 
-impl<'a> VarResolver for UserInterface<'a> {
+impl VarResolver for UserInterface {
     fn resolve_dynamic<CMD>(&self, var: VarName, cmd: CMD) -> Result<Choice, ErrorsVarResolver>
     where
         CMD: Into<ShellCommand<String>>,
@@ -212,7 +213,8 @@ impl<'a> VarResolver for UserInterface<'a> {
             .into_iter()
             .map(ChoiceItem::from_choice)
             .collect();
-        self.choose(items)
+        let prompt = format!("please make a choices for variable:\t{}", var.as_ref());
+        self.choose(items, prompt.as_str())
             .map_err(|_e| ErrorsVarResolver::ErrorNoChoiceWasSelected(var.clone()))
             .and_then(|idx| {
                 choices

@@ -50,8 +50,8 @@ fn run() -> Result<i32> {
     let scripts = read_scripts(cfg.scripts_dir())?;
     let aliases = read_aliases_from_file(cfg.aliases_file())?;
     let vars_repo = read_vars_repository(cfg.vars_file())?;
-    let ui_interface = userinterface::UserInterface::new(PROMPT)?;
-    let item = ui_interface.run(aliases, scripts)?;
+    let ui_interface = userinterface::UserInterface::default();
+    let item = ui_interface.run(PROMPT, aliases, scripts)?;
     match item.kind {
         userinterface::UIItemKind::Script => {
             let script = item.as_script().unwrap().to_owned();
