@@ -24,7 +24,7 @@ impl Alias {
 
     pub fn vars<'alias>(&'alias self) -> Vec<VarName> {
         VarName::parse_from_str(&self.alias)
-}
+    }
 }
 
 impl Dependencies for &Alias {
@@ -49,5 +49,27 @@ impl Into<ShellCommand<String>> for Alias {
 impl Display for Alias {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "alias {}='{}' # {}", self.name, self.alias, self.desc)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Alias;
+    use crate::core::vars::VarName;
+    #[test]
+    fn test_vars() {
+        let alias = Alias::new(
+            "test_alias",
+            "test_description",
+            "some text then {{ var1 }} and so {{var2 }} and after that {{var3}} into {{var_4}}.",
+        );
+        let expected_vars = vec![
+            VarName::new("{{ var1 }}"),
+            VarName::new("{{var2 }}"),
+            VarName::new("{{var3}}"),
+            VarName::new("{{var_4}}"),
+        ];
+        let vars: Vec<VarName> = alias.vars();
+        assert_eq!(expected_vars, vars);
     }
 }
