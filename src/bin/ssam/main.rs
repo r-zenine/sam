@@ -157,7 +157,7 @@ impl Display for SAError {
             SAError::ErrorAliasRead(e) => {
                 writeln!(f, "an error occured when reading aliases.\n{}", e)
             }
-            SAError::ErrorVarRead(e) => writeln!(f, "an error occured when reading vars.\n{:?}", e),
+            SAError::ErrorVarRead(e) => writeln!(f, "an error occured when reading vars.\n{}", e),
             SAError::ErrorUI(e) => writeln!(
                 f,
                 "an error occured when launching the terminal user interface\n{:?}",
