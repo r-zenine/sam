@@ -85,13 +85,6 @@ fn bashrc() -> Result<i32> {
     println!("# eval \"$(ssam bashrc)\"                       *");
     println!("#                                             *");
     println!("# *********************************************");
-    println!("# START SSAM generated aliases:");
-    println!("alias am='ssam run'");
-    for alias in aliases {
-        println!("{}", alias);
-    }
-    println!("# STOP SSAM generated aliases:");
-
     println!("export PATH=$PATH:{}", cfg.scripts_dir().display());
     Ok(0)
 }
