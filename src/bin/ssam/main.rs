@@ -1,11 +1,17 @@
-use ssam::io::readers::{read_aliases_from_file, read_scripts, ErrorAliasRead, ErrorScriptRead};
+use ssam::core::vars::{Choice, Dependencies, ErrorsVarsRepository, VarName};
+use ssam::io::readers::{
+    read_aliases_from_file, read_scripts, read_vars_repository, ErrorAliasRead, ErrorScriptRead,
+    ErrorVarRead,
+};
+use ssam::utils::processes::ShellCommand;
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::process::Command;
 
 mod config;
 mod userinterface;
 
-use crate::config::{AppSettings, ConfigError};
+use crate::config::{AppSettings, ErrorsConfig};
 use clap::App;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -13,6 +19,8 @@ const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 const ABOUT: &'static str = "ssa lets you search trough your aliases and one-liner scripts.";
 const ABOUT_SUB_RUN: &'static str = "show your aliases and scripts.";
 const ABOUT_SUB_BASHRC : &'static str = "output's a collection of aliases definitions into your bashrc. use 'source `ssa bashrc`' in your bashrc file";
+
+const PROMPT: &'_ str = "Choose a script/alias > ";
 
 fn main() {
     let matches = App::new("ssam")
@@ -41,10 +49,29 @@ fn run() -> Result<i32> {
     let cfg = AppSettings::load()?;
     let scripts = read_scripts(cfg.scripts_dir())?;
     let aliases = read_aliases_from_file(cfg.aliases_file())?;
-    let ui_interface = userinterface::UserInterface::new()?;
-    let mut command: Command = ui_interface.run(aliases, scripts)?.into();
-    let exit_status = command.status()?;
-    exit_status.code().ok_or(SAError::ErrorExitCode)
+    let vars_repo = read_vars_repository(cfg.vars_file())?;
+    let ui_interface = userinterface::UserInterface::new(PROMPT)?;
+    let item = ui_interface.run(aliases, scripts)?;
+    match item.kind {
+        userinterface::UIItemKind::Script => {
+            let script = item.as_script().unwrap().to_owned();
+            let mut command: Command = ShellCommand::as_command(script);
+            let exit_status = command.status()?;
+            return exit_status.code().ok_or(SAError::ErrorExitCode);
+        }
+        userinterface::UIItemKind::Alias => {
+            let alias = item.as_alias().unwrap();
+            let exec_seq = vars_repo.execution_sequence(alias)?;
+            let choices: HashMap<VarName, Choice> = vars_repo
+                .choices(&ui_interface, exec_seq)?
+                .into_iter()
+                .collect();
+            let final_command = alias.substitute_for_choices(&choices).unwrap();
+            let mut command: Command = ShellCommand::new(final_command).into();
+            let exit_status = command.status()?;
+            return exit_status.code().ok_or(SAError::ErrorExitCode);
+        }
+    }
 }
 
 fn bashrc() -> Result<i32> {
@@ -73,12 +100,26 @@ type Result<T> = std::result::Result<T, SAError>;
 #[derive(Debug)]
 enum SAError {
     ErrorExitCode,
-    ErrorConfig(ConfigError),
+    ErrorConfig(ErrorsConfig),
     ErrorScriptRead(ErrorScriptRead),
     ErrorAliasRead(ErrorAliasRead),
+    ErrorVarRead(ErrorVarRead),
+    ErrorVarsRepository(ErrorsVarsRepository),
     ErrorUI(userinterface::UIError),
     ErrorSubCommand(std::io::Error),
     ErrorSubCommandOutput(std::string::FromUtf8Error),
+}
+
+impl From<ErrorsVarsRepository> for SAError {
+    fn from(v: ErrorsVarsRepository) -> Self {
+        SAError::ErrorVarsRepository(v)
+    }
+}
+
+impl From<ErrorVarRead> for SAError {
+    fn from(v: ErrorVarRead) -> Self {
+        SAError::ErrorVarRead(v)
+    }
 }
 
 impl From<std::string::FromUtf8Error> for SAError {
@@ -116,6 +157,7 @@ impl Display for SAError {
             SAError::ErrorAliasRead(e) => {
                 writeln!(f, "an error occured when reading aliases.\n{}", e)
             }
+            SAError::ErrorVarRead(e) => writeln!(f, "an error occured when reading vars.\n{:?}", e),
             SAError::ErrorUI(e) => writeln!(
                 f,
                 "an error occured when launching the terminal user interface\n{:?}",
@@ -134,12 +176,17 @@ impl Display for SAError {
             SAError::ErrorExitCode => {
                 writeln!(f, "an error occured when trying to return the exit code.")
             }
+            SAError::ErrorVarsRepository(e) => writeln!(
+                f,
+                "an error occured when computing figuring out dependencies {:?}.",
+                e
+            ),
         }
     }
 }
 
-impl From<ConfigError> for SAError {
-    fn from(v: ConfigError) -> Self {
+impl From<ErrorsConfig> for SAError {
+    fn from(v: ErrorsConfig) -> Self {
         SAError::ErrorConfig(v)
     }
 }
