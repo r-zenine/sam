@@ -25,6 +25,10 @@ impl Alias {
     pub fn vars<'alias>(&'alias self) -> Vec<VarName> {
         VarName::parse_from_str(&self.alias)
     }
+
+    pub fn name(&self) -> &'_ str {
+        self.name.as_str()
+    }
 }
 
 impl Dependencies for &Alias {

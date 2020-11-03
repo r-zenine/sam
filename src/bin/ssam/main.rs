@@ -12,12 +12,13 @@ mod config;
 mod userinterface;
 
 use crate::config::{AppSettings, ErrorsConfig};
-use clap::App;
+use clap::{App, Arg};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 const ABOUT: &'static str = "ssa lets you search trough your aliases and one-liner scripts.";
 const ABOUT_SUB_RUN: &'static str = "show your aliases and scripts.";
+const ABOUT_SUB_ALIAS: &'static str = "run's a provided alias";
 const ABOUT_SUB_BASHRC : &'static str = "output's a collection of aliases definitions into your bashrc. use 'source `ssa bashrc`' in your bashrc file";
 
 const PROMPT: &'_ str = "Choose a script/alias > ";
@@ -29,9 +30,20 @@ fn main() {
         .about(ABOUT)
         .setting(clap::AppSettings::ArgRequiredElseHelp)
         .subcommand(App::new("run").about(ABOUT_SUB_RUN))
+        .subcommand(
+            App::new("alias")
+                .arg(
+                    Arg::with_name("alias")
+                        .help("the alias to run.")
+                        .required(true)
+                        .index(1),
+                )
+                .about(ABOUT_SUB_ALIAS),
+        )
         .subcommand(App::new("bashrc").about(ABOUT_SUB_BASHRC))
         .get_matches();
     let result = match matches.subcommand() {
+        ("alias", Some(e)) => run_alias(e.value_of("alias").unwrap()),
         ("run", Some(_)) => run(),
         ("bashrc", Some(_)) => bashrc(),
         (&_, _) => {
@@ -75,6 +87,27 @@ fn run() -> Result<i32> {
     }
 }
 
+fn run_alias(alias_name: &'_ str) -> Result<i32> {
+    let cfg = AppSettings::load()?;
+    let ui_interface = userinterface::UserInterface::default();
+    let aliases = read_aliases_from_file(cfg.aliases_file())?;
+    let vars_repo = read_vars_repository(cfg.vars_file())?;
+    let alias = aliases
+        .iter()
+        .filter(|e| e.name() == alias_name)
+        .next()
+        .ok_or(ErrorsSSAM::InvalidAliasSelection)?;
+    let exec_seq = vars_repo.execution_sequence(alias)?;
+    let choices: HashMap<VarName, Choice> = vars_repo
+        .choices(&ui_interface, exec_seq)?
+        .into_iter()
+        .collect();
+    let final_command = alias.substitute_for_choices(&choices).unwrap();
+    let mut command: Command = ShellCommand::new(final_command).into();
+    let exit_status = command.status()?;
+    return exit_status.code().ok_or(ErrorsSSAM::ExitCode);
+}
+
 fn bashrc() -> Result<i32> {
     let cfg = AppSettings::load()?;
     let aliases = read_aliases_from_file(cfg.aliases_file())?;
@@ -85,6 +118,13 @@ fn bashrc() -> Result<i32> {
     println!("# eval \"$(ssam bashrc)\"                       *");
     println!("#                                             *");
     println!("# *********************************************");
+    println!("# START SSAM generated aliases:");
+    println!("alias am='ssam run'");
+    for alias in aliases {
+        println!("alias {}='ssam alias {}'", alias.name(), alias.name());
+    }
+    println!("# STOP SSAM generated aliases:");
+
     println!("export PATH=$PATH:{}", cfg.scripts_dir().display());
     Ok(0)
 }
@@ -102,6 +142,7 @@ enum ErrorsSSAM {
     UI(userinterface::ErrorsUI),
     SubCommand(std::io::Error),
     SubCommandOutput(std::string::FromUtf8Error),
+    InvalidAliasSelection,
 }
 
 impl Display for ErrorsSSAM {
@@ -120,6 +161,9 @@ impl Display for ErrorsSSAM {
             ErrorsSSAM::ExitCode => writeln!(f, "trying to return the exit code."),
             ErrorsSSAM::VarsRepository(e) => {
                 writeln!(f, "computing figuring out dependencies {:?}.", e)
+            }
+            ErrorsSSAM::InvalidAliasSelection => {
+                writeln!(f, "looking for the requested alias. it was not found.")
             }
         }
     }
