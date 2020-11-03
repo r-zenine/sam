@@ -231,7 +231,6 @@ mod tests {
 
         let r = BufReader::new(vars_str);
         let vars_r = read_vars(r);
-        println!("{:?}", vars_r);
         assert!(vars_r.is_ok());
         let vars = vars_r.unwrap();
         assert_eq!(vars.len(), 2);
