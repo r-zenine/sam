@@ -1,12 +1,11 @@
 use crate::core::aliases::Alias;
 use crate::core::scripts::Script;
-use crate::core::vars::Var;
+use crate::core::vars::{Choice, ErrorsVarsRepository, Var, VarsRepository};
 use std::fmt::Display;
 use std::fs::read_dir;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
-use ErrorScriptRead::*;
 
 pub fn read_aliases_from_file(path: &'_ Path) -> Result<Vec<Alias>, ErrorAliasRead> {
     let f = File::open(path)?;
@@ -14,20 +13,38 @@ pub fn read_aliases_from_file(path: &'_ Path) -> Result<Vec<Alias>, ErrorAliasRe
     read_aliases(buf)
 }
 
-pub fn read_aliases<T>(r: T) -> Result<Vec<Alias>, ErrorAliasRead>
+fn read_aliases<T>(r: T) -> Result<Vec<Alias>, ErrorAliasRead>
 where
     T: Read,
 {
     serde_yaml::from_reader(r).map_err(ErrorAliasRead::from)
 }
 
-pub fn read_vars_from_file(path: &'_ Path) -> Result<Vec<Var>, ErrorVarRead> {
-    let f = File::open(path)?;
-    let buf = BufReader::new(f);
-    read_vars(buf)
+pub fn read_choices<T>(r: T) -> Result<Vec<Choice>, ErrorChoiceRead>
+where
+    T: BufRead,
+{
+    let mut out = vec![];
+    for line_r in r.lines() {
+        let line = line_r?;
+        let splits: Vec<&str> = line.split('\t').collect();
+        let value_o = splits.get(0).map(|e| e.to_string());
+        let desc = splits.get(1).map(|e| e.to_string());
+        if let Some(value) = value_o {
+            out.push(Choice::new(value, desc));
+        }
+    }
+    Ok(out)
 }
 
-pub fn read_vars<T>(r: T) -> Result<Vec<Var>, ErrorVarRead>
+pub fn read_vars_repository(path: &'_ Path) -> Result<VarsRepository, ErrorVarRead> {
+    let f = File::open(path)?;
+    let buf = BufReader::new(f);
+    let vars = read_vars(buf)?;
+    VarsRepository::new(vars.into_iter()).map_err(|e| e.into())
+}
+
+fn read_vars<T>(r: T) -> Result<Vec<Var>, ErrorVarRead>
 where
     T: Read,
 {
@@ -47,7 +64,9 @@ pub fn read_scripts<'a>(path: &'a Path) -> Result<Vec<Script>, ErrorScriptRead> 
         }
         Ok(out)
     } else {
-        Err(ErrorScriptDirNotDirectory(path.display().to_string()))
+        Err(ErrorScriptRead::ErrorScriptDirNotDirectory(
+            path.display().to_string(),
+        ))
     }
 }
 
@@ -64,7 +83,7 @@ fn read_script(path: PathBuf) -> Result<Script, ErrorScriptRead> {
         .file_name()
         .and_then(|e| e.to_str())
         .map(|e| e.to_string())
-        .ok_or(ErrorReadScriptName(format!(
+        .ok_or(ErrorScriptRead::ErrorReadScriptName(format!(
             "could not extract file name from path {}",
             path.display()
         )))?;
@@ -103,19 +122,36 @@ impl Display for ErrorAliasRead {
 }
 #[derive(Debug)]
 pub enum ErrorVarRead {
-    ErrorAliasSerde(serde_yaml::Error),
-    ErrorAliasIO(std::io::Error),
+    ErrorVarSerde(serde_yaml::Error),
+    ErrorVarIO(std::io::Error),
+    ErrorVarRepositoryInitialisation(ErrorsVarsRepository),
+}
+#[derive(Debug)]
+pub enum ErrorChoiceRead {
+    ErrorChoiceIO(std::io::Error),
+}
+
+impl From<std::io::Error> for ErrorChoiceRead {
+    fn from(v: std::io::Error) -> Self {
+        ErrorChoiceRead::ErrorChoiceIO(v)
+    }
+}
+
+impl From<ErrorsVarsRepository> for ErrorVarRead {
+    fn from(v: ErrorsVarsRepository) -> Self {
+        ErrorVarRead::ErrorVarRepositoryInitialisation(v)
+    }
 }
 
 impl From<std::io::Error> for ErrorVarRead {
     fn from(v: std::io::Error) -> Self {
-        ErrorVarRead::ErrorAliasIO(v)
+        ErrorVarRead::ErrorVarIO(v)
     }
 }
 
 impl From<serde_yaml::Error> for ErrorVarRead {
     fn from(v: serde_yaml::Error) -> Self {
-        ErrorVarRead::ErrorAliasSerde(v)
+        ErrorVarRead::ErrorVarSerde(v)
     }
 }
 
@@ -129,11 +165,13 @@ pub enum ErrorScriptRead {
 impl Display for ErrorScriptRead {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ErrorReadScriptName(err) => writeln!(f, "while reading script name got error {}", err),
-            ErrorReadScriptContent(err) => {
+            ErrorScriptRead::ErrorReadScriptName(err) => {
+                writeln!(f, "while reading script name got error {}", err)
+            }
+            ErrorScriptRead::ErrorReadScriptContent(err) => {
                 writeln!(f, "while reading script content got error {}", err)
             }
-            ErrorScriptDirNotDirectory(path) => writeln!(
+            ErrorScriptRead::ErrorScriptDirNotDirectory(path) => writeln!(
                 f,
                 "the path provided to read scripts in not a directory. path was : {}",
                 path
@@ -180,17 +218,18 @@ mod tests {
 
         let r = BufReader::new(vars_str);
         let vars_r = read_vars(r);
+        println!("{:?}", vars_r);
         assert!(vars_r.is_ok());
         let vars = vars_r.unwrap();
         assert_eq!(vars.len(), 2);
-        let exp_choices_1 = vec![Choice::new("val1", "val1 description")];
+        let exp_choices_1 = vec![Choice::new("val1", Some("val1 description"))];
         let exp_choices_2 = vec![
-            Choice::new("val2", "val2 description"),
-            Choice::new("val1", "val1 description"),
+            Choice::new("val2", Some("val2 description")),
+            Choice::new("val1", Some("val1 description")),
         ];
-        let exp_var_1 = Var::new("name1", "desc1", exp_choices_1);
+        let exp_var_listing = Var::new("name1", "desc1", exp_choices_1);
         let exp_var_2 = Var::new("name2", "desc2", exp_choices_2);
-        assert_eq!(vars, vec![exp_var_1, exp_var_2]);
+        assert_eq!(vars, vec![exp_var_listing, exp_var_2]);
     }
     #[test]
     fn test_read_aliases() {
