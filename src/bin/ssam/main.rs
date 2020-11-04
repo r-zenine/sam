@@ -1,4 +1,5 @@
-use ssam::core::vars::{Choice, Dependencies, ErrorsVarsRepository, VarName};
+use ssam::core::aliases::Alias;
+use ssam::core::vars::{Choice, Dependencies, ErrorsVarsRepository, VarName, VarsRepository};
 use ssam::io::readers::{
     read_aliases_from_file, read_vars_repository, ErrorScriptRead, ErrorsAliasRead, ErrorsVarRead,
 };
@@ -57,44 +58,54 @@ fn main() {
         Ok(status) => std::process::exit(status),
     }
 }
+struct AppContext {
+    ui_interface: userinterface::UserInterface,
+    aliases: Vec<Alias>,
+    vars: VarsRepository,
+}
+impl AppContext {
+    fn try_load() -> Result<AppContext> {
+        let config = AppSettings::load()?;
+        let ui_interface = userinterface::UserInterface::default();
+        let aliases = read_aliases_from_file(config.aliases_file())?;
+        let vars = read_vars_repository(config.vars_file())?;
+        Ok(AppContext {
+            ui_interface,
+            aliases,
+            vars,
+        })
+    }
+}
 
 fn run() -> Result<i32> {
-    let cfg = AppSettings::load()?;
-    let aliases = read_aliases_from_file(cfg.aliases_file())?;
-    let vars_repo = read_vars_repository(cfg.vars_file())?;
-    let ui_interface = userinterface::UserInterface::default();
-    let item = ui_interface.run(PROMPT, aliases)?;
+    let ctx = AppContext::try_load()?;
+    let item = ctx.ui_interface.run(PROMPT, &ctx.aliases)?;
     let alias = item.alias();
-    let exec_seq = vars_repo.execution_sequence(alias)?;
-    let choices: HashMap<VarName, Choice> = vars_repo
-        .choices(&ui_interface, exec_seq)?
-        .into_iter()
-        .collect();
-    let final_command = alias.substitute_for_choices(&choices).unwrap();
-    let mut command: Command = ShellCommand::new(final_command).into();
-    let exit_status = command.status()?;
-    return exit_status.code().ok_or(ErrorsSSAM::ExitCode);
+    execute_alias(&ctx, alias)
 }
 
 fn run_alias(alias_name: &'_ str) -> Result<i32> {
-    let cfg = AppSettings::load()?;
-    let ui_interface = userinterface::UserInterface::default();
-    let aliases = read_aliases_from_file(cfg.aliases_file())?;
-    let vars_repo = read_vars_repository(cfg.vars_file())?;
-    let alias = aliases
+    let ctx = AppContext::try_load()?;
+    let alias = ctx
+        .aliases
         .iter()
         .filter(|e| e.name() == alias_name)
         .next()
         .ok_or(ErrorsSSAM::InvalidAliasSelection)?;
-    let exec_seq = vars_repo.execution_sequence(alias)?;
-    let choices: HashMap<VarName, Choice> = vars_repo
-        .choices(&ui_interface, exec_seq)?
+    execute_alias(&ctx, alias)
+}
+
+fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
+    let exec_seq = ctx.vars.execution_sequence(alias)?;
+    let choices: HashMap<VarName, Choice> = ctx
+        .vars
+        .choices(&ctx.ui_interface, exec_seq)?
         .into_iter()
         .collect();
     let final_command = alias.substitute_for_choices(&choices).unwrap();
     let mut command: Command = ShellCommand::new(final_command).into();
     let exit_status = command.status()?;
-    return exit_status.code().ok_or(ErrorsSSAM::ExitCode);
+    exit_status.code().ok_or(ErrorsSSAM::ExitCode)
 }
 
 fn bashrc() -> Result<i32> {

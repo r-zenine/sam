@@ -24,7 +24,7 @@ impl UserInterface {
             .map_err(|op| ErrorsUI::SkimConfig(op))
     }
 
-    pub fn run(&self, prompt: &'_ str, aliases: Vec<Alias>) -> Result<AliasItem, ErrorsUI> {
+    pub fn run(&self, prompt: &'_ str, aliases: &Vec<Alias>) -> Result<AliasItem, ErrorsUI> {
         let choices = aliases.clone().into_iter().map(AliasItem::make_alias);
         let idx = self.choose(choices.clone().collect(), prompt)?;
         aliases
