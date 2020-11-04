@@ -1,0 +1,32 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: rust:latest
+    environment:
+      TZ: "/usr/share/zoneinfo/your/location"
+    steps:
+      - checkout
+      - restore_cache:
+          key: project-cache
+      - run: rustup component add rustfmt
+      - run: rustup component add clippy
+      - run:
+          name: Check formatting
+          command: cargo fmt -- --check
+      - run:
+          name: Stable Build
+          command: cargo build
+      - run:
+          name: Test
+          command: cargo test
+      - run:
+          name: Lint
+          command: cargo check
+      - save_cache:
+          key: project-cache
+          paths:
+            - "~/.cargo"
+            - "./target"
+            
