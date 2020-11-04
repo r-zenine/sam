@@ -16,12 +16,13 @@ use clap::{App, Arg};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
-const ABOUT: &'static str = "ssam lets you search trough your aliases and one-liner scripts.";
-const ABOUT_SUB_RUN: &'static str = "show your aliases and scripts.";
+const ABOUT: &'static str =
+    "ssam lets you difine custom aliases and search them using fuzzy search.";
+const ABOUT_SUB_RUN: &'static str = "show your aliases";
 const ABOUT_SUB_ALIAS: &'static str = "run's a provided alias";
 const ABOUT_SUB_BASHRC : &'static str = "output's a collection of aliases definitions into your bashrc. use 'source `ssa bashrc`' in your bashrc file";
 
-const PROMPT: &'_ str = "Choose a script/alias > ";
+const PROMPT: &'_ str = "Choose an alias to run > ";
 
 fn main() {
     let matches = App::new("ssam")
