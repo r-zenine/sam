@@ -1,11 +1,9 @@
 use crate::core::aliases::Alias;
-use crate::core::scripts::Script;
 use crate::core::vars::{Choice, ErrorsVarsRepository, Var, VarsRepository};
 use std::fmt::Display;
-use std::fs::read_dir;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub fn read_aliases_from_file(path: &'_ Path) -> Result<Vec<Alias>, ErrorsAliasRead> {
     let f = File::open(path)?;
@@ -51,45 +49,6 @@ where
     serde_yaml::from_reader(r).map_err(ErrorsVarRead::from)
 }
 
-pub fn read_scripts<'a>(path: &'a Path) -> Result<Vec<Script>, ErrorScriptRead> {
-    if path.is_dir() {
-        let mut out = vec![];
-        for entry in read_dir(path)? {
-            let current_path = entry?.path();
-            if current_path.is_file() {
-                if let Ok(script) = read_script(current_path) {
-                    out.push(script);
-                }
-            }
-        }
-        Ok(out)
-    } else {
-        Err(ErrorScriptRead::ScriptDirNotDirectory(
-            path.display().to_string(),
-        ))
-    }
-}
-
-fn read_script(path: PathBuf) -> Result<Script, ErrorScriptRead> {
-    let r = File::open(&path)?;
-    let description = BufReader::new(r)
-        .lines()
-        .take(2)
-        .skip(1)
-        .next()
-        .transpose()?;
-
-    let name = path
-        .file_name()
-        .and_then(|e| e.to_str())
-        .map(|e| e.to_string())
-        .ok_or(ErrorScriptRead::ReadScriptName(format!(
-            "could not extract file name from path {}",
-            path.display()
-        )))?;
-
-    Ok(Script::new(name, description, path))
-}
 #[derive(Debug)]
 pub enum ErrorsAliasRead {
     AliasSerde(serde_yaml::Error),
@@ -200,18 +159,11 @@ impl From<std::io::Error> for ErrorScriptRead {
 
 #[cfg(test)]
 mod tests {
-    use super::{read_aliases, read_scripts, read_vars};
+    use super::{read_aliases, read_vars};
     use crate::core::aliases::Alias;
-    use crate::core::scripts::Script;
     use crate::core::vars::{Choice, Var};
-    use std::env;
-    use std::fs::File;
-    use std::io;
     use std::io::BufReader;
-    use std::io::Write;
     use std::panic;
-    use std::path::{Path, PathBuf};
-    use tempdir::TempDir;
     #[test]
     fn test_read_vars() {
         let vars_str = "
@@ -270,39 +222,5 @@ mod tests {
         let r = BufReader::new(aliase_str);
         let aliases_r = read_aliases(r);
         assert!(aliases_r.is_err());
-    }
-
-    #[test]
-    fn test_read_scripts() {
-        let temp_dir_r =
-            TempDir::new_in(env::temp_dir(), "saam_tests").expect("Can't create temp directory");
-        let script_content = ["#!/bin/sh", "# some description of the script."];
-        let script_path = prepare_mock_script(temp_dir_r.as_ref(), &script_content[..])
-            .expect("Can't prepare test environment");
-
-        let scripts =
-            read_scripts(temp_dir_r.as_ref()).expect("read scripts failed in an expected way");
-
-        assert_eq!(scripts.len(), 1);
-        let file_name = script_path
-            .file_name()
-            .and_then(|e| e.to_os_string().into_string().ok())
-            .expect("something weird happened");
-
-        assert_eq!(
-            scripts[0],
-            Script::new(file_name, Some(script_content[1]), script_path.clone())
-        )
-    }
-
-    fn prepare_mock_script(temp_dir: &'_ Path, content: &[&'_ str]) -> io::Result<PathBuf> {
-        let rnd: u16 = rand::random();
-        let temp_file = temp_dir.join(format!("script_{}", rnd));
-        let mut f = File::create(&temp_file)?;
-
-        for line in content {
-            writeln!(f, "{}", *line)?;
-        }
-        Ok(temp_file)
     }
 }
