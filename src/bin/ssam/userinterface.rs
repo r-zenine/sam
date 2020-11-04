@@ -25,27 +25,13 @@ impl UserInterface {
             .map_err(|op| ErrorsUI::SkimConfig(op))
     }
 
-    pub fn run(
-        &self,
-        prompt: &'_ str,
-        aliases: Vec<Alias>,
-        scripts: Vec<Script>,
-    ) -> Result<UIItem, ErrorsUI> {
-        let aliases_strings = aliases.clone().into_iter().map(UIItem::make_alias);
-        let scripts_strings = scripts.clone().into_iter().map(UIItem::make_script);
-        let choices = aliases_strings.chain(scripts_strings);
+    pub fn run(&self, prompt: &'_ str, aliases: Vec<Alias>) -> Result<UIItem, ErrorsUI> {
+        let choices = aliases.clone().into_iter().map(UIItem::make_alias);
         let idx = self.choose(choices.clone().collect(), prompt)?;
-        if idx >= aliases.len() {
-            scripts
-                .get(idx - aliases.len())
-                .map(|e| UIItem::from_script(e.to_owned()))
-                .ok_or(ErrorsUI::SkimNoSelection)
-        } else {
-            aliases
-                .get(idx)
-                .map(|e| UIItem::from_alias(e.to_owned()))
-                .ok_or(ErrorsUI::SkimNoSelection)
-        }
+        aliases
+            .get(idx)
+            .map(|e| UIItem::from_alias(e.to_owned()))
+            .ok_or(ErrorsUI::SkimNoSelection)
     }
 
     pub fn choose(&self, choices: Vec<Arc<dyn SkimItem>>, prompt: &str) -> Result<usize, ErrorsUI> {
