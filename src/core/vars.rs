@@ -360,6 +360,7 @@ impl VarsRepository {
         let mut candidates: Vec<VarName> = dep.dependencies();
         let mut missing: Vec<VarName> = Vec::default();
         let mut execution_seq: VecDeque<&'repository VarName> = VecDeque::default();
+        let mut push_front = 0;
         while let Some(cur) = candidates.pop() {
             if already_seen.contains(&cur) {
                 continue;
@@ -368,9 +369,10 @@ impl VarsRepository {
                 let deps = cur_var.dependencies();
                 if deps.is_empty() {
                     execution_seq.push_front(Borrow::borrow(cur_var));
+                    push_front += 1;
                 } else {
                     candidates.extend_from_slice(deps.as_slice());
-                    execution_seq.push_back(Borrow::borrow(cur_var));
+                    execution_seq.insert(push_front, Borrow::borrow(cur_var));
                 }
                 already_seen.insert(cur);
             } else {

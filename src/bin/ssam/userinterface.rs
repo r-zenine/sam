@@ -58,7 +58,6 @@ impl UserInterface {
             return Err(ErrorsUI::SkimAborted);
         }
         let selection: &dyn SkimItem = output.selected_items[0].as_ref();
-
         let item = choices
             .iter()
             .enumerate()
@@ -179,7 +178,7 @@ impl ChoiceItem {
 impl SkimItem for ChoiceItem {
     fn text(&self) -> Cow<str> {
         Cow::Owned(format!(
-            "{} \t {}",
+            "{}\t{}",
             self.inner.value(),
             self.inner.desc().unwrap_or(""),
         ))
