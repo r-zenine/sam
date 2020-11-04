@@ -1,7 +1,6 @@
 use crossbeam_channel;
 use skim::prelude::*;
 use ssam::core::aliases::Alias;
-use ssam::core::scripts::Script;
 use ssam::core::vars::{Choice, ErrorsVarResolver, VarName, VarResolver};
 use ssam::io::readers::read_choices;
 use ssam::utils::processes::ShellCommand;
@@ -25,12 +24,12 @@ impl UserInterface {
             .map_err(|op| ErrorsUI::SkimConfig(op))
     }
 
-    pub fn run(&self, prompt: &'_ str, aliases: Vec<Alias>) -> Result<UIItem, ErrorsUI> {
-        let choices = aliases.clone().into_iter().map(UIItem::make_alias);
+    pub fn run(&self, prompt: &'_ str, aliases: Vec<Alias>) -> Result<AliasItem, ErrorsUI> {
+        let choices = aliases.clone().into_iter().map(AliasItem::make_alias);
         let idx = self.choose(choices.clone().collect(), prompt)?;
         aliases
             .get(idx)
-            .map(|e| UIItem::from_alias(e.to_owned()))
+            .map(|e| AliasItem::from_alias(e.to_owned()))
             .ok_or(ErrorsUI::SkimNoSelection)
     }
 
@@ -81,73 +80,28 @@ impl From<crossbeam_channel::SendError<Arc<dyn skim::SkimItem>>> for ErrorsUI {
         todo!()
     }
 }
-#[derive(Clone, Debug)]
-pub enum UIItemKind {
-    Alias,
-    Script,
-}
 
 #[derive(Clone, Debug)]
-pub struct UIItem {
-    pub kind: UIItemKind,
-    alias: Option<Alias>,
-    script: Option<Script>,
+pub struct AliasItem {
+    alias: Alias,
 }
 
-impl UIItem {
-    fn from_alias(alias: Alias) -> UIItem {
-        UIItem {
-            kind: UIItemKind::Alias,
-            alias: Some(alias),
-            script: None,
-        }
+impl AliasItem {
+    fn from_alias(alias: Alias) -> AliasItem {
+        AliasItem { alias }
     }
     fn make_alias(alias: Alias) -> Arc<dyn SkimItem> {
         Arc::new(Self::from_alias(alias))
     }
 
-    fn from_script(script: Script) -> UIItem {
-        UIItem {
-            kind: UIItemKind::Script,
-            alias: None,
-            script: Some(script),
-        }
-    }
-    fn make_script(script: Script) -> Arc<dyn SkimItem> {
-        Arc::new(Self::from_script(script))
-    }
-
-    pub fn as_alias(&self) -> Option<&Alias> {
-        match self.kind {
-            UIItemKind::Alias => self.alias.as_ref(),
-            UIItemKind::Script => None,
-        }
-    }
-
-    pub fn as_script(&self) -> Option<&Script> {
-        match self.kind {
-            UIItemKind::Alias => None,
-            UIItemKind::Script => self.script.as_ref(),
-        }
+    pub fn alias(&self) -> &Alias {
+        &self.alias
     }
 }
 
-impl SkimItem for UIItem {
+impl SkimItem for AliasItem {
     fn text(&self) -> Cow<str> {
-        match &self.kind {
-            UIItemKind::Alias => Cow::Owned(
-                self.alias
-                    .as_ref()
-                    .map(|e| e.into())
-                    .unwrap_or("".to_string()),
-            ),
-            UIItemKind::Script => Cow::Owned(
-                self.script
-                    .as_ref()
-                    .map(|e| e.into())
-                    .unwrap_or("".to_string()),
-            ),
-        }
+        Cow::Borrowed(self.alias().name())
     }
 }
 
@@ -210,11 +164,8 @@ impl VarResolver for UserInterface {
     }
 }
 
-impl Into<Command> for UIItem {
+impl Into<Command> for AliasItem {
     fn into(self) -> Command {
-        match &self.kind {
-            UIItemKind::Alias => ShellCommand::as_command(self.alias.unwrap()),
-            UIItemKind::Script => ShellCommand::as_command(self.script.unwrap()),
-        }
+        ShellCommand::as_command(self.alias)
     }
 }
