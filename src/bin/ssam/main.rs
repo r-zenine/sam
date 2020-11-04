@@ -79,7 +79,7 @@ impl AppContext {
 
 fn run() -> Result<i32> {
     let ctx = AppContext::try_load()?;
-    let item = ctx.ui_interface.run(PROMPT, &ctx.aliases)?;
+    let item = ctx.ui_interface.select_alias(PROMPT, &ctx.aliases)?;
     let alias = item.alias();
     execute_alias(&ctx, alias)
 }

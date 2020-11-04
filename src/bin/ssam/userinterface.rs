@@ -24,8 +24,12 @@ impl UserInterface {
             .map_err(|op| ErrorsUI::SkimConfig(op))
     }
 
-    pub fn run(&self, prompt: &'_ str, aliases: &Vec<Alias>) -> Result<AliasItem, ErrorsUI> {
-        let choices = aliases.clone().into_iter().map(AliasItem::make_alias);
+    pub fn select_alias(
+        &self,
+        prompt: &'_ str,
+        aliases: &Vec<Alias>,
+    ) -> Result<AliasItem, ErrorsUI> {
+        let choices = aliases.clone().into_iter().map(AliasItem::arc_alias);
         let idx = self.choose(choices.clone().collect(), prompt)?;
         aliases
             .get(idx)
@@ -36,7 +40,7 @@ impl UserInterface {
     pub fn choose(&self, choices: Vec<Arc<dyn SkimItem>>, prompt: &str) -> Result<usize, ErrorsUI> {
         let (s, r) = bounded(choices.len());
         let source = choices.clone();
-        UserInterface::send_from_iterator(source.into_iter(), s)?;
+        iterator_into_sender(source.into_iter(), s)?;
         let options = UserInterface::skim_options(prompt)?;
         let output = Skim::run_with(&options, Some(r)).ok_or(ErrorsUI::SkimNoSelection)?;
         if output.is_abort {
@@ -54,18 +58,6 @@ impl UserInterface {
             None => Err(ErrorsUI::SkimNoSelection),
         }
     }
-    fn send_from_iterator<I>(it: I, s: Sender<Arc<dyn SkimItem>>) -> Result<(), ErrorsUI>
-    where
-        I: Iterator<Item = Arc<dyn SkimItem>>,
-    {
-        it.fold(Ok(()), |acc, e| {
-            acc.and_then(|_| {
-                s.send(e)
-                    .map_err(|op| ErrorsUI::SkimSend(op.clone().to_string()))
-            })
-        })?;
-        Ok(())
-    }
 }
 #[derive(Debug)]
 pub enum ErrorsUI {
@@ -73,12 +65,6 @@ pub enum ErrorsUI {
     SkimSend(String),
     SkimNoSelection,
     SkimAborted,
-}
-
-impl From<crossbeam_channel::SendError<Arc<dyn skim::SkimItem>>> for ErrorsUI {
-    fn from(_: crossbeam_channel::SendError<Arc<dyn skim::SkimItem>>) -> Self {
-        todo!()
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -90,7 +76,7 @@ impl AliasItem {
     fn from_alias(alias: Alias) -> AliasItem {
         AliasItem { alias }
     }
-    fn make_alias(alias: Alias) -> Arc<dyn SkimItem> {
+    fn arc_alias(alias: Alias) -> Arc<dyn SkimItem> {
         Arc::new(Self::from_alias(alias))
     }
 
@@ -102,6 +88,12 @@ impl AliasItem {
 impl SkimItem for AliasItem {
     fn text(&self) -> Cow<str> {
         Cow::Borrowed(self.alias().name())
+    }
+}
+
+impl Into<Command> for AliasItem {
+    fn into(self) -> Command {
+        ShellCommand::as_command(self.alias)
     }
 }
 
@@ -164,8 +156,16 @@ impl VarResolver for UserInterface {
     }
 }
 
-impl Into<Command> for AliasItem {
-    fn into(self) -> Command {
-        ShellCommand::as_command(self.alias)
-    }
+fn iterator_into_sender<I, U>(it: I, s: Sender<U>) -> Result<(), ErrorsUI>
+where
+    U: Clone,
+    I: Iterator<Item = U>,
+{
+    it.fold(Ok(()), |acc, e| {
+        acc.and_then(|_| {
+            s.send(e)
+                .map_err(|op| ErrorsUI::SkimSend(op.clone().to_string()))
+        })
+    })?;
+    Ok(())
 }
