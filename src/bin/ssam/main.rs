@@ -1,7 +1,6 @@
 use ssam::core::vars::{Choice, Dependencies, ErrorsVarsRepository, VarName};
 use ssam::io::readers::{
-    read_aliases_from_file, read_scripts, read_vars_repository, ErrorScriptRead, ErrorsAliasRead,
-    ErrorsVarRead,
+    read_aliases_from_file, read_vars_repository, ErrorScriptRead, ErrorsAliasRead, ErrorsVarRead,
 };
 use ssam::utils::processes::ShellCommand;
 use std::collections::HashMap;
@@ -65,26 +64,16 @@ fn run() -> Result<i32> {
     let vars_repo = read_vars_repository(cfg.vars_file())?;
     let ui_interface = userinterface::UserInterface::default();
     let item = ui_interface.run(PROMPT, aliases)?;
-    match item.kind {
-        userinterface::UIItemKind::Script => {
-            let script = item.as_script().unwrap().to_owned();
-            let mut command: Command = ShellCommand::as_command(script);
-            let exit_status = command.status()?;
-            return exit_status.code().ok_or(ErrorsSSAM::ExitCode);
-        }
-        userinterface::UIItemKind::Alias => {
-            let alias = item.as_alias().unwrap();
-            let exec_seq = vars_repo.execution_sequence(alias)?;
-            let choices: HashMap<VarName, Choice> = vars_repo
-                .choices(&ui_interface, exec_seq)?
-                .into_iter()
-                .collect();
-            let final_command = alias.substitute_for_choices(&choices).unwrap();
-            let mut command: Command = ShellCommand::new(final_command).into();
-            let exit_status = command.status()?;
-            return exit_status.code().ok_or(ErrorsSSAM::ExitCode);
-        }
-    }
+    let alias = item.alias();
+    let exec_seq = vars_repo.execution_sequence(alias)?;
+    let choices: HashMap<VarName, Choice> = vars_repo
+        .choices(&ui_interface, exec_seq)?
+        .into_iter()
+        .collect();
+    let final_command = alias.substitute_for_choices(&choices).unwrap();
+    let mut command: Command = ShellCommand::new(final_command).into();
+    let exit_status = command.status()?;
+    return exit_status.code().ok_or(ErrorsSSAM::ExitCode);
 }
 
 fn run_alias(alias_name: &'_ str) -> Result<i32> {
