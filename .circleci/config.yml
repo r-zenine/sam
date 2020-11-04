@@ -10,6 +10,8 @@ jobs:
       - checkout
       - restore_cache:
           key: project-cache
+      - run: rustup component add rustfmt
+      - run: rustup component add clippy
       - run:
           name: Check formatting
           command: cargo fmt -- --check
@@ -19,6 +21,9 @@ jobs:
       - run:
           name: Test
           command: cargo test
+      - run:
+          name: Lint
+          command: cargo check
       - save_cache:
           key: project-cache
           paths:
