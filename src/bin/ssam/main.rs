@@ -16,7 +16,7 @@ use clap::{App, Arg};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
-const ABOUT: &'static str = "ssa lets you search trough your aliases and one-liner scripts.";
+const ABOUT: &'static str = "ssam lets you search trough your aliases and one-liner scripts.";
 const ABOUT_SUB_RUN: &'static str = "show your aliases and scripts.";
 const ABOUT_SUB_ALIAS: &'static str = "run's a provided alias";
 const ABOUT_SUB_BASHRC : &'static str = "output's a collection of aliases definitions into your bashrc. use 'source `ssa bashrc`' in your bashrc file";
@@ -60,11 +60,10 @@ fn main() {
 
 fn run() -> Result<i32> {
     let cfg = AppSettings::load()?;
-    let scripts = read_scripts(cfg.scripts_dir())?;
     let aliases = read_aliases_from_file(cfg.aliases_file())?;
     let vars_repo = read_vars_repository(cfg.vars_file())?;
     let ui_interface = userinterface::UserInterface::default();
-    let item = ui_interface.run(PROMPT, aliases, scripts)?;
+    let item = ui_interface.run(PROMPT, aliases)?;
     match item.kind {
         userinterface::UIItemKind::Script => {
             let script = item.as_script().unwrap().to_owned();
