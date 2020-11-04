@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 // 1. get rid of RawAppSettings.
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct AppSettings {
-    scripts_dir: PathBuf,
     aliases_file: PathBuf,
     vars_file: PathBuf,
 }
@@ -42,9 +41,6 @@ impl AppSettings {
             .and_then(AppSettings::validate)
     }
 
-    pub fn scripts_dir(&self) -> &'_ Path {
-        self.scripts_dir.as_ref()
-    }
     pub fn aliases_file(&self) -> &'_ Path {
         self.aliases_file.as_ref()
     }
@@ -61,10 +57,6 @@ impl AppSettings {
 
         s.vars_file = fsutils::ensure_exists(s.vars_file)
             .and_then(fsutils::ensure_is_file)
-            .and_then(fsutils::ensure_sufficient_permisions)?;
-
-        s.scripts_dir = fsutils::ensure_exists(s.scripts_dir.clone())
-            .and_then(fsutils::ensure_is_directory)
             .and_then(fsutils::ensure_sufficient_permisions)?;
 
         Ok(s.to_owned())

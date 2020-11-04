@@ -125,7 +125,6 @@ fn bashrc() -> Result<i32> {
     }
     println!("# STOP SSAM generated aliases:");
 
-    println!("export PATH=$PATH:{}", cfg.scripts_dir().display());
     Ok(0)
 }
 
