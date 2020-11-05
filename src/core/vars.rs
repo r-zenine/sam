@@ -30,7 +30,9 @@ pub trait Dependencies {
         for dep in self.dependencies() {
             // Note , we explicitly rely on the fact that dependencies will output the dependencies as they appear in the command.
             if let Some(chce) = choices.get(&dep) {
-                command = VARSUBSTITUTE
+                let re_fmt = format!(r#"(?P<var>\{{\{{ ?{} ?\}}\}})"#, dep);
+                let re: Regex = Regex::new(re_fmt.as_str()).unwrap();
+                command = re
                     .replace(command.as_str(), chce.value.as_str())
                     .to_string();
             } else {
@@ -38,6 +40,24 @@ pub trait Dependencies {
             }
         }
         Ok(command)
+    }
+
+    fn substitute_for_choices_partial<'var>(
+        &self,
+        choices: &'var HashMap<VarName, Choice>,
+    ) -> String {
+        let mut command = self.command().to_string();
+        for dep in self.dependencies() {
+            // Note , we explicitly rely on the fact that dependencies will output the dependencies as they appear in the command.
+            if let Some(chce) = choices.get(&dep) {
+                let re_fmt = format!(r#"(?P<var>\{{\{{ ?{} ?\}}\}})"#, dep);
+                let re: Regex = Regex::new(re_fmt.as_str()).unwrap();
+                command = re
+                    .replace(command.as_str(), chce.value.as_str())
+                    .to_string();
+            }
+        }
+        command
     }
 }
 
