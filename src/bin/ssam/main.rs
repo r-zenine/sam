@@ -30,7 +30,6 @@ fn main() {
         .version(VERSION)
         .author(AUTHORS)
         .about(ABOUT)
-        .setting(clap::AppSettings::ArgRequiredElseHelp)
         .subcommand(App::new("run").about(ABOUT_SUB_RUN))
         .subcommand(
             App::new("alias")
@@ -46,12 +45,8 @@ fn main() {
         .get_matches();
     let result = match matches.subcommand() {
         ("alias", Some(e)) => run_alias(e.value_of("alias").unwrap()),
-        ("run", Some(_)) => run(),
         ("bashrc", Some(_)) => bashrc(),
-        (&_, _) => {
-            println!("{}", matches.usage());
-            Ok(0)
-        }
+        (&_, _) => run(),
     };
     match result {
         Err(ErrorsSSAM::UI(userinterface::ErrorsUI::SkimAborted)) => {}
