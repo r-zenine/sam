@@ -1,12 +1,13 @@
 use prettytable::{cell, format, row, Table};
 use skim::prelude::*;
 use ssam::core::aliases::Alias;
-use ssam::core::vars::{Choice, ErrorsVarResolver, VarName, VarResolver};
+use ssam::core::vars::{Choice, Dependencies, ErrorsVarResolver, VarName, VarResolver};
 use ssam::io::readers::read_choices;
 use ssam::utils::fsutils::{ErrorsFS, TempFile};
 use ssam::utils::processes::ShellCommand;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::fs::File;
 use std::io::Write;
 use std::process::Command;
@@ -92,10 +93,16 @@ impl UserInterface {
             // (*handle).seek(SeekFrom::Start(0))?;
             writeln!((*handle), "Alias: {}", alias.name())?;
             writeln!((*handle), "Description: {}", alias.desc())?;
-            writeln!((*handle), "Command: {}", alias.alias())?;
+            writeln!((*handle), "Initial Command: {}", alias.alias())?;
+
             writeln!((*handle))?;
             let hashmap = self.choices.borrow();
             if hashmap.len() > 0 {
+                writeln!(
+                    (*handle),
+                    "Current Command: {}",
+                    alias.substitute_for_choices_partial(&hashmap)
+                )?;
                 let mut table = Table::new();
                 table.set_format(*format::consts::FORMAT_NO_COLSEP);
                 table.set_titles(row!["Variable", "Choice"]);
