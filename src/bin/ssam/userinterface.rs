@@ -210,7 +210,13 @@ impl VarResolver for UserInterface {
         var: ssam::core::vars::VarName,
         cmd: impl Iterator<Item = Choice>,
     ) -> Result<Choice, ErrorsVarResolver> {
-        let choices: Vec<Choice> = cmd.collect();
+        let mut choices: Vec<Choice> = cmd.collect();
+        if choices.is_empty() {
+            return Err(ErrorsVarResolver::NoChoiceWasAvailable(var.clone()));
+        }
+        if choices.len() == 1 {
+            return Ok(choices.pop().unwrap());
+        }
         let items: Vec<Arc<dyn SkimItem>> = choices
             .clone()
             .into_iter()
