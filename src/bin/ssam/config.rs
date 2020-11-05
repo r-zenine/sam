@@ -7,8 +7,7 @@ use std::path::{Path, PathBuf};
 // 1. get rid of RawAppSettings.
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct AppSettings {
-    aliases_file: PathBuf,
-    vars_file: PathBuf,
+    root_dir: PathBuf,
 }
 
 type Result<T> = std::result::Result<T, ErrorsConfig>;
@@ -41,25 +40,16 @@ impl AppSettings {
             .and_then(AppSettings::validate)
     }
 
-    pub fn aliases_file(&self) -> &'_ Path {
-        self.aliases_file.as_ref()
-    }
-    pub fn vars_file(&self) -> &'_ Path {
-        self.vars_file.as_ref()
+    pub fn root_dir(&self) -> &'_ Path {
+        self.root_dir.as_ref()
     }
 
     fn validate(orig: AppSettings) -> Result<AppSettings> {
-        let mut s = orig;
-
-        s.aliases_file = fsutils::ensure_exists(s.aliases_file)
-            .and_then(fsutils::ensure_is_file)
-            .and_then(fsutils::ensure_sufficient_permisions)?;
-
-        s.vars_file = fsutils::ensure_exists(s.vars_file)
-            .and_then(fsutils::ensure_is_file)
-            .and_then(fsutils::ensure_sufficient_permisions)?;
-
-        Ok(s)
+        let files = fsutils::walk_dir(orig.root_dir.as_path())?;
+        for f in files {
+            fsutils::ensure_exists(f).and_then(fsutils::ensure_sufficient_permisions)?;
+        }
+        Ok(orig)
     }
 }
 

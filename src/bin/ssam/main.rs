@@ -3,6 +3,8 @@ use ssam::core::vars::{Choice, Dependencies, ErrorsVarsRepository, VarName, Vars
 use ssam::io::readers::{
     read_aliases_from_file, read_vars_repository, ErrorScriptRead, ErrorsAliasRead, ErrorsVarRead,
 };
+use ssam::utils::fsutils;
+use ssam::utils::fsutils::walk_dir;
 use ssam::utils::processes::ShellCommand;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -66,8 +68,18 @@ impl AppContext {
     fn try_load() -> Result<AppContext> {
         let config = AppSettings::load()?;
         let ui_interface = userinterface::UserInterface::new()?;
-        let aliases = read_aliases_from_file(config.aliases_file())?;
-        let vars = read_vars_repository(config.vars_file())?;
+        let files = walk_dir(config.root_dir())?;
+        let mut aliases = vec![];
+        let mut vars = VarsRepository::default();
+        for f in files {
+            if let Some(file_name) = f.file_name() {
+                if file_name == "aliases.yaml" {
+                    aliases.extend(read_aliases_from_file(f.as_path())?);
+                } else if file_name == "vars.yaml" {
+                    vars.merge(read_vars_repository(f.as_path())?);
+                }
+            }
+        }
         Ok(AppContext {
             ui_interface,
             aliases,
@@ -108,7 +120,15 @@ fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
 
 fn bashrc() -> Result<i32> {
     let cfg = AppSettings::load()?;
-    let aliases = read_aliases_from_file(cfg.aliases_file())?;
+    let files = walk_dir(cfg.root_dir())?;
+    let mut aliases = vec![];
+    for f in files {
+        if let Some(file_name) = f.file_name() {
+            if file_name == "aliases.yaml" {
+                aliases.extend(read_aliases_from_file(f.as_path())?);
+            }
+        }
+    }
     println!("# *************** IMPORTANT *******************");
     println!("#                                             *");
     println!("# Put the following line in your (bash/zsh)rc *");
@@ -140,6 +160,7 @@ enum ErrorsSSAM {
     SubCommand(std::io::Error),
     SubCommandOutput(std::string::FromUtf8Error),
     InvalidAliasSelection,
+    FilesLookup(fsutils::ErrorsFS),
 }
 
 impl Display for ErrorsSSAM {
@@ -160,10 +181,20 @@ impl Display for ErrorsSSAM {
             ErrorsSSAM::InvalidAliasSelection => {
                 writeln!(f, "looking for the requested alias. it was not found.")
             }
+            ErrorsSSAM::FilesLookup(e) => writeln!(
+                f,
+                "looking for the aliases.yaml and vars.yaml files\n {}",
+                e
+            ),
         }
     }
 }
 
+impl From<fsutils::ErrorsFS> for ErrorsSSAM {
+    fn from(v: fsutils::ErrorsFS) -> Self {
+        ErrorsSSAM::FilesLookup(v)
+    }
+}
 impl From<ErrorsVarsRepository> for ErrorsSSAM {
     fn from(v: ErrorsVarsRepository) -> Self {
         ErrorsSSAM::VarsRepository(v)
