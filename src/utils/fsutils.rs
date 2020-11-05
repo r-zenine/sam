@@ -1,7 +1,9 @@
 use std::cell::RefCell;
 use std::env::temp_dir;
 use std::fmt::Display;
+use std::fs;
 use std::fs::File;
+use std::path::Path;
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -27,6 +29,23 @@ impl TempFile {
     }
 }
 
+pub fn walk_dir(path: &Path) -> Result<Vec<PathBuf>> {
+    let dir_content = fs::read_dir(path)?;
+    let paths = dir_content.flat_map(|e| e.map(|e| e.path()));
+    let mut deque = vec![];
+    for content in paths {
+        if content.is_dir() {
+            let cur_dir = fs::read_dir(content.as_path())?;
+            let paths = cur_dir.flat_map(|e| e.map(|e| e.path()));
+            deque.extend(paths);
+        }
+        if content.is_file() {
+            deque.push(content);
+        }
+    }
+    Ok(deque)
+}
+
 pub fn replace_home_variable(path: String) -> String {
     let home_dir_o = dirs::home_dir().and_then(|e| e.into_os_string().into_string().ok());
     if let Some(home_dir) = home_dir_o {
@@ -44,6 +63,7 @@ pub fn ensure_exists(path: PathBuf) -> Result<PathBuf> {
         Ok(path)
     }
 }
+
 pub fn ensure_is_directory(path: PathBuf) -> Result<PathBuf> {
     if !path.is_dir() {
         Err(ErrorsFS::PathNotDirectory(path))
