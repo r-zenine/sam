@@ -150,14 +150,12 @@ impl Display for ErrorsSSAM {
             ErrorsSSAM::ScriptRead(e) => writeln!(f, "reading the scripts. \n{}", e),
             ErrorsSSAM::AliasRead(e) => writeln!(f, "reading aliases.\n{}", e),
             ErrorsSSAM::VarRead(e) => writeln!(f, "reading vars.\n{}", e),
-            ErrorsSSAM::UI(e) => writeln!(f, "launching the terminal user interface\n{:?}", e),
-            ErrorsSSAM::SubCommand(e) => writeln!(f, "launching the selected command\n{:?}", e),
-            ErrorsSSAM::SubCommandOutput(e) => {
-                writeln!(f, "launching the selected command\n{:?}", e)
-            }
+            ErrorsSSAM::UI(e) => writeln!(f, "launching the terminal user interface\n{}", e),
+            ErrorsSSAM::SubCommand(e) => writeln!(f, "launching the selected command\n{}", e),
+            ErrorsSSAM::SubCommandOutput(e) => writeln!(f, "launching the selected command\n{}", e),
             ErrorsSSAM::ExitCode => writeln!(f, "trying to return the exit code."),
             ErrorsSSAM::VarsRepository(e) => {
-                writeln!(f, "computing figuring out dependencies {:?}.", e)
+                writeln!(f, "computing figuring out dependencies {}.", e)
             }
             ErrorsSSAM::InvalidAliasSelection => {
                 writeln!(f, "looking for the requested alias. it was not found.")

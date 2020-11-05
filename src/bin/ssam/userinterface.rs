@@ -127,6 +127,31 @@ pub enum ErrorsUI {
     FSError(ErrorsFS),
 }
 
+impl Display for ErrorsUI {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ErrorsUI::SkimConfig(s) => {
+                writeln!(f, "could not configure the user interface because {}", s)
+            }
+            ErrorsUI::SkimSend(s) => {
+                writeln!(f, "could not initialise the user interface because {}", s)
+            }
+            ErrorsUI::SkimNoSelection => writeln!(f, "no selection was provided"),
+            ErrorsUI::SkimAborted => writeln!(f, "the selection was aborted."),
+            ErrorsUI::IOError(e) => writeln!(
+                f,
+                "an unexpected error happend while filling the preview window {}",
+                e
+            ),
+            ErrorsUI::FSError(e) => writeln!(
+                f,
+                "an unexpected error happend while initialising the preview window {}",
+                e
+            ),
+        }
+    }
+}
+
 impl From<ErrorsFS> for ErrorsUI {
     fn from(v: ErrorsFS) -> Self {
         ErrorsUI::FSError(v)
