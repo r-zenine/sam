@@ -19,9 +19,9 @@ const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const ABOUT: &str = "ssam lets you difine custom aliases and search them using fuzzy search.";
 const ABOUT_SUB_RUN: &str = "show your aliases";
 const ABOUT_SUB_ALIAS: &str = "run's a provided alias";
-const ABOUT_SUB_BASHRC : & str = "output's a collection of aliases definitions into your bashrc. use 'source `ssa bashrc`' in your bashrc file";
+const ABOUT_SUB_BASHRC : &str = "output's a collection of aliases definitions into your bashrc. use 'source `ssa bashrc`' in your bashrc file";
 
-const PROMPT: &'_ str = "Choose an alias to run > ";
+const PROMPT: &str = "Choose an alias to run > ";
 
 fn main() {
     let matches = App::new("ssam")
