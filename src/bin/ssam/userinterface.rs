@@ -226,11 +226,21 @@ impl VarResolver for UserInterface {
     where
         CMD: Into<ShellCommand<String>>,
     {
-        let mut to_run = ShellCommand::as_command(cmd.into());
+        let sh_cmd = cmd.into();
+        // clearing the terminal according to stackoverflow
+        // https://stackoverflow.com/questions/34837011/how-to-clear-terminal-screen-in-rust-after-new-line-is-printing
+        // print!("{}[2J", 27 as char);
+        println!(
+            "In order to gather choices for var {}, I will run the following command\n {}",
+            &var,
+            sh_cmd.value()
+        );
+        let mut to_run = ShellCommand::as_command(sh_cmd);
         let output = to_run
             .output()
             .map_err(|_e| ErrorsVarResolver::NoChoiceWasAvailable(var.clone()))?;
         let choices = read_choices(output.stdout.as_slice());
+        print!("{}[2J", 27 as char);
         match choices {
             Err(_err) => Err(ErrorsVarResolver::NoChoiceWasAvailable(var)),
             Ok(v) => self.resolve_static(var, v.into_iter()),
