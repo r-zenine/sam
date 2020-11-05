@@ -1,7 +1,31 @@
+use std::cell::RefCell;
+use std::env::temp_dir;
 use std::fmt::Display;
+use std::fs::File;
 use std::path::PathBuf;
+use uuid::Uuid;
 
 type Result<T> = std::result::Result<T, ErrorsFS>;
+
+#[derive(Debug)]
+pub struct TempFile {
+    pub file: RefCell<File>,
+    pub path: PathBuf,
+}
+
+impl TempFile {
+    pub fn new() -> Result<TempFile> {
+        let mut path = temp_dir();
+        let file_name = format!("{}.tmp", Uuid::new_v4());
+        path.push(file_name);
+
+        let file = File::create(path.as_path())?;
+        Ok(TempFile {
+            file: RefCell::new(file),
+            path,
+        })
+    }
+}
 
 pub fn replace_home_variable(path: String) -> String {
     let home_dir_o = dirs::home_dir().and_then(|e| e.into_os_string().into_string().ok());
