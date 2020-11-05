@@ -316,7 +316,7 @@ impl Display for ErrorsVarResolver {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct VarsRepository {
     vars: HashSet<Var>,
 }
@@ -350,6 +350,10 @@ impl VarsRepository {
         }
     }
 
+    pub fn merge(&mut self, other: VarsRepository) {
+        self.vars.extend(other.vars);
+    }
+
     /// all_present checks whether all the provided variables in `vars`
     /// are present in the repository
     pub fn all_present(
@@ -367,8 +371,8 @@ impl VarsRepository {
         }
     }
 
-    /// execution sequence return for a `Dep: Dependencies` the ordering
-    /// to execute VARs in order to fullfill it's dependencies.
+    /// Execution sequence returns for a given `Dep: Dependencies`
+    /// an execution sequence of VARs in order to fulfill it's dependencies.
     pub fn execution_sequence<'repository, Deps>(
         &'repository self,
         dep: Deps,
@@ -376,17 +380,19 @@ impl VarsRepository {
     where
         Deps: Dependencies,
     {
-        let mut already_seen: HashSet<VarName> = HashSet::new();
-        let mut candidates: Vec<VarName> = dep.dependencies();
-        let mut missing: Vec<VarName> = Vec::default();
-        let mut execution_seq: VecDeque<&'repository VarName> = VecDeque::default();
+        let mut already_seen = HashSet::new();
+        let mut candidates = dep.dependencies();
+        let mut missing = Vec::default();
+        let mut execution_seq = VecDeque::default();
         let mut push_front = 0;
+
         while let Some(cur) = candidates.pop() {
             if already_seen.contains(&cur) {
                 continue;
             }
             if let Some(cur_var) = self.vars.get(&cur) {
                 let deps = cur_var.dependencies();
+                already_seen.insert(cur);
                 if deps.is_empty() {
                     execution_seq.push_front(Borrow::borrow(cur_var));
                     push_front += 1;
@@ -394,11 +400,11 @@ impl VarsRepository {
                     candidates.extend_from_slice(deps.as_slice());
                     execution_seq.insert(push_front, Borrow::borrow(cur_var));
                 }
-                already_seen.insert(cur);
             } else {
                 missing.push(cur);
             }
         }
+
         if !missing.is_empty() {
             Err(ErrorsVarsRepository::MissingDependencies(missing))
         } else {
