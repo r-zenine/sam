@@ -29,6 +29,12 @@ impl Alias {
     pub fn name(&self) -> &'_ str {
         self.name.as_str()
     }
+    pub fn desc(&self) -> &'_ str {
+        self.desc.as_str()
+    }
+    pub fn alias(&self) -> &'_ str {
+        self.alias.as_str()
+    }
 }
 
 impl Dependencies for &Alias {
