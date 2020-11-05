@@ -17,15 +17,22 @@ Run `cargo run run` on the root of this repository to see a demo.
 Fist, you want to start by creating a repository that will hold your scripts and aliases. 
 Ideally, we recommend it's stucture to be as follow : 
 ```bash
-├── aliases.yaml
-└── vars.yaml
+your_root_directory
+-------------------
+        ├── aliases.yaml
+        ├── vars.yaml
+        ├── docker # your docker related alias for example
+        │   ├── aliases.yaml
+        │   └── vars.yaml
+        └─── kubernetes # your kubernetes related aliases
+            ├── aliases.yaml
+            └── vars.yaml
 ```
 Once it's done, you can continue by editing a configuration file in `$HOME/.ssam_rc.toml`
 that should look as follow: 
 
 ```toml
-aliases_file="./examples/oneliners/aliases.yaml"
-vars_file="./examples/oneliners/vars.yaml"
+root_dir="./examples/oneliners/"
 ```
 
 #### Alias management:
@@ -64,3 +71,6 @@ in your `vars_file`, you can define variables. variables can either have a stati
   desc: file selection
   from_command: ls -1 {{ directory }}
 ```
+
+### Current Limitations: 
+name collisions between different variables in directories are not supported yet and could lead to undefined behaviour. The fix in on it's way.
