@@ -1,0 +1,7 @@
+- name: list_stuff_docker
+  desc: list current directory docker 
+  alias: cd {{directory}} && {{pager}} {{file}}
+
+
+
+

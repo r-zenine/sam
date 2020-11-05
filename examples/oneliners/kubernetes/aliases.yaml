@@ -1,0 +1,7 @@
+- name: list_stuff_kubernetes
+  desc: list current directory kubernetes 
+  alias: cd {{directory}} && {{pager}} {{file}}
+
+
+
+
