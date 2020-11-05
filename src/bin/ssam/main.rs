@@ -14,13 +14,12 @@ mod userinterface;
 use crate::config::{AppSettings, ErrorsConfig};
 use clap::{App, Arg};
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
-const ABOUT: &'static str =
-    "ssam lets you difine custom aliases and search them using fuzzy search.";
-const ABOUT_SUB_RUN: &'static str = "show your aliases";
-const ABOUT_SUB_ALIAS: &'static str = "run's a provided alias";
-const ABOUT_SUB_BASHRC : &'static str = "output's a collection of aliases definitions into your bashrc. use 'source `ssa bashrc`' in your bashrc file";
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
+const ABOUT: &str = "ssam lets you difine custom aliases and search them using fuzzy search.";
+const ABOUT_SUB_RUN: &str = "show your aliases";
+const ABOUT_SUB_ALIAS: &str = "run's a provided alias";
+const ABOUT_SUB_BASHRC : & str = "output's a collection of aliases definitions into your bashrc. use 'source `ssa bashrc`' in your bashrc file";
 
 const PROMPT: &'_ str = "Choose an alias to run > ";
 
@@ -89,8 +88,7 @@ fn run_alias(alias_name: &'_ str) -> Result<i32> {
     let alias = ctx
         .aliases
         .iter()
-        .filter(|e| e.name() == alias_name)
-        .next()
+        .find(|e| e.name() == alias_name)
         .ok_or(ErrorsSSAM::InvalidAliasSelection)?;
     execute_alias(&ctx, alias)
 }

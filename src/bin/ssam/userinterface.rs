@@ -26,8 +26,8 @@ impl UserInterface {
         let preview_file = TempFile::new()?;
         let preview_command = format!("cat {}", &preview_file.path.as_path().display());
         Ok(UserInterface {
-            preview_file: preview_file,
-            preview_command: preview_command,
+            preview_file,
+            preview_command,
             chosen_alias: None,
             choices: RefCell::new(HashMap::new()),
         })
@@ -45,7 +45,7 @@ impl UserInterface {
             .no_hscroll(false)
             .algorithm(FuzzyAlgorithm::SkimV2)
             .build()
-            .map_err(|op| ErrorsUI::SkimConfig(op))
+            .map_err(ErrorsUI::SkimConfig)
     }
 
     pub fn select_alias(
@@ -54,7 +54,7 @@ impl UserInterface {
         aliases: &Vec<Alias>,
     ) -> Result<AliasItem, ErrorsUI> {
         let choices = aliases.clone().into_iter().map(AliasItem::arc_alias);
-        let idx = self.choose(choices.clone().collect(), prompt)?;
+        let idx = self.choose(choices.collect(), prompt)?;
         let selected_alias = aliases
             .get(idx)
             .ok_or(ErrorsUI::SkimNoSelection)
@@ -77,8 +77,7 @@ impl UserInterface {
         let item = choices
             .iter()
             .enumerate()
-            .filter(|(_idx, value)| value.text() == selection.text())
-            .next();
+            .find(|(_idx, value)| value.text() == selection.text());
 
         match item {
             Some((idx, _)) => Ok(idx),
@@ -94,7 +93,7 @@ impl UserInterface {
             writeln!((*handle), "Alias: {}", alias.name())?;
             writeln!((*handle), "Description: {}", alias.desc())?;
             writeln!((*handle), "Command: {}", alias.alias())?;
-            writeln!((*handle), "")?;
+            writeln!((*handle))?;
             let hashmap = self.choices.borrow();
             if hashmap.len() > 0 {
                 let mut table = Table::new();
@@ -110,8 +109,8 @@ impl UserInterface {
         Ok(())
     }
 
-    fn preview_command<'ui>(&'ui self) -> Option<&'ui str> {
-        if let Some(_) = self.chosen_alias {
+    fn preview_command(&'_ self) -> Option<&'_ str> {
+        if self.chosen_alias.is_some() {
             Some(self.preview_command.as_str())
         } else {
             None
@@ -201,7 +200,7 @@ impl VarResolver for UserInterface {
             .map_err(|_e| ErrorsVarResolver::NoChoiceWasAvailable(var.clone()))?;
         let choices = read_choices(output.stdout.as_slice());
         match choices {
-            Err(_err) => Err(ErrorsVarResolver::NoChoiceWasAvailable(var.clone())),
+            Err(_err) => Err(ErrorsVarResolver::NoChoiceWasAvailable(var)),
             Ok(v) => self.resolve_static(var, v.into_iter()),
         }
     }
@@ -225,10 +224,10 @@ impl VarResolver for UserInterface {
                 choices
                     .get(idx)
                     .map(|e| e.to_owned())
-                    .ok_or(ErrorsVarResolver::NoChoiceWasSelected(var.clone()))
+                    .ok_or_else(|| ErrorsVarResolver::NoChoiceWasSelected(var.clone()))
             })?;
         let mut mp = self.choices.borrow_mut();
-        (*mp).insert(var.clone(), choice.clone());
+        (*mp).insert(var, choice.clone());
         Ok(choice)
     }
 }
@@ -239,10 +238,7 @@ where
     I: Iterator<Item = U>,
 {
     it.fold(Ok(()), |acc, e| {
-        acc.and_then(|_| {
-            s.send(e)
-                .map_err(|op| ErrorsUI::SkimSend(op.clone().to_string()))
-        })
+        acc.and_then(|_| s.send(e).map_err(|op| ErrorsUI::SkimSend(op.to_string())))
     })?;
     Ok(())
 }

@@ -49,7 +49,7 @@ impl AppSettings {
     }
 
     fn validate(orig: AppSettings) -> Result<AppSettings> {
-        let mut s = orig.clone();
+        let mut s = orig;
 
         s.aliases_file = fsutils::ensure_exists(s.aliases_file)
             .and_then(fsutils::ensure_is_file)
@@ -59,7 +59,7 @@ impl AppSettings {
             .and_then(fsutils::ensure_is_file)
             .and_then(fsutils::ensure_sufficient_permisions)?;
 
-        Ok(s.to_owned())
+        Ok(s)
     }
 }
 
