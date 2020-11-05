@@ -66,7 +66,7 @@ struct AppContext {
 impl AppContext {
     fn try_load() -> Result<AppContext> {
         let config = AppSettings::load()?;
-        let ui_interface = userinterface::UserInterface::default();
+        let ui_interface = userinterface::UserInterface::new()?;
         let aliases = read_aliases_from_file(config.aliases_file())?;
         let vars = read_vars_repository(config.vars_file())?;
         Ok(AppContext {
@@ -78,7 +78,7 @@ impl AppContext {
 }
 
 fn run() -> Result<i32> {
-    let ctx = AppContext::try_load()?;
+    let mut ctx = AppContext::try_load()?;
     let item = ctx.ui_interface.select_alias(PROMPT, &ctx.aliases)?;
     let alias = item.alias();
     execute_alias(&ctx, alias)
