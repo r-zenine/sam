@@ -2,13 +2,32 @@
 name = "ssam"
 version = "0.6.0"
 authors = ["Ryad ZENINE <r.zenine@gmail.com>"]
+description= "ssam lets you difine custom aliases and search them using fuzzy search."
 edition = "2018"
+readme  = "README.md"
+license = "GPL-3.0"
+repository = "https://github.com/r-zenine/ssam"
 
 [[bin]]
-name = "am"
+name = "sam"
 path = "src/bin/ssam/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# Metadata for the debian package.
+[package.metadata.deb]
+maintainer = "Ryad Zenine <r.zenine@gmail.com>"
+copyright = "2020, Ryad Zenine <r.zenine@gmail.com>"
+license-file = ["LICENSE", "4"]
+extended-description = """\
+A simple subcommand for the Cargo package manager for \
+building Debian packages from Rust projects."""
+depends = "$auto"
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/sam", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/sam/README", "644"],
+]
 
 [dependencies]
 serde = { version="1.0", features= ["derive"] }
