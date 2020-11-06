@@ -1,9 +1,14 @@
+use std::env;
 use std::ffi::OsStr;
 use std::process::Command;
 
 #[derive(Debug)]
 pub struct ShellCommand<T> {
     command: T,
+}
+
+fn current_shell_or_sh() -> String {
+    env::var("SHELL").unwrap_or(String::from("/bin/sh"))
 }
 
 impl<T> ShellCommand<T> {
@@ -29,7 +34,7 @@ where
     T: AsRef<OsStr>,
 {
     fn into(self) -> Command {
-        let mut command = Command::new("/bin/sh");
+        let mut command = Command::new(current_shell_or_sh());
         command.arg("-c").arg(self.command);
         let curr_dir = std::env::current_dir();
         if let Ok(dir) = curr_dir {
