@@ -1,5 +1,7 @@
+use crate::core::commands::Command;
+use crate::core::identifiers::Identifier;
+use crate::core::namespaces::Namespace;
 use crate::utils::processes::ShellCommand;
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
@@ -7,24 +9,10 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Display;
 use std::hash::Hash;
 
-lazy_static! {
-    // matches the following patters :
-    // - {{ some_name_1 }}
-    // - {{some_name_1 }}
-    // - {{ some_name_1}}
-    static ref VARSRE: Regex = Regex::new("(?P<vars>\\{\\{ ?[a-zA-Z0-9_]+ ?\\}\\})").unwrap();
-    static ref VARSUBSTITUTE: Regex = Regex::new("(?P<var>\\{\\{ ?(?P<varname>[a-zA-z_0-9]+) ?\\}\\})").unwrap();
-}
-
-/// parse_vars looks for patterns like '{{ var }}` in the provided str and returns a vector of VarName.
-pub trait Dependencies {
-    fn command(&self) -> &str;
-    fn dependencies(&self) -> Vec<VarName> {
-        parse_vars(self.command())
-    }
+pub trait Dependencies: Command {
     fn substitute_for_choices<'var>(
         &self,
-        choices: &'var HashMap<VarName, Choice>,
+        choices: &'var HashMap<Identifier, Choice>,
     ) -> Result<String, ErrorsVarResolver> {
         let mut command = self.command().to_string();
         for dep in self.dependencies() {
@@ -44,7 +32,7 @@ pub trait Dependencies {
 
     fn substitute_for_choices_partial<'var>(
         &self,
-        choices: &'var HashMap<VarName, Choice>,
+        choices: &'var HashMap<Identifier, Choice>,
     ) -> String {
         let mut command = self.command().to_string();
         for dep in self.dependencies() {
@@ -61,80 +49,12 @@ pub trait Dependencies {
     }
 }
 
-/// parse_vars looks for patterns like '{{ var }}` in the provided str and returns a vector of VarName.
-fn parse_vars(s: &str) -> Vec<VarName> {
-    VARSRE
-        .captures_iter(s)
-        .map(|e| e["vars"].to_owned())
-        .map(VarName::new)
-        .collect()
-}
-
-#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct VarName {
-    #[serde(rename(serialize = "name", deserialize = "name"))]
-    inner: String,
-}
-
-impl VarName {
-    /// new creates an new VarName object and it will sanitize the input.
-    ///```rust
-    /// use ssam::core::vars::VarName;
-    /// let var = VarName::new("{{ pattern }}");
-    /// assert_eq!(var.as_ref(), "pattern");
-    /// let var = VarName::new("{{ pattern}}");
-    /// assert_eq!(var.as_ref(), "pattern");
-    /// let var = VarName::new("{{pattern }}");
-    /// assert_eq!(var.as_ref(), "pattern");
-    ///```
-    pub fn new<IntoStr>(name: IntoStr) -> VarName
-    where
-        IntoStr: Into<String>,
-    {
-        VarName {
-            inner: name
-                .into()
-                .replace(" ", "")
-                .replace("{{", "")
-                .replace("}}", ""),
-        }
-    }
-    /// from_str builds a vector of VarName by looking at patterns like {{ var }} in the provided argument.
-    ///```rust
-    /// use ssam::core::vars::VarName;
-    /// let vars = VarName::parse_from_str("ls -l {{location}} | grep -v {{pattern}}");
-    /// assert_eq!(vars, vec![VarName::new("location"), VarName::new("pattern")]);
-    ///
-    ///```
-    pub fn parse_from_str(s: &str) -> Vec<VarName> {
-        parse_vars(s)
-    }
-}
-
-impl AsRef<str> for VarName {
-    fn as_ref(&self) -> &str {
-        self.inner.as_str()
-    }
-}
-
-impl PartialEq<&VarName> for VarName {
-    fn eq(&self, other: &&VarName) -> bool {
-        other.inner == self.inner
-    }
-}
-
-impl Display for VarName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_ref())
-    }
-}
-
 // Var represent a variable with a command that can be used in an crate::core:Alias.
 // Var can be static when choices is not empty or dyamic whenthe from_command is not empty
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Var {
     #[serde(flatten)]
-    name: VarName,
+    name: Identifier,
     desc: String,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     choices: Vec<Choice>,
@@ -149,7 +69,7 @@ impl Var {
         IntoStr: Into<String>,
     {
         Var {
-            name: VarName::new(name),
+            name: Identifier::new(name),
             desc: desc.into(),
             choices,
             from_command: None,
@@ -163,23 +83,11 @@ impl Var {
         IntoStr: Into<String>,
     {
         Var {
-            name: VarName::new(name),
+            name: Identifier::new(name),
             desc: desc.into(),
             choices: vec![],
             from_command: Some(from_command.into()),
         }
-    }
-
-    /// Dependencies returns the dependencies of this variable if it gets it's
-    /// choices from a command.
-    ///```rust
-    /// use ssam::core::vars::{Var, VarName};
-    /// let example = Var::from_command("name", "description", "ls -l {{ location }} | grep {{pattern}}");
-    /// assert_eq!(example.dependencies(), vec![VarName::new("location"), VarName::new("pattern")]);
-    ///```
-    pub fn dependencies(&'_ self) -> Vec<VarName> {
-        let command = self.from_command.as_deref().unwrap_or_default();
-        parse_vars(command)
     }
 
     /// will return a valid choice for the current Var using the provided VarResolver and the
@@ -189,7 +97,7 @@ impl Var {
     pub fn resolve<'var, R>(
         &'var self,
         resolver: &'var R,
-        choices: &'var HashMap<VarName, Choice>,
+        choices: &'var HashMap<Identifier, Choice>,
     ) -> Result<Choice, ErrorsVarsRepository>
     where
         R: VarResolver,
@@ -205,37 +113,35 @@ impl Var {
                 .map_err(ErrorsVarsRepository::NoChoiceForVar)
         }
     }
-
-    fn substitute_for_choices<'var>(
-        &'var self,
-        choices: &'var HashMap<VarName, Choice>,
-    ) -> Result<String, ErrorsVarResolver> {
-        assert!(
-            self.from_command.is_some(),
-            "substitute for choice should only be called when self.from_command is Some(_)"
-        );
-        let mut command = self.from_command.clone().unwrap();
-        for dep in self.dependencies() {
-            // Note , we explicitly rely on the fact that dependencies will output the dependencies as they appear in the command.
-            if let Some(chce) = choices.get(&dep) {
-                command = VARSUBSTITUTE
-                    .replace(command.as_str(), chce.value.as_str())
-                    .to_string();
-            } else {
-                return Err(ErrorsVarResolver::NoChoiceWasAvailable(dep));
-            }
-        }
-        Ok(command)
+}
+impl Namespace for Var {
+    fn update(&mut self, namespace: impl Into<String>) {
+        self.name.update(namespace)
+    }
+    fn namespace(&self) -> Option<&str> {
+        self.name.namespace()
     }
 }
-impl Dependencies for Var {
+
+impl Command for Var {
     fn command(&self) -> &str {
         self.from_command.as_deref().unwrap_or("")
     }
 }
+
+/// Dependencies returns the dependencies of this variable if it gets it's
+/// choices from a command.
+///```rust
+/// use ssam::core::vars::Var;
+/// use ssam::core::identifiers::Identifier;
+/// use ssam::core::commands::Command;
+/// let example = Var::from_command("name", "description", "ls -l {{ location }} | grep {{pattern}}");
+/// assert_eq!(example.dependencies(), vec![Identifier::new("location"), Identifier::new("pattern")]);
+///```
+impl Dependencies for Var {}
 impl Hash for Var {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        Hash::hash(&self.name.inner, state)
+        Hash::hash(&self.name, state)
     }
 }
 
@@ -245,8 +151,8 @@ impl PartialEq for Var {
     }
 }
 
-impl Borrow<VarName> for Var {
-    fn borrow(&self) -> &VarName {
+impl Borrow<Identifier> for Var {
+    fn borrow(&self) -> &Identifier {
         &self.name
     }
 }
@@ -287,20 +193,20 @@ impl Choice {
 }
 
 pub trait VarResolver {
-    fn resolve_dynamic<CMD>(&self, var: VarName, cmd: CMD) -> Result<Choice, ErrorsVarResolver>
+    fn resolve_dynamic<CMD>(&self, var: Identifier, cmd: CMD) -> Result<Choice, ErrorsVarResolver>
     where
         CMD: Into<ShellCommand<String>>;
     fn resolve_static(
         &self,
-        var: VarName,
+        var: Identifier,
         cmd: impl Iterator<Item = Choice>,
     ) -> Result<Choice, ErrorsVarResolver>;
 }
 
 #[derive(Debug, PartialEq)]
 pub enum ErrorsVarResolver {
-    NoChoiceWasAvailable(VarName),
-    NoChoiceWasSelected(VarName),
+    NoChoiceWasAvailable(Identifier),
+    NoChoiceWasSelected(Identifier),
 }
 
 impl Display for ErrorsVarResolver {
@@ -323,11 +229,11 @@ pub struct VarsRepository {
 
 #[derive(Debug)]
 pub struct ExecutionSequence<'repository> {
-    inner: Vec<&'repository VarName>,
+    inner: Vec<&'repository Identifier>,
 }
 
-impl<'repository> AsRef<[&'repository VarName]> for ExecutionSequence<'repository> {
-    fn as_ref(&self) -> &[&'repository VarName] {
+impl<'repository> AsRef<[&'repository Identifier]> for ExecutionSequence<'repository> {
+    fn as_ref(&self) -> &[&'repository Identifier] {
         self.inner.as_slice()
     }
 }
@@ -338,7 +244,7 @@ impl VarsRepository {
     /// if a Var provided has a dependency that is not found in the Iterator.
     pub fn new(value: impl Iterator<Item = Var>) -> Result<Self, ErrorsVarsRepository> {
         let vars: HashSet<Var> = value.collect();
-        let missing: Vec<VarName> = vars
+        let missing: Vec<Identifier> = vars
             .iter()
             .flat_map(Var::dependencies)
             .filter(|e| !vars.contains(e))
@@ -358,9 +264,9 @@ impl VarsRepository {
     /// are present in the repository
     pub fn all_present(
         &'_ self,
-        vars: impl Iterator<Item = VarName>,
+        vars: impl Iterator<Item = Identifier>,
     ) -> Result<(), ErrorsVarsRepository> {
-        let missing: Vec<VarName> = vars
+        let missing: Vec<Identifier> = vars
             .into_iter()
             .filter(|e| !self.vars.contains(e))
             .collect();
@@ -420,11 +326,11 @@ impl VarsRepository {
         &'repository self,
         resolver: &'repository R,
         vars: ExecutionSequence<'repository>,
-    ) -> Result<Vec<(VarName, Choice)>, ErrorsVarsRepository>
+    ) -> Result<Vec<(Identifier, Choice)>, ErrorsVarsRepository>
     where
         R: VarResolver,
     {
-        let mut choices: HashMap<VarName, Choice> = HashMap::new();
+        let mut choices: HashMap<Identifier, Choice> = HashMap::new();
         for var_name in vars.inner {
             if let Some(var) = self.vars.get(var_name) {
                 let choice = var.resolve(resolver, &choices)?;
@@ -441,7 +347,7 @@ impl VarsRepository {
 
 #[derive(Debug, PartialEq)]
 pub enum ErrorsVarsRepository {
-    MissingDependencies(Vec<VarName>),
+    MissingDependencies(Vec<Identifier>),
     NoChoiceForVar(ErrorsVarResolver),
 }
 
@@ -473,12 +379,12 @@ mod tests {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     #[test]
-    fn test_varname_new() {
-        let cases: Vec<(VarName, &'static str)> = vec![
-            (VarName::new("{{ toto }}"), "toto"),
-            (VarName::new("{{ toto}}"), "toto"),
-            (VarName::new("{{toto }}"), "toto"),
-            (VarName::new("{{toto}}"), "toto"),
+    fn test_Identifier_new() {
+        let cases: Vec<(Identifier, &'static str)> = vec![
+            (Identifier::new("{{ toto }}"), "toto"),
+            (Identifier::new("{{ toto}}"), "toto"),
+            (Identifier::new("{{toto }}"), "toto"),
+            (Identifier::new("{{toto}}"), "toto"),
         ];
         for (case, result) in cases {
             assert_eq!(&case.inner, result);
@@ -499,7 +405,7 @@ mod tests {
     #[test]
     fn test_parse_vars() {
         assert_eq!(
-            parse_vars(VAR_LISTING_COMMAND.as_str()),
+            Identifier::parse(VAR_LISTING_COMMAND.as_str()),
             VAR_LISTING_DEPS.clone(),
         )
     }
@@ -651,10 +557,13 @@ mod tests {
     }
     struct StaticResolver {
         dynamic_res: HashMap<String, Choice>,
-        static_res: HashMap<VarName, Choice>,
+        static_res: HashMap<Identifier, Choice>,
     }
     impl StaticResolver {
-        fn new(dynamic_res: HashMap<String, Choice>, static_res: HashMap<VarName, Choice>) -> Self {
+        fn new(
+            dynamic_res: HashMap<String, Choice>,
+            static_res: HashMap<Identifier, Choice>,
+        ) -> Self {
             StaticResolver {
                 dynamic_res,
                 static_res,
@@ -662,7 +571,11 @@ mod tests {
         }
     }
     impl VarResolver for StaticResolver {
-        fn resolve_dynamic<CMD>(&self, var: VarName, cmd: CMD) -> Result<Choice, ErrorsVarResolver>
+        fn resolve_dynamic<CMD>(
+            &self,
+            var: Identifier,
+            cmd: CMD,
+        ) -> Result<Choice, ErrorsVarResolver>
         where
             CMD: Into<ShellCommand<String>>,
         {
@@ -675,7 +588,7 @@ mod tests {
         }
         fn resolve_static(
             &self,
-            var: VarName,
+            var: Identifier,
             _cmd: impl Iterator<Item = Choice>,
         ) -> Result<Choice, ErrorsVarResolver> {
             self.static_res
@@ -688,37 +601,37 @@ mod tests {
         use super::*;
         use lazy_static::lazy_static;
         lazy_static! {
-            pub static ref VAR_USE_LISTING_NAME: VarName = VarName::new("use_listing");
+            pub static ref VAR_USE_LISTING_NAME: Identifier = Identifier::new("use_listing");
             pub static ref VAR_USE_LISTING_COMMAND: String =
                 String::from("cat {{listing}} |grep -v {{pattern}}");
             pub static ref VAR_USE_LISTING_DESC: String = String::from(
                 "output element in {{listing}} and discards everything that matches {{pattern}}"
             );
             pub static ref VAR_USE_LISTING_CHOICES: Vec<Choice> = vec![];
-            pub static ref VAR_USE_LISTING_DEPS: Vec<VarName> =
-                vec![VarName::new("listing"), VarName::new("pattern")];
+            pub static ref VAR_USE_LISTING_DEPS: Vec<Identifier> =
+                vec![Identifier::new("listing"), Identifier::new("pattern")];
             pub static ref VAR_USE_LISTING: Var = Var {
                 name: VAR_USE_LISTING_NAME.clone(),
                 from_command: Some(VAR_USE_LISTING_COMMAND.clone()),
                 desc: VAR_USE_LISTING_DESC.clone(),
                 choices: VAR_USE_LISTING_CHOICES.clone(),
             };
-            pub static ref VAR_LISTING_NAME: VarName = VarName::new("listing");
+            pub static ref VAR_LISTING_NAME: Identifier = Identifier::new("listing");
             pub static ref VAR_LISTING_COMMAND: String =
                 String::from("ls -l {{directory}} |grep -v {{pattern}}");
             pub static ref VAR_LISTING_DESC: String = String::from(
                 "list element in {{directory}} and discards everything that matches {{pattern}}"
             );
             pub static ref VAR_LISTING_CHOICES: Vec<Choice> = vec![];
-            pub static ref VAR_LISTING_DEPS: Vec<VarName> =
-                vec![VarName::new("directory"), VarName::new("pattern")];
+            pub static ref VAR_LISTING_DEPS: Vec<Identifier> =
+                vec![Identifier::new("directory"), Identifier::new("pattern")];
             pub static ref VAR_LISTING: Var = Var {
                 name: VAR_LISTING_NAME.clone(),
                 from_command: Some(VAR_LISTING_COMMAND.clone()),
                 desc: VAR_LISTING_DESC.clone(),
                 choices: VAR_LISTING_CHOICES.clone(),
             };
-            pub static ref VAR_DIRECTORY_NAME: VarName = VarName::new("directory");
+            pub static ref VAR_DIRECTORY_NAME: Identifier = Identifier::new("directory");
             pub static ref VAR_DIRECTORY_DESC: String =
                 String::from("A list of safe directory paths where to perform commands.");
             pub static ref VAR_DIRECTORY_CHOICE_1: Choice =
@@ -735,7 +648,7 @@ mod tests {
                 desc: VAR_DIRECTORY_DESC.clone(),
                 choices: VAR_DIRECTORY_CHOICES.clone(),
             };
-            pub static ref VAR_PATTERN_NAME: VarName = VarName::new("pattern");
+            pub static ref VAR_PATTERN_NAME: Identifier = Identifier::new("pattern");
             pub static ref VAR_PATTERN_DESC: String = String::from("A black list of patterns");
             pub static ref VAR_PATTERN_CHOICE_1: Choice =
                 Choice::new("service", Some("service pattern"));
@@ -749,16 +662,16 @@ mod tests {
                 desc: VAR_PATTERN_DESC.clone(),
                 choices: VAR_PATTERN_CHOICES.clone(),
             };
-            pub static ref VAR_PATTERN_2_NAME: VarName = VarName::new("pattern2");
-            pub static ref VAR_MISSING_NAME: VarName = VarName::new("missing");
+            pub static ref VAR_PATTERN_2_NAME: Identifier = Identifier::new("pattern2");
+            pub static ref VAR_MISSING_NAME: Identifier = Identifier::new("missing");
             pub static ref VAR_MISSING_COMMAND: String =
                 String::from("ls -l {{directory}} |grep -v {{pattern2}}");
             pub static ref VAR_MISSING_DESC: String = String::from(
                 "list element in {{directory}} and discards everything that matches {{pattern}}"
             );
             pub static ref VAR_MISSING_CHOICES: Vec<Choice> = vec![];
-            pub static ref VAR_MISSING_DEPS: Vec<VarName> =
-                vec![VarName::new("directory"), VarName::new("pattern2")];
+            pub static ref VAR_MISSING_DEPS: Vec<Identifier> =
+                vec![Identifier::new("directory"), Identifier::new("pattern2")];
             pub static ref VAR_MISSING: Var = Var {
                 name: VAR_MISSING_NAME.clone(),
                 from_command: Some(VAR_MISSING_COMMAND.clone()),

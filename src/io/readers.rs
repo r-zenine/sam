@@ -1,14 +1,22 @@
 use crate::core::aliases::Alias;
+use crate::core::namespaces::Namespace;
 use crate::core::vars::{Choice, ErrorsVarsRepository, Var, VarsRepository};
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
+use std::path::PathBuf;
 
 pub fn read_aliases_from_path(path: &'_ Path) -> Result<Vec<Alias>, ErrorsAliasRead> {
     let f = File::open(path)?;
     let buf = BufReader::new(f);
-    read_aliases(buf)
+    let mut aliases = read_aliases(buf)?;
+
+    for a in aliases.as_mut_slice() {
+        Namespace::update_from_path(a, path);
+    }
+
+    Ok(aliases)
 }
 
 fn read_aliases<T>(r: T) -> Result<Vec<Alias>, ErrorsAliasRead>
@@ -38,15 +46,20 @@ where
 pub fn read_vars_repository(path: &'_ Path) -> Result<VarsRepository, ErrorsVarRead> {
     let f = File::open(path)?;
     let buf = BufReader::new(f);
-    let vars = read_vars(buf)?;
+    let mut vars = read_vars(buf).map_err(|e| ErrorsVarRead::VarsSerde(e, path.to_path_buf()))?;
+
+    for a in vars.as_mut_slice() {
+        Namespace::update_from_path(a, path);
+    }
+
     VarsRepository::new(vars.into_iter()).map_err(|e| e.into())
 }
 
-fn read_vars<T>(r: T) -> Result<Vec<Var>, ErrorsVarRead>
+fn read_vars<T>(r: T) -> Result<Vec<Var>, serde_yaml::Error>
 where
     T: Read,
 {
-    serde_yaml::from_reader(r).map_err(ErrorsVarRead::from)
+    serde_yaml::from_reader(r)
 }
 
 #[derive(Debug)]
@@ -81,7 +94,7 @@ impl Display for ErrorsAliasRead {
 }
 #[derive(Debug)]
 pub enum ErrorsVarRead {
-    VarsSerde(serde_yaml::Error),
+    VarsSerde(serde_yaml::Error, PathBuf),
     VarIO(std::io::Error),
     VarsRepositoryInitialisation(ErrorsVarsRepository),
 }
@@ -109,51 +122,17 @@ impl From<std::io::Error> for ErrorsVarRead {
     }
 }
 
-impl From<serde_yaml::Error> for ErrorsVarRead {
-    fn from(v: serde_yaml::Error) -> Self {
-        ErrorsVarRead::VarsSerde(v)
-    }
-}
-
 impl Display for ErrorsVarRead {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ErrorsVarRead::VarsSerde(e) => writeln!(f, "parsing error for vars file\n -> {}", e),
+            ErrorsVarRead::VarsSerde(e, p) => {
+                writeln!(f, "parsing error for vars file {}\n -> {}", p.display(), e)
+            }
             ErrorsVarRead::VarIO(e) => writeln!(f, "while reading the vars file got error {}", e),
             ErrorsVarRead::VarsRepositoryInitialisation(e) => {
                 writeln!(f, "while validating the vars file got error {}", e)
             }
         }
-    }
-}
-
-#[derive(Debug)]
-pub enum ErrorScriptRead {
-    ReadScriptName(String),
-    ScriptDirNotDirectory(String),
-    ReadScriptContent(std::io::Error),
-}
-
-impl Display for ErrorScriptRead {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ErrorScriptRead::ReadScriptName(err) => {
-                writeln!(f, "while reading script name got error {}", err)
-            }
-            ErrorScriptRead::ReadScriptContent(err) => {
-                writeln!(f, "while reading script content got error {}", err)
-            }
-            ErrorScriptRead::ScriptDirNotDirectory(path) => writeln!(
-                f,
-                "the path provided to read scripts in not a directory. path was : {}",
-                path
-            ),
-        }
-    }
-}
-impl From<std::io::Error> for ErrorScriptRead {
-    fn from(v: std::io::Error) -> Self {
-        ErrorScriptRead::ReadScriptContent(v)
     }
 }
 

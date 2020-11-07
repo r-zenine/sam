@@ -1,4 +1,6 @@
-use crate::core::vars::{Dependencies, VarName};
+use crate::core::commands::Command;
+use crate::core::namespaces::Namespace;
+use crate::core::vars::Dependencies;
 use crate::utils::processes::ShellCommand;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -8,6 +10,7 @@ pub struct Alias {
     name: String,
     desc: String,
     alias: String,
+    namespace: Option<String>,
 }
 
 impl Alias {
@@ -19,11 +22,8 @@ impl Alias {
             name: name.into(),
             desc: description.into(),
             alias: alias.into(),
+            namespace: None,
         }
-    }
-
-    pub fn vars<'alias>(&'alias self) -> Vec<VarName> {
-        VarName::parse_from_str(&self.alias)
     }
 
     pub fn name(&self) -> &'_ str {
@@ -37,11 +37,29 @@ impl Alias {
     }
 }
 
-impl Dependencies for &Alias {
+impl Namespace for Alias {
+    fn update(&mut self, namespace: impl Into<String>) {
+        self.namespace = Some(Into::into(namespace));
+    }
+    fn namespace(&self) -> Option<&str> {
+        self.namespace.as_deref()
+    }
+}
+
+impl Command for &Alias {
     fn command(&self) -> &str {
         self.alias.as_str()
     }
 }
+
+impl Command for Alias {
+    fn command(&self) -> &str {
+        self.alias.as_str()
+    }
+}
+
+impl Dependencies for &Alias {}
+impl Dependencies for Alias {}
 
 impl<'a> Into<String> for &'a Alias {
     fn into(self) -> String {
@@ -65,7 +83,9 @@ impl Display for Alias {
 #[cfg(test)]
 mod tests {
     use super::Alias;
-    use crate::core::vars::VarName;
+    use crate::core::commands::Command;
+    use crate::core::identifiers::Identifier;
+    use crate::core::vars::Dependencies;
     #[test]
     fn test_vars() {
         let alias = Alias::new(
@@ -74,12 +94,12 @@ mod tests {
             "some text then {{ var1 }} and so {{var2 }} and after that {{var3}} into {{var_4}}.",
         );
         let expected_vars = vec![
-            VarName::new("{{ var1 }}"),
-            VarName::new("{{var2 }}"),
-            VarName::new("{{var3}}"),
-            VarName::new("{{var_4}}"),
+            Identifier::new("{{ var1 }}"),
+            Identifier::new("{{var2 }}"),
+            Identifier::new("{{var3}}"),
+            Identifier::new("{{var_4}}"),
         ];
-        let vars: Vec<VarName> = alias.vars();
+        let vars: Vec<Identifier> = alias.dependencies();
         assert_eq!(expected_vars, vars);
     }
 }

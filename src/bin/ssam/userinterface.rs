@@ -1,7 +1,8 @@
 use prettytable::{cell, format, row, Table};
 use skim::prelude::*;
 use ssam::core::aliases::Alias;
-use ssam::core::vars::{Choice, Dependencies, ErrorsVarResolver, VarName, VarResolver};
+use ssam::core::identifiers::Identifier;
+use ssam::core::vars::{Choice, Dependencies, ErrorsVarResolver, VarResolver};
 use ssam::io::readers::read_choices;
 use ssam::utils::fsutils::{ErrorsFS, TempFile};
 use ssam::utils::processes::ShellCommand;
@@ -11,15 +12,14 @@ use std::fmt::Display;
 use std::fs::File;
 use std::io::Write;
 use std::process::Command;
+use termion;
 
-// Todo :
-// 1. use a Cell for options to allow for mutations.
-// 2. add a reset options to change the prompt from the resolver.
+type UISelector = Arc<dyn SkimItem>;
 pub struct UserInterface {
     preview_file: TempFile,
-    chosen_alias: Option<Alias>,
     preview_command: String,
-    choices: RefCell<HashMap<VarName, Choice>>,
+    chosen_alias: Option<Alias>,
+    choices: RefCell<HashMap<Identifier, Choice>>,
 }
 
 impl UserInterface {
@@ -41,6 +41,7 @@ impl UserInterface {
         SkimOptionsBuilder::default()
             .prompt(Some(prompt))
             .preview(preview_command)
+            .preview_window(Some("right:wrap"))
             .tabstop(Some("8"))
             .multi(false)
             .no_hscroll(false)
@@ -48,33 +49,37 @@ impl UserInterface {
             .build()
             .map_err(ErrorsUI::SkimConfig)
     }
-
     pub fn select_alias(
         &mut self,
         prompt: &'_ str,
         aliases: &Vec<Alias>,
     ) -> Result<AliasItem, ErrorsUI> {
-        let choices = aliases.clone().into_iter().map(AliasItem::arc_alias);
+        let choices = aliases.iter().map(AliasItem::from).map(AliasItem::into);
         let idx = self.choose(choices.collect(), prompt)?;
         let selected_alias = aliases
             .get(idx)
-            .ok_or(ErrorsUI::SkimNoSelection)
-            .map(|e| AliasItem::from_alias(e.to_owned()))?;
+            .map(AliasItem::from)
+            .ok_or(ErrorsUI::SkimNoSelection)?;
         self.chosen_alias = Some(selected_alias.clone().alias);
         Ok(selected_alias)
     }
-
-    pub fn choose(&self, choices: Vec<Arc<dyn SkimItem>>, prompt: &str) -> Result<usize, ErrorsUI> {
+    pub fn choose(&self, choices: Vec<UISelector>, prompt: &str) -> Result<usize, ErrorsUI> {
         let (s, r) = bounded(choices.len());
         let source = choices.clone();
         iterator_into_sender(source.into_iter(), s)?;
         self.update_preview()?;
         let options = UserInterface::skim_options(prompt, self.preview_command())?;
         let output = Skim::run_with(&options, Some(r)).ok_or(ErrorsUI::SkimNoSelection)?;
+
         if output.is_abort {
             return Err(ErrorsUI::SkimAborted);
         }
-        let selection: &dyn SkimItem = output.selected_items[0].as_ref();
+
+        let selection = output
+            .selected_items
+            .get(0)
+            .ok_or(ErrorsUI::SkimNoSelection)?;
+
         let item = choices
             .iter()
             .enumerate()
@@ -91,17 +96,43 @@ impl UserInterface {
             let mut handle = self.preview_file.file.borrow_mut();
             (*handle).set_len(0)?;
             // (*handle).seek(SeekFrom::Start(0))?;
-            writeln!((*handle), "Alias: {}", alias.name())?;
-            writeln!((*handle), "Description: {}", alias.desc())?;
-            writeln!((*handle), "Initial Command: {}", alias.alias())?;
+            writeln!(
+                (*handle),
+                "\n{}Alias:{} {}",
+                termion::style::Bold,
+                termion::style::Reset,
+                alias.name()
+            )?;
+            writeln!(
+                (*handle),
+                "\n{}Description:{} {}",
+                termion::style::Bold,
+                termion::style::Reset,
+                alias.desc()
+            )?;
+            writeln!(
+                (*handle),
+                "\n{}Initial Command:{} {}{}{}{}",
+                termion::style::Bold,
+                termion::style::Reset,
+                termion::style::Bold,
+                termion::color::Fg(termion::color::Cyan),
+                alias.alias(),
+                termion::style::Reset,
+            )?;
 
             writeln!((*handle))?;
             let hashmap = self.choices.borrow();
             if hashmap.len() > 0 {
                 writeln!(
                     (*handle),
-                    "Current Command: {}",
-                    alias.substitute_for_choices_partial(&hashmap)
+                    "{}Current Command:{} {}{}{}{}\n",
+                    termion::style::Bold,
+                    termion::style::Reset,
+                    termion::style::Bold,
+                    termion::color::Fg(termion::color::Green),
+                    alias.substitute_for_choices_partial(&hashmap),
+                    termion::style::Reset,
                 )?;
                 let mut table = Table::new();
                 table.set_format(*format::consts::FORMAT_NO_COLSEP);
@@ -177,15 +208,28 @@ pub struct AliasItem {
 }
 
 impl AliasItem {
-    fn from_alias(alias: Alias) -> AliasItem {
-        AliasItem { alias }
-    }
-    fn arc_alias(alias: Alias) -> Arc<dyn SkimItem> {
-        Arc::new(Self::from_alias(alias))
-    }
-
     pub fn alias(&self) -> &Alias {
         &self.alias
+    }
+}
+
+impl From<Alias> for AliasItem {
+    fn from(alias: Alias) -> Self {
+        AliasItem { alias }
+    }
+}
+
+impl From<&Alias> for AliasItem {
+    fn from(alias: &Alias) -> Self {
+        AliasItem {
+            alias: alias.to_owned(),
+        }
+    }
+}
+
+impl Into<UISelector> for AliasItem {
+    fn into(self) -> UISelector {
+        Arc::new(self)
     }
 }
 
@@ -206,7 +250,7 @@ struct ChoiceItem {
 }
 
 impl ChoiceItem {
-    fn from_choice(choice: Choice) -> Arc<dyn SkimItem> {
+    fn from_choice(choice: Choice) -> UISelector {
         Arc::new(ChoiceItem { inner: choice })
     }
 }
@@ -222,25 +266,18 @@ impl SkimItem for ChoiceItem {
 }
 
 impl VarResolver for UserInterface {
-    fn resolve_dynamic<CMD>(&self, var: VarName, cmd: CMD) -> Result<Choice, ErrorsVarResolver>
+    fn resolve_dynamic<CMD>(&self, var: Identifier, cmd: CMD) -> Result<Choice, ErrorsVarResolver>
     where
         CMD: Into<ShellCommand<String>>,
     {
         let sh_cmd = cmd.into();
-        // clearing the terminal according to stackoverflow
-        // https://stackoverflow.com/questions/34837011/how-to-clear-terminal-screen-in-rust-after-new-line-is-printing
-        // print!("{}[2J", 27 as char);
-        println!(
-            "In order to gather choices for var {}, I will run the following command\n {}",
-            &var,
-            sh_cmd.value()
-        );
+        logs::command(&var, &sh_cmd.value());
+
         let mut to_run = ShellCommand::as_command(sh_cmd);
         let output = to_run
             .output()
             .map_err(|_e| ErrorsVarResolver::NoChoiceWasAvailable(var.clone()))?;
         let choices = read_choices(output.stdout.as_slice());
-        print!("{}[2J", 27 as char);
         match choices {
             Err(_err) => Err(ErrorsVarResolver::NoChoiceWasAvailable(var)),
             Ok(v) => self.resolve_static(var, v.into_iter()),
@@ -249,7 +286,7 @@ impl VarResolver for UserInterface {
 
     fn resolve_static(
         &self,
-        var: ssam::core::vars::VarName,
+        var: ssam::core::identifiers::Identifier,
         cmd: impl Iterator<Item = Choice>,
     ) -> Result<Choice, ErrorsVarResolver> {
         let mut choices: Vec<Choice> = cmd.collect();
@@ -259,7 +296,7 @@ impl VarResolver for UserInterface {
         if choices.len() == 1 {
             return Ok(choices.pop().unwrap());
         }
-        let items: Vec<Arc<dyn SkimItem>> = choices
+        let items: Vec<UISelector> = choices
             .clone()
             .into_iter()
             .map(ChoiceItem::from_choice)
@@ -289,4 +326,17 @@ where
         acc.and_then(|_| s.send(e).map_err(|op| ErrorsUI::SkimSend(op.to_string())))
     })?;
     Ok(())
+}
+
+mod logs {
+    pub fn command(var: impl AsRef<str>, cmd: impl AsRef<str>) {
+        println!(
+            "{}{}[SAM][ var = '{}' ]{} Running: '{}'",
+            termion::color::Fg(termion::color::Green),
+            termion::style::Bold,
+            var.as_ref(),
+            termion::style::Reset,
+            cmd.as_ref(),
+        );
+    }
 }

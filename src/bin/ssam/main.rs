@@ -1,5 +1,6 @@
 use ssam::core::aliases::Alias;
-use ssam::core::vars::{Choice, Dependencies, ErrorsVarsRepository, VarName, VarsRepository};
+use ssam::core::identifiers::Identifier;
+use ssam::core::vars::{Choice, Dependencies, ErrorsVarsRepository, VarsRepository};
 use ssam::io::readers::{
     read_aliases_from_path, read_vars_repository, ErrorsAliasRead, ErrorsVarRead,
 };
@@ -102,7 +103,7 @@ fn run_alias(alias_name: &'_ str) -> Result<i32> {
 
 fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
     let exec_seq = ctx.vars.execution_sequence(alias)?;
-    let choices: HashMap<VarName, Choice> = ctx
+    let choices: HashMap<Identifier, Choice> = ctx
         .vars
         .choices(&ctx.ui_interface, exec_seq)?
         .into_iter()
@@ -148,7 +149,6 @@ type Result<T> = std::result::Result<T, ErrorsSSAM>;
 enum ErrorsSSAM {
     ExitCode,
     Config(ErrorsConfig),
-    ScriptRead(ErrorScriptRead),
     AliasRead(ErrorsAliasRead),
     VarRead(ErrorsVarRead),
     VarsRepository(ErrorsVarsRepository),
@@ -164,7 +164,6 @@ impl Display for ErrorsSSAM {
         write!(f, "an error occured when ")?;
         match self {
             ErrorsSSAM::Config(e) => writeln!(f, "reading the configuration.\n{}", e),
-            ErrorsSSAM::ScriptRead(e) => writeln!(f, "reading the scripts. \n{}", e),
             ErrorsSSAM::AliasRead(e) => writeln!(f, "reading aliases.\n{}", e),
             ErrorsSSAM::VarRead(e) => writeln!(f, "reading vars.\n{}", e),
             ErrorsSSAM::UI(e) => writeln!(f, "launching the terminal user interface\n{}", e),
