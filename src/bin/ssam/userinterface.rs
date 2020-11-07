@@ -301,7 +301,7 @@ impl VarResolver for UserInterface {
             .into_iter()
             .map(ChoiceItem::from_choice)
             .collect();
-        let prompt = format!("please make a choices for variable:\t{}", var.as_ref());
+        let prompt = format!("please make a choices for variable:\t{}", var);
         let choice = self
             .choose(items, prompt.as_str())
             .map_err(|_e| ErrorsVarResolver::NoChoiceWasSelected(var.clone()))
@@ -329,12 +329,13 @@ where
 }
 
 mod logs {
-    pub fn command(var: impl AsRef<str>, cmd: impl AsRef<str>) {
+    use std::fmt::Display;
+    pub fn command(var: impl Display, cmd: impl AsRef<str>) {
         println!(
             "{}{}[SAM][ var = '{}' ]{} Running: '{}'",
             termion::color::Fg(termion::color::Green),
             termion::style::Bold,
-            var.as_ref(),
+            var,
             termion::style::Reset,
             cmd.as_ref(),
         );

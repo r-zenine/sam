@@ -32,12 +32,13 @@ impl Identifier {
     /// new creates an new Identifier object and it will sanitize the input.
     ///```rust
     /// use ssam::core::identifiers::Identifier;
+    /// use ssam::core::namespaces::Namespace;
     /// let var = Identifier::new("{{ pattern }}");
-    /// assert_eq!(var.as_ref(), "pattern");
+    /// assert_eq!(var.name(), "pattern");
     /// let var = Identifier::new("{{ pattern}}");
-    /// assert_eq!(var.as_ref(), "pattern");
+    /// assert_eq!(var.name(), "pattern");
     /// let var = Identifier::new("{{pattern }}");
-    /// assert_eq!(var.as_ref(), "pattern");
+    /// assert_eq!(var.name(), "pattern");
     ///```
     pub fn new<IntoStr>(name: IntoStr) -> Identifier
     where
@@ -55,12 +56,16 @@ impl Identifier {
     /// new creates an new Identifier object and it will sanitize the input.
     ///```rust
     /// use ssam::core::identifiers::Identifier;
-    /// let var = Identifier::with_namespace("{{ pattern }}", "ns");
-    /// assert_eq!(var.as_ref(), "ns::pattern");
-    /// let var = Identifier::with_namespace("{{ pattern}}", "ns");
-    /// assert_eq!(var.as_ref(), "ns::pattern");
-    /// let var = Identifier::with_namespace("{{pattern }}", "ns");
-    /// assert_eq!(var.as_ref(), "ns::pattern");
+    /// use ssam::core::namespaces::Namespace;
+    /// let var = Identifier::with_namespace("{{ pattern }}", Some("ns"));
+    /// assert_eq!(var.name(), "pattern");
+    /// assert_eq!(var.namespace(), Some("ns"));
+    /// let var = Identifier::with_namespace("{{ pattern}}", Some("ns"));
+    /// assert_eq!(var.name(), "pattern");
+    /// assert_eq!(var.namespace(), Some("ns"));
+    /// let var = Identifier::with_namespace("{{pattern }}", Some("ns"));
+    /// assert_eq!(var.name(), "pattern");
+    /// assert_eq!(var.namespace(), Some("ns"));
     ///```
     pub fn with_namespace(
         name: impl Into<String>,
@@ -80,7 +85,7 @@ impl Identifier {
     ///```rust
     /// use ssam::core::identifiers::Identifier;
     /// use ssam::core::commands::Command;
-    /// let example = Identifier::parse("ls -l {{ location }} | grep {{pattern}}");
+    /// let example = Identifier::parse::<&str>("ls -l {{ location }} | grep {{pattern}}", None);
     /// assert_eq!(example, vec![Identifier::new("location"), Identifier::new("pattern")]);
     ///```
     pub fn parse<IntoStr>(s: &str, namespace: Option<IntoStr>) -> Vec<Identifier>
@@ -93,11 +98,9 @@ impl Identifier {
             .map(|name| Identifier::with_namespace(name.as_str(), namespace.clone()))
             .collect()
     }
-}
 
-impl AsRef<str> for Identifier {
-    fn as_ref(&self) -> &str {
-        self.inner.as_str()
+    pub fn name(&self) -> &str {
+        return self.inner.as_str();
     }
 }
 
@@ -109,7 +112,11 @@ impl PartialEq<&Identifier> for Identifier {
 
 impl Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_ref())
+        if let Some(ns) = &self.namespace {
+            write!(f, "{}::{}", ns, self.inner)
+        } else {
+            write!(f, "::{}", self.inner)
+        }
     }
 }
 

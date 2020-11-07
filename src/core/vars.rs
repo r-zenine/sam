@@ -18,7 +18,7 @@ pub trait Dependencies: Command {
         for dep in self.dependencies() {
             // Note , we explicitly rely on the fact that dependencies will output the dependencies as they appear in the command.
             if let Some(chce) = choices.get(&dep) {
-                let re_fmt = format!(r#"(?P<var>\{{\{{ ?{} ?\}}\}})"#, dep);
+                let re_fmt = format!(r#"(?P<var>\{{\{{ ?{} ?\}}\}})"#, dep.name());
                 let re: Regex = Regex::new(re_fmt.as_str()).unwrap();
                 command = re
                     .replace(command.as_str(), chce.value.as_str())
@@ -38,7 +38,7 @@ pub trait Dependencies: Command {
         for dep in self.dependencies() {
             // Note , we explicitly rely on the fact that dependencies will output the dependencies as they appear in the command.
             if let Some(chce) = choices.get(&dep) {
-                let re_fmt = format!(r#"(?P<var>\{{\{{ ?{} ?\}}\}})"#, dep);
+                let re_fmt = format!(r#"(?P<var>\{{\{{ ?{} ?\}}\}})"#, dep.name());
                 let re: Regex = Regex::new(re_fmt.as_str()).unwrap();
                 command = re
                     .replace(command.as_str(), chce.value.as_str())
@@ -216,10 +216,10 @@ impl Display for ErrorsVarResolver {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ErrorsVarResolver::NoChoiceWasAvailable(name) => {
-                writeln!(f, "no choice is available for var {}", name.as_ref())
+                writeln!(f, "no choice is available for var {}", name)
             }
             ErrorsVarResolver::NoChoiceWasSelected(name) => {
-                writeln!(f, "no choice was selected for var {}", name.as_ref())
+                writeln!(f, "no choice was selected for var {}", name)
             }
         }
     }
