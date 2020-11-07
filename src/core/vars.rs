@@ -379,7 +379,7 @@ mod tests {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     #[test]
-    fn test_Identifier_new() {
+    fn test_identifier_new() {
         let cases: Vec<(Identifier, &'static str)> = vec![
             (Identifier::new("{{ toto }}"), "toto"),
             (Identifier::new("{{ toto}}"), "toto"),

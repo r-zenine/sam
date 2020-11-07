@@ -85,7 +85,6 @@ mod tests {
     use super::Alias;
     use crate::core::commands::Command;
     use crate::core::identifiers::Identifier;
-    use crate::core::vars::Dependencies;
     #[test]
     fn test_vars() {
         let alias = Alias::new(
