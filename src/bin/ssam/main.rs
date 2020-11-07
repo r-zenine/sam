@@ -108,6 +108,7 @@ fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
         .into_iter()
         .collect();
     let final_command = alias.substitute_for_choices(&choices).unwrap();
+    logs::final_command(&final_command);
     let mut command: Command = ShellCommand::new(final_command).into();
     let exit_status = command.status()?;
     exit_status.code().ok_or(ErrorsSSAM::ExitCode)
@@ -231,8 +232,17 @@ impl From<ErrorsConfig> for ErrorsSSAM {
     }
 }
 
-impl From<ErrorScriptRead> for ErrorsSSAM {
-    fn from(v: ErrorScriptRead) -> Self {
-        ErrorsSSAM::ScriptRead(v)
+mod logs {
+    pub fn final_command(fc: impl AsRef<str>) {
+        println!(
+            "{}{}[SAM]{} Running final command: {}{}'{}'{}",
+            termion::color::Fg(termion::color::Green),
+            termion::style::Bold,
+            termion::style::Reset,
+            termion::color::Fg(termion::color::Green),
+            termion::style::Bold,
+            fc.as_ref(),
+            termion::style::Reset,
+        );
     }
 }
