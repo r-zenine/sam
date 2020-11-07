@@ -1,5 +1,5 @@
 use crate::core::commands::Command;
-use crate::core::namespaces::Namespace;
+use crate::core::namespaces::{Namespace, NamespaceUpdater};
 use crate::core::vars::Dependencies;
 use crate::utils::processes::ShellCommand;
 use serde::{Deserialize, Serialize};
@@ -37,10 +37,19 @@ impl Alias {
     }
 }
 
-impl Namespace for Alias {
+impl NamespaceUpdater for Alias {
     fn update(&mut self, namespace: impl Into<String>) {
         self.namespace = Some(Into::into(namespace));
     }
+}
+
+impl Namespace for &Alias {
+    fn namespace(&self) -> Option<&str> {
+        self.namespace.as_deref()
+    }
+}
+
+impl Namespace for Alias {
     fn namespace(&self) -> Option<&str> {
         self.namespace.as_deref()
     }

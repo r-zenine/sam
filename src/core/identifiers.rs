@@ -1,4 +1,4 @@
-use crate::core::namespaces::Namespace;
+use crate::core::namespaces::{Namespace, NamespaceUpdater};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -52,6 +52,29 @@ impl Identifier {
             namespace: None,
         }
     }
+    /// new creates an new Identifier object and it will sanitize the input.
+    ///```rust
+    /// use ssam::core::identifiers::Identifier;
+    /// let var = Identifier::with_namespace("{{ pattern }}", "ns");
+    /// assert_eq!(var.as_ref(), "ns::pattern");
+    /// let var = Identifier::with_namespace("{{ pattern}}", "ns");
+    /// assert_eq!(var.as_ref(), "ns::pattern");
+    /// let var = Identifier::with_namespace("{{pattern }}", "ns");
+    /// assert_eq!(var.as_ref(), "ns::pattern");
+    ///```
+    pub fn with_namespace(
+        name: impl Into<String>,
+        namespace: Option<impl Into<String>>,
+    ) -> Identifier {
+        Identifier {
+            inner: name
+                .into()
+                .replace(" ", "")
+                .replace("{{", "")
+                .replace("}}", ""),
+            namespace: namespace.map(Into::into),
+        }
+    }
     /// Dependencies returns the dependencies of this variable if it gets it's
     /// choices from a command.
     ///```rust
@@ -60,11 +83,14 @@ impl Identifier {
     /// let example = Identifier::parse("ls -l {{ location }} | grep {{pattern}}");
     /// assert_eq!(example, vec![Identifier::new("location"), Identifier::new("pattern")]);
     ///```
-    pub fn parse(s: &str) -> Vec<Identifier> {
+    pub fn parse<IntoStr>(s: &str, namespace: Option<IntoStr>) -> Vec<Identifier>
+    where
+        IntoStr: Into<String> + Clone,
+    {
         VARSRE
             .captures_iter(s)
             .map(|e| e["vars"].to_owned())
-            .map(Identifier::new)
+            .map(|name| Identifier::with_namespace(name.as_str(), namespace.clone()))
             .collect()
     }
 }
@@ -87,11 +113,13 @@ impl Display for Identifier {
     }
 }
 
-impl Namespace for Identifier {
+impl NamespaceUpdater for Identifier {
     fn update(&mut self, namespace: impl Into<String>) {
         self.namespace = Some(Into::into(namespace));
     }
+}
 
+impl Namespace for Identifier {
     fn namespace(&self) -> Option<&str> {
         self.namespace.as_deref()
     }

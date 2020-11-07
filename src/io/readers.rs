@@ -1,5 +1,5 @@
 use crate::core::aliases::Alias;
-use crate::core::namespaces::Namespace;
+use crate::core::namespaces::NamespaceUpdater;
 use crate::core::vars::{Choice, ErrorsVarsRepository, Var, VarsRepository};
 use std::fmt::Display;
 use std::fs::File;
@@ -13,7 +13,7 @@ pub fn read_aliases_from_path(path: &'_ Path) -> Result<Vec<Alias>, ErrorsAliasR
     let mut aliases = read_aliases(buf)?;
 
     for a in aliases.as_mut_slice() {
-        Namespace::update_from_path(a, path);
+        NamespaceUpdater::update_from_path(a, path);
     }
 
     Ok(aliases)
@@ -49,7 +49,7 @@ pub fn read_vars_repository(path: &'_ Path) -> Result<VarsRepository, ErrorsVarR
     let mut vars = read_vars(buf).map_err(|e| ErrorsVarRead::VarsSerde(e, path.to_path_buf()))?;
 
     for a in vars.as_mut_slice() {
-        Namespace::update_from_path(a, path);
+        NamespaceUpdater::update_from_path(a, path);
     }
 
     VarsRepository::new(vars.into_iter()).map_err(|e| e.into())

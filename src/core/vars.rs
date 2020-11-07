@@ -1,6 +1,6 @@
 use crate::core::commands::Command;
 use crate::core::identifiers::Identifier;
-use crate::core::namespaces::Namespace;
+use crate::core::namespaces::{Namespace, NamespaceUpdater};
 use crate::utils::processes::ShellCommand;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -114,10 +114,13 @@ impl Var {
         }
     }
 }
-impl Namespace for Var {
+impl NamespaceUpdater for Var {
     fn update(&mut self, namespace: impl Into<String>) {
         self.name.update(namespace)
     }
+}
+
+impl Namespace for Var {
     fn namespace(&self) -> Option<&str> {
         self.name.namespace()
     }
@@ -405,7 +408,7 @@ mod tests {
     #[test]
     fn test_parse_vars() {
         assert_eq!(
-            Identifier::parse(VAR_LISTING_COMMAND.as_str()),
+            Identifier::parse::<&str>(VAR_LISTING_COMMAND.as_str(), None),
             VAR_LISTING_DEPS.clone(),
         )
     }
