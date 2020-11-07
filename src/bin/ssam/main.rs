@@ -1,7 +1,7 @@
 use ssam::core::aliases::Alias;
 use ssam::core::vars::{Choice, Dependencies, ErrorsVarsRepository, VarName, VarsRepository};
 use ssam::io::readers::{
-    read_aliases_from_file, read_vars_repository, ErrorScriptRead, ErrorsAliasRead, ErrorsVarRead,
+    read_aliases_from_path, read_vars_repository, ErrorsAliasRead, ErrorsVarRead,
 };
 use ssam::utils::fsutils;
 use ssam::utils::fsutils::walk_dir;
@@ -69,7 +69,7 @@ impl AppContext {
         for f in files {
             if let Some(file_name) = f.file_name() {
                 if file_name == "aliases.yaml" {
-                    aliases.extend(read_aliases_from_file(f.as_path())?);
+                    aliases.extend(read_aliases_from_path(f.as_path())?);
                 } else if file_name == "vars.yaml" {
                     vars.merge(read_vars_repository(f.as_path())?);
                 }
@@ -121,7 +121,7 @@ fn bashrc() -> Result<i32> {
     for f in files {
         if let Some(file_name) = f.file_name() {
             if file_name == "aliases.yaml" {
-                aliases.extend(read_aliases_from_file(f.as_path())?);
+                aliases.extend(read_aliases_from_path(f.as_path())?);
             }
         }
     }

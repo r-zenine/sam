@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 
-pub fn read_aliases_from_file(path: &'_ Path) -> Result<Vec<Alias>, ErrorsAliasRead> {
+pub fn read_aliases_from_path(path: &'_ Path) -> Result<Vec<Alias>, ErrorsAliasRead> {
     let f = File::open(path)?;
     let buf = BufReader::new(f);
     read_aliases(buf)
