@@ -1,4 +1,5 @@
 use crate::core::commands::Command;
+use crate::core::identifiers::Identifier;
 use crate::core::namespaces::{Namespace, NamespaceUpdater};
 use crate::core::vars::Dependencies;
 use crate::utils::processes::ShellCommand;
@@ -7,10 +8,10 @@ use std::fmt::Display;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Alias {
-    name: String,
+    #[serde(flatten)]
+    name: Identifier,
     desc: String,
     alias: String,
-    namespace: Option<String>,
 }
 
 impl Alias {
@@ -19,15 +20,14 @@ impl Alias {
         IntoStr: Into<String>,
     {
         Alias {
-            name: name.into(),
+            name: Identifier::new(name),
             desc: description.into(),
             alias: alias.into(),
-            namespace: None,
         }
     }
 
     pub fn name(&self) -> &'_ str {
-        self.name.as_str()
+        self.name.name()
     }
     pub fn desc(&self) -> &'_ str {
         self.desc.as_str()
@@ -39,19 +39,19 @@ impl Alias {
 
 impl NamespaceUpdater for Alias {
     fn update(&mut self, namespace: impl Into<String>) {
-        self.namespace = Some(Into::into(namespace));
+        self.name.update(namespace)
     }
 }
 
 impl Namespace for &Alias {
     fn namespace(&self) -> Option<&str> {
-        self.namespace.as_deref()
+        self.name.namespace()
     }
 }
 
 impl Namespace for Alias {
     fn namespace(&self) -> Option<&str> {
-        self.namespace.as_deref()
+        self.name.namespace()
     }
 }
 
