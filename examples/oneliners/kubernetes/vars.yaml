@@ -9,8 +9,6 @@
 - name: pager
   desc: the pager tool to use
   choices: 
-    - value: less
-      desc: use less
     - value: cat
       desc: use cat
 
