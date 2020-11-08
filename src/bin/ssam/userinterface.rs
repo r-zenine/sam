@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::process::Command;
-use termion;
+
 use thiserror::Error;
 
 type UISelector = Arc<dyn SkimItem>;
@@ -53,7 +53,7 @@ impl UserInterface {
     pub fn select_alias(
         &mut self,
         prompt: &'_ str,
-        aliases: &Vec<Alias>,
+        aliases: &[Alias],
     ) -> Result<AliasItem, ErrorsUI> {
         let choices = aliases.iter().map(AliasItem::from).map(AliasItem::into);
         let idx = self.choose(choices.collect(), prompt)?;
@@ -212,7 +212,7 @@ impl Into<UISelector> for AliasItem {
 
 impl SkimItem for AliasItem {
     fn text(&self) -> Cow<str> {
-        Cow::Borrowed(self.alias().name())
+        self.alias.full_name()
     }
 }
 
@@ -268,7 +268,7 @@ impl Resolver for UserInterface {
     ) -> Result<Choice, ErrorsResolver> {
         let mut choices: Vec<Choice> = cmd.collect();
         if choices.is_empty() {
-            return Err(ErrorsResolver::NoChoiceWasAvailable(var.clone()));
+            return Err(ErrorsResolver::NoChoiceWasAvailable(var));
         }
         if choices.len() == 1 {
             return Ok(choices.pop().unwrap());

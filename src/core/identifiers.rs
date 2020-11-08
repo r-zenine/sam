@@ -100,7 +100,7 @@ impl Identifier {
     }
 
     pub fn name(&self) -> &str {
-        return self.inner.as_str();
+        self.inner.as_str()
     }
 }
 

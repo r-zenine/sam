@@ -4,6 +4,7 @@ use crate::core::identifiers::Identifier;
 use crate::core::namespaces::{Namespace, NamespaceUpdater};
 use crate::utils::processes::ShellCommand;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::fmt::Display;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -36,6 +37,15 @@ impl Alias {
     }
     pub fn alias(&self) -> &'_ str {
         self.alias.as_str()
+    }
+    pub fn full_name(&self) -> Cow<'_, str> {
+        let n = self.name();
+        if let Some(ns) = self.namespace() {
+            let full_name = format!("{}::{}", ns, n);
+            Cow::Owned(full_name)
+        } else {
+            Cow::Borrowed(n)
+        }
     }
 }
 
