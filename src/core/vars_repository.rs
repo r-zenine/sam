@@ -153,7 +153,7 @@ impl VarsRepository {
 pub enum ErrorsVarsRepository {
     #[error("missing the following dependencies:\n{0}")]
     MissingDependencies(Identifiers),
-    #[error("no choices available for var {var_name}\n->{error}")]
+    #[error("no choices available for var {var_name}\n-> {error}")]
     NoChoiceForVar {
         var_name: Identifier,
         error: ErrorsResolver,

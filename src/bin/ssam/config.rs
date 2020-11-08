@@ -55,9 +55,9 @@ impl AppSettings {
 
 #[derive(Debug, Error)]
 pub enum ErrorsConfig {
-    #[error("got the following error\n->{0}")]
+    #[error("got the following error\n-> {0}")]
     ReadConfig(#[from] config::ConfigError),
-    #[error("got the following error\n->{0}")]
+    #[error("got the following error\n-> {0}")]
     FileSystem(#[from] ErrorsFS),
     #[error("we were unable to locate the home directory for the current user")]
     CantFindHomeDirectory,
