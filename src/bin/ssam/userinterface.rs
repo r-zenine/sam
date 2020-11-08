@@ -1,18 +1,19 @@
 use prettytable::{cell, format, row, Table};
 use skim::prelude::*;
 use ssam::core::aliases::Alias;
+use ssam::core::choices::Choice;
+use ssam::core::dependencies::{Dependencies, ErrorsResolver, Resolver};
 use ssam::core::identifiers::Identifier;
-use ssam::core::vars::{Choice, Dependencies, ErrorsVarResolver, VarResolver};
 use ssam::io::readers::read_choices;
 use ssam::utils::fsutils::{ErrorsFS, TempFile};
 use ssam::utils::processes::ShellCommand;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::fmt::Display;
 use std::fs::File;
 use std::io::Write;
 use std::process::Command;
 use termion;
+use thiserror::Error;
 
 type UISelector = Arc<dyn SkimItem>;
 pub struct UserInterface {
@@ -61,6 +62,7 @@ impl UserInterface {
             .map(AliasItem::from)
             .ok_or(ErrorsUI::SkimNoSelection)?;
         self.chosen_alias = Some(selected_alias.clone().alias);
+        logs::alias(&selected_alias.alias);
         Ok(selected_alias)
     }
     pub fn choose(&self, choices: Vec<UISelector>, prompt: &str) -> Result<usize, ErrorsUI> {
@@ -95,7 +97,13 @@ impl UserInterface {
         if let Some(alias) = &self.chosen_alias {
             let mut handle = self.preview_file.file.borrow_mut();
             (*handle).set_len(0)?;
-            // (*handle).seek(SeekFrom::Start(0))?;
+            writeln!(
+                (*handle),
+                "\n{}Namespace:{} {}",
+                termion::style::Bold,
+                termion::style::Reset,
+                alias.namespace().unwrap_or("global")
+            )?;
             writeln!(
                 (*handle),
                 "\n{}Alias:{} {}",
@@ -138,7 +146,7 @@ impl UserInterface {
                 table.set_format(*format::consts::FORMAT_NO_COLSEP);
                 table.set_titles(row!["Variable", "Choice"]);
                 for (var, choice) in (*hashmap).clone() {
-                    table.add_row(row![&var, choice.value()]);
+                    table.add_row(row![&var.name(), choice.value()]);
                 }
                 table.print::<File>(handle.by_ref())?;
             }
@@ -155,51 +163,20 @@ impl UserInterface {
         }
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ErrorsUI {
+    #[error("could not configure the user interface because\n-> {0}")]
     SkimConfig(String),
+    #[error("could not initialize the user interface because\n-> {0}")]
     SkimSend(String),
+    #[error("no selection was provided")]
     SkimNoSelection,
+    #[error("the program was aborted")]
     SkimAborted,
-    IOError(std::io::Error),
-    FSError(ErrorsFS),
-}
-
-impl Display for ErrorsUI {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ErrorsUI::SkimConfig(s) => {
-                writeln!(f, "could not configure the user interface because {}", s)
-            }
-            ErrorsUI::SkimSend(s) => {
-                writeln!(f, "could not initialise the user interface because {}", s)
-            }
-            ErrorsUI::SkimNoSelection => writeln!(f, "no selection was provided"),
-            ErrorsUI::SkimAborted => writeln!(f, "the selection was aborted."),
-            ErrorsUI::IOError(e) => writeln!(
-                f,
-                "an unexpected error happend while filling the preview window {}",
-                e
-            ),
-            ErrorsUI::FSError(e) => writeln!(
-                f,
-                "an unexpected error happend while initialising the preview window {}",
-                e
-            ),
-        }
-    }
-}
-
-impl From<ErrorsFS> for ErrorsUI {
-    fn from(v: ErrorsFS) -> Self {
-        ErrorsUI::FSError(v)
-    }
-}
-
-impl From<std::io::Error> for ErrorsUI {
-    fn from(v: std::io::Error) -> Self {
-        ErrorsUI::IOError(v)
-    }
+    #[error("an unexpected error happend while filling the preview window {0}")]
+    IOError(#[from] std::io::Error),
+    #[error("an unexpected error happend while initialising the preview window {0}")]
+    FSError(#[from] ErrorsFS),
 }
 
 #[derive(Clone, Debug)]
@@ -265,8 +242,8 @@ impl SkimItem for ChoiceItem {
     }
 }
 
-impl VarResolver for UserInterface {
-    fn resolve_dynamic<CMD>(&self, var: Identifier, cmd: CMD) -> Result<Choice, ErrorsVarResolver>
+impl Resolver for UserInterface {
+    fn resolve_dynamic<CMD>(&self, var: Identifier, cmd: CMD) -> Result<Choice, ErrorsResolver>
     where
         CMD: Into<ShellCommand<String>>,
     {
@@ -276,10 +253,10 @@ impl VarResolver for UserInterface {
         let mut to_run = ShellCommand::as_command(sh_cmd);
         let output = to_run
             .output()
-            .map_err(|_e| ErrorsVarResolver::NoChoiceWasAvailable(var.clone()))?;
+            .map_err(|_e| ErrorsResolver::NoChoiceWasAvailable(var.clone()))?;
         let choices = read_choices(output.stdout.as_slice());
         match choices {
-            Err(_err) => Err(ErrorsVarResolver::NoChoiceWasAvailable(var)),
+            Err(_err) => Err(ErrorsResolver::NoChoiceWasAvailable(var)),
             Ok(v) => self.resolve_static(var, v.into_iter()),
         }
     }
@@ -288,10 +265,10 @@ impl VarResolver for UserInterface {
         &self,
         var: ssam::core::identifiers::Identifier,
         cmd: impl Iterator<Item = Choice>,
-    ) -> Result<Choice, ErrorsVarResolver> {
+    ) -> Result<Choice, ErrorsResolver> {
         let mut choices: Vec<Choice> = cmd.collect();
         if choices.is_empty() {
-            return Err(ErrorsVarResolver::NoChoiceWasAvailable(var.clone()));
+            return Err(ErrorsResolver::NoChoiceWasAvailable(var.clone()));
         }
         if choices.len() == 1 {
             return Ok(choices.pop().unwrap());
@@ -301,17 +278,18 @@ impl VarResolver for UserInterface {
             .into_iter()
             .map(ChoiceItem::from_choice)
             .collect();
-        let prompt = format!("please make a choices for variable:\t{}", var);
+        let prompt = format!("please make a choices for variable:\t{}", var.name());
         let choice = self
             .choose(items, prompt.as_str())
-            .map_err(|_e| ErrorsVarResolver::NoChoiceWasSelected(var.clone()))
+            .map_err(|_e| ErrorsResolver::NoChoiceWasSelected(var.clone()))
             .and_then(|idx| {
                 choices
                     .get(idx)
                     .map(|e| e.to_owned())
-                    .ok_or_else(|| ErrorsVarResolver::NoChoiceWasSelected(var.clone()))
+                    .ok_or_else(|| ErrorsResolver::NoChoiceWasSelected(var.clone()))
             })?;
         let mut mp = self.choices.borrow_mut();
+        logs::choice(&var, &choice);
         (*mp).insert(var, choice.clone());
         Ok(choice)
     }
@@ -329,6 +307,7 @@ where
 }
 
 mod logs {
+    use ssam::core::aliases::Alias;
     use std::fmt::Display;
     pub fn command(var: impl Display, cmd: impl AsRef<str>) {
         println!(
@@ -338,6 +317,26 @@ mod logs {
             var,
             termion::style::Reset,
             cmd.as_ref(),
+        );
+    }
+    pub fn choice(var: impl Display, choice: impl Display) {
+        println!(
+            "{}{}[SAM][ var = '{}' ]{} Choice was: '{}'",
+            termion::color::Fg(termion::color::Green),
+            termion::style::Bold,
+            var,
+            termion::style::Reset,
+            choice,
+        );
+    }
+    pub fn alias(alias: &Alias) {
+        println!(
+            "{}{}[SAM][ alias = '{}::{}' ]{}",
+            termion::color::Fg(termion::color::Green),
+            termion::style::Bold,
+            alias.namespace().unwrap_or_default(),
+            alias.name(),
+            termion::style::Reset,
         );
     }
 }

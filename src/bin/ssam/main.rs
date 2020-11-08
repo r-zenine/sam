@@ -1,6 +1,8 @@
 use ssam::core::aliases::Alias;
+use ssam::core::choices::Choice;
+use ssam::core::dependencies::Dependencies;
 use ssam::core::identifiers::Identifier;
-use ssam::core::vars::{Choice, Dependencies, ErrorsVarsRepository, VarsRepository};
+use ssam::core::vars_repository::{ErrorsVarsRepository, VarsRepository};
 use ssam::io::readers::{
     read_aliases_from_path, read_vars_repository, ErrorsAliasRead, ErrorsVarRead,
 };
@@ -8,8 +10,8 @@ use ssam::utils::fsutils;
 use ssam::utils::fsutils::walk_dir;
 use ssam::utils::processes::ShellCommand;
 use std::collections::HashMap;
-use std::fmt::Display;
 use std::process::Command;
+use thiserror::Error;
 
 mod config;
 mod userinterface;
@@ -51,7 +53,7 @@ fn main() {
     };
     match result {
         Err(ErrorsSSAM::UI(userinterface::ErrorsUI::SkimAborted)) => {}
-        Err(e) => eprintln!("Could not run the program as expected because {}", e),
+        Err(e) => eprintln!("Could not run the program as expected because:\n-> {}", e),
         Ok(status) => std::process::exit(status),
     }
 }
@@ -109,7 +111,7 @@ fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
         .into_iter()
         .collect();
     let final_command = alias.substitute_for_choices(&choices).unwrap();
-    logs::final_command(&final_command);
+    logs::final_command(alias, &final_command);
     let mut command: Command = ShellCommand::new(final_command).into();
     let exit_status = command.status()?;
     exit_status.code().ok_or(ErrorsSSAM::ExitCode)
@@ -145,102 +147,44 @@ fn bashrc() -> Result<i32> {
 
 // Error handling for the sa app.
 type Result<T> = std::result::Result<T, ErrorsSSAM>;
-#[derive(Debug)]
+#[derive(Debug, Error)]
 enum ErrorsSSAM {
+    #[error("could not return an exit code.")]
     ExitCode,
-    Config(ErrorsConfig),
-    AliasRead(ErrorsAliasRead),
-    VarRead(ErrorsVarRead),
-    VarsRepository(ErrorsVarsRepository),
-    UI(userinterface::ErrorsUI),
-    SubCommand(std::io::Error),
-    SubCommandOutput(std::string::FromUtf8Error),
+    #[error("could not read the configuration file\n-> {0}")]
+    Config(#[from] ErrorsConfig),
+    #[error("could not read aliases\n-> {0}")]
+    AliasRead(#[from] ErrorsAliasRead),
+    #[error("could not read vars\n-> {0}")]
+    VarRead(#[from] ErrorsVarRead),
+    #[error("could not figure out dependencies\n-> {0}")]
+    VarsRepository(#[from] ErrorsVarsRepository),
+    #[error("could not run the terminal user interface\n-> {0}")]
+    UI(#[from] userinterface::ErrorsUI),
+    #[error("could not run a command\n-> {0}")]
+    SubCommand(#[from] std::io::Error),
+    #[error("could not read a command output\n-> {0}")]
+    SubCommandOutput(#[from] std::string::FromUtf8Error),
+    #[error("the requested alias was not found")]
     InvalidAliasSelection,
-    FilesLookup(fsutils::ErrorsFS),
-}
-
-impl Display for ErrorsSSAM {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "an error occured when ")?;
-        match self {
-            ErrorsSSAM::Config(e) => writeln!(f, "reading the configuration.\n{}", e),
-            ErrorsSSAM::AliasRead(e) => writeln!(f, "reading aliases.\n{}", e),
-            ErrorsSSAM::VarRead(e) => writeln!(f, "reading vars.\n{}", e),
-            ErrorsSSAM::UI(e) => writeln!(f, "launching the terminal user interface\n{}", e),
-            ErrorsSSAM::SubCommand(e) => writeln!(f, "launching the selected command\n{}", e),
-            ErrorsSSAM::SubCommandOutput(e) => writeln!(f, "launching the selected command\n{}", e),
-            ErrorsSSAM::ExitCode => writeln!(f, "trying to return the exit code."),
-            ErrorsSSAM::VarsRepository(e) => {
-                writeln!(f, "computing figuring out dependencies {}.", e)
-            }
-            ErrorsSSAM::InvalidAliasSelection => {
-                writeln!(f, "looking for the requested alias. it was not found.")
-            }
-            ErrorsSSAM::FilesLookup(e) => writeln!(
-                f,
-                "looking for the aliases.yaml and vars.yaml files\n {}",
-                e
-            ),
-        }
-    }
-}
-
-impl From<fsutils::ErrorsFS> for ErrorsSSAM {
-    fn from(v: fsutils::ErrorsFS) -> Self {
-        ErrorsSSAM::FilesLookup(v)
-    }
-}
-impl From<ErrorsVarsRepository> for ErrorsSSAM {
-    fn from(v: ErrorsVarsRepository) -> Self {
-        ErrorsSSAM::VarsRepository(v)
-    }
-}
-
-impl From<ErrorsVarRead> for ErrorsSSAM {
-    fn from(v: ErrorsVarRead) -> Self {
-        ErrorsSSAM::VarRead(v)
-    }
-}
-
-impl From<std::string::FromUtf8Error> for ErrorsSSAM {
-    fn from(v: std::string::FromUtf8Error) -> Self {
-        ErrorsSSAM::SubCommandOutput(v)
-    }
-}
-
-impl From<std::io::Error> for ErrorsSSAM {
-    fn from(v: std::io::Error) -> Self {
-        ErrorsSSAM::SubCommand(v)
-    }
-}
-
-impl From<userinterface::ErrorsUI> for ErrorsSSAM {
-    fn from(v: userinterface::ErrorsUI) -> Self {
-        ErrorsSSAM::UI(v)
-    }
-}
-
-impl From<ErrorsAliasRead> for ErrorsSSAM {
-    fn from(v: ErrorsAliasRead) -> Self {
-        ErrorsSSAM::AliasRead(v)
-    }
-}
-impl From<ErrorsConfig> for ErrorsSSAM {
-    fn from(v: ErrorsConfig) -> Self {
-        ErrorsSSAM::Config(v)
-    }
+    #[error("filesystem related error\n-> {0}")]
+    FilesLookup(#[from] fsutils::ErrorsFS),
 }
 
 mod logs {
-    pub fn final_command(fc: impl AsRef<str>) {
+    use ssam::core::aliases::Alias;
+    use std::fmt::Display;
+    pub fn final_command(alias: &Alias, fc: impl Display) {
         println!(
-            "{}{}[SAM]{} Running final command: {}{}'{}'{}",
+            "{}{}[SAM][ alias='{}::{}']{} Running final command: {}{}'{}'{}",
             termion::color::Fg(termion::color::Green),
             termion::style::Bold,
+            alias.name(),
+            alias.namespace().unwrap_or_default(),
             termion::style::Reset,
             termion::color::Fg(termion::color::Green),
             termion::style::Bold,
-            fc.as_ref(),
+            fc,
             termion::style::Reset,
         );
     }

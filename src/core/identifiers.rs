@@ -112,11 +112,12 @@ impl PartialEq<&Identifier> for Identifier {
 
 impl Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(ns) = &self.namespace {
-            write!(f, "{}::{}", ns, self.inner)
-        } else {
-            write!(f, "::{}", self.inner)
-        }
+        write!(
+            f,
+            "{}::{}",
+            self.namespace.as_deref().unwrap_or(""),
+            self.inner
+        )
     }
 }
 
@@ -132,6 +133,16 @@ impl Namespace for Identifier {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub struct Identifiers(pub Vec<Identifier>);
+impl Display for Identifiers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for id in &self.0 {
+            writeln!(f, "- {}", id)?;
+        }
+        Ok(())
+    }
+}
 pub mod fixtures {
     use super::*;
     use lazy_static::lazy_static;
@@ -142,5 +153,22 @@ pub mod fixtures {
         pub static ref VAR_PATTERN_NAME: Identifier = Identifier::new("pattern");
         pub static ref VAR_PATTERN_2_NAME: Identifier = Identifier::new("pattern2");
         pub static ref VAR_MISSING_NAME: Identifier = Identifier::new("missing");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Identifier;
+    #[test]
+    fn test_identifier_new() {
+        let cases: Vec<(Identifier, &'static str)> = vec![
+            (Identifier::new("{{ toto }}"), "toto"),
+            (Identifier::new("{{ toto}}"), "toto"),
+            (Identifier::new("{{toto }}"), "toto"),
+            (Identifier::new("{{toto}}"), "toto"),
+        ];
+        for (case, result) in cases {
+            assert_eq!(&case.inner, result);
+        }
     }
 }

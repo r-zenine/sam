@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use ssam::utils::fsutils;
 use ssam::utils::fsutils::ErrorsFS;
-use std::fmt::Display;
 use std::path::{Path, PathBuf};
+use thiserror::Error;
 // Todo
 // 1. get rid of RawAppSettings.
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
@@ -53,42 +53,14 @@ impl AppSettings {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ErrorsConfig {
-    ReadConfig(config::ConfigError),
-    FileSystem(ErrorsFS),
+    #[error("got the following error\n->{0}")]
+    ReadConfig(#[from] config::ConfigError),
+    #[error("got the following error\n->{0}")]
+    FileSystem(#[from] ErrorsFS),
+    #[error("we were unable to locate the home directory for the current user")]
     CantFindHomeDirectory,
+    #[error("we were unable to locate the current directory for the current user")]
     CantFindCurrentDirectory,
-}
-
-impl Display for ErrorsConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "while loading and validating the configuration, ")?;
-        match self {
-            ErrorsConfig::ReadConfig(erc) => writeln!(f, "got the following error: \n -> {}", erc),
-            ErrorsConfig::CantFindHomeDirectory => writeln!(
-                f,
-                "we were unable to locate the home directory for the current user."
-            ),
-            ErrorsConfig::FileSystem(fs_error) => {
-                writeln!(f, "got the following error: \n -> {}", fs_error)
-            }
-            ErrorsConfig::CantFindCurrentDirectory => writeln!(
-                f,
-                "we were unable to locate the current directory for the current user."
-            ),
-        }
-    }
-}
-
-impl From<ErrorsFS> for ErrorsConfig {
-    fn from(v: ErrorsFS) -> Self {
-        ErrorsConfig::FileSystem(v)
-    }
-}
-
-impl From<config::ConfigError> for ErrorsConfig {
-    fn from(v: config::ConfigError) -> Self {
-        ErrorsConfig::ReadConfig(v)
-    }
 }

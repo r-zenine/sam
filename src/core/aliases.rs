@@ -1,7 +1,7 @@
 use crate::core::commands::Command;
+use crate::core::dependencies::Dependencies;
 use crate::core::identifiers::Identifier;
 use crate::core::namespaces::{Namespace, NamespaceUpdater};
-use crate::core::vars::Dependencies;
 use crate::utils::processes::ShellCommand;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -25,7 +25,9 @@ impl Alias {
             alias: alias.into(),
         }
     }
-
+    pub fn namespace(&self) -> Option<&'_ str> {
+        self.name.namespace()
+    }
     pub fn name(&self) -> &'_ str {
         self.name.name()
     }

@@ -1,16 +1,21 @@
 use crate::core::aliases::Alias;
+use crate::core::choices::Choice;
 use crate::core::namespaces::NamespaceUpdater;
-use crate::core::vars::{Choice, ErrorsVarsRepository, Var, VarsRepository};
-use std::fmt::Display;
+use crate::core::vars::Var;
+use crate::core::vars_repository::{ErrorsVarsRepository, VarsRepository};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 use std::path::PathBuf;
+use thiserror::Error;
 
 pub fn read_aliases_from_path(path: &'_ Path) -> Result<Vec<Alias>, ErrorsAliasRead> {
     let f = File::open(path)?;
     let buf = BufReader::new(f);
-    let mut aliases = read_aliases(buf)?;
+    let mut aliases = read_aliases(buf).map_err(|error| ErrorsAliasRead::AliasSerde {
+        error,
+        source_file: path.to_path_buf(),
+    })?;
 
     for a in aliases.as_mut_slice() {
         NamespaceUpdater::update_from_path(a, path);
@@ -19,11 +24,11 @@ pub fn read_aliases_from_path(path: &'_ Path) -> Result<Vec<Alias>, ErrorsAliasR
     Ok(aliases)
 }
 
-fn read_aliases<T>(r: T) -> Result<Vec<Alias>, ErrorsAliasRead>
+fn read_aliases<T>(r: T) -> Result<Vec<Alias>, serde_yaml::Error>
 where
     T: Read,
 {
-    serde_yaml::from_reader(r).map_err(ErrorsAliasRead::from)
+    serde_yaml::from_reader(r)
 }
 
 pub fn read_choices<T>(r: T) -> Result<Vec<Choice>, ErrorsChoiceRead>
@@ -46,7 +51,10 @@ where
 pub fn read_vars_repository(path: &'_ Path) -> Result<VarsRepository, ErrorsVarRead> {
     let f = File::open(path)?;
     let buf = BufReader::new(f);
-    let mut vars = read_vars(buf).map_err(|e| ErrorsVarRead::VarsSerde(e, path.to_path_buf()))?;
+    let mut vars = read_vars(buf).map_err(|e| ErrorsVarRead::VarsSerde {
+        error: e,
+        source_file: path.to_path_buf(),
+    })?;
 
     for a in vars.as_mut_slice() {
         NamespaceUpdater::update_from_path(a, path);
@@ -62,85 +70,42 @@ where
     serde_yaml::from_reader(r)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ErrorsAliasRead {
-    AliasSerde(serde_yaml::Error),
-    AliasIO(std::io::Error),
+    #[error("parsing error for aliases file {source_file}\n-> {error}.")]
+    AliasSerde {
+        error: serde_yaml::Error,
+        source_file: PathBuf,
+    },
+    #[error("got an IO error while reading file\n-> {0}")]
+    AliasIO(#[from] std::io::Error),
 }
 
-impl From<std::io::Error> for ErrorsAliasRead {
-    fn from(v: std::io::Error) -> Self {
-        ErrorsAliasRead::AliasIO(v)
-    }
-}
-
-impl From<serde_yaml::Error> for ErrorsAliasRead {
-    fn from(v: serde_yaml::Error) -> Self {
-        ErrorsAliasRead::AliasSerde(v)
-    }
-}
-
-impl Display for ErrorsAliasRead {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ErrorsAliasRead::AliasIO(err) => {
-                writeln!(f, "while trying to read aliases got error {}", err)
-            }
-            ErrorsAliasRead::AliasSerde(err) => {
-                writeln!(f, "while trying to deserialize aliases got error {}", err)
-            }
-        }
-    }
-}
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ErrorsVarRead {
-    VarsSerde(serde_yaml::Error, PathBuf),
-    VarIO(std::io::Error),
-    VarsRepositoryInitialisation(ErrorsVarsRepository),
+    #[error("parsing error for vars file {source_file}\n-> {error}.")]
+    VarsSerde {
+        error: serde_yaml::Error,
+        source_file: PathBuf,
+    },
+    #[error("got an IO error while reading file\n-> {0}")]
+    VarIO(#[from] std::io::Error),
+    #[error("initialisation failure because\n{0}")]
+    VarsRepositoryInit(#[from] ErrorsVarsRepository),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ErrorsChoiceRead {
-    ChoiceIO(std::io::Error),
-}
-
-impl From<std::io::Error> for ErrorsChoiceRead {
-    fn from(v: std::io::Error) -> Self {
-        ErrorsChoiceRead::ChoiceIO(v)
-    }
-}
-
-impl From<ErrorsVarsRepository> for ErrorsVarRead {
-    fn from(v: ErrorsVarsRepository) -> Self {
-        ErrorsVarRead::VarsRepositoryInitialisation(v)
-    }
-}
-
-impl From<std::io::Error> for ErrorsVarRead {
-    fn from(v: std::io::Error) -> Self {
-        ErrorsVarRead::VarIO(v)
-    }
-}
-
-impl Display for ErrorsVarRead {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ErrorsVarRead::VarsSerde(e, p) => {
-                writeln!(f, "parsing error for vars file {}\n -> {}", p.display(), e)
-            }
-            ErrorsVarRead::VarIO(e) => writeln!(f, "while reading the vars file got error {}", e),
-            ErrorsVarRead::VarsRepositoryInitialisation(e) => {
-                writeln!(f, "while validating the vars file got error {}", e)
-            }
-        }
-    }
+    #[error("got an IO error while reading choices\n-> {0}")]
+    ChoiceIO(#[from] std::io::Error),
 }
 
 #[cfg(test)]
 mod tests {
     use super::{read_aliases, read_vars};
     use crate::core::aliases::Alias;
-    use crate::core::vars::{Choice, Var};
+    use crate::core::choices::Choice;
+    use crate::core::vars::Var;
     use std::io::BufReader;
     use std::panic;
     #[test]

@@ -1,10 +1,10 @@
 use std::cell::RefCell;
 use std::env::temp_dir;
-use std::fmt::Display;
 use std::fs;
 use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
+use thiserror::Error;
 use uuid::Uuid;
 
 type Result<T> = std::result::Result<T, ErrorsFS>;
@@ -71,6 +71,7 @@ pub fn ensure_is_directory(path: PathBuf) -> Result<PathBuf> {
         Ok(path)
     }
 }
+
 pub fn ensure_is_file(path: PathBuf) -> Result<PathBuf> {
     if !path.is_file() {
         Err(ErrorsFS::PathNotFile(path))
@@ -78,44 +79,23 @@ pub fn ensure_is_file(path: PathBuf) -> Result<PathBuf> {
         Ok(path)
     }
 }
+
 pub fn ensure_sufficient_permisions(path: PathBuf) -> Result<PathBuf> {
     std::fs::metadata(path.as_path())
         .map_err(|_| ErrorsFS::PathInsufficientPermission(path.clone()))
         .map(|_| path)
 }
-#[derive(Debug)]
+
+#[derive(Debug, Error)]
 pub enum ErrorsFS {
+    #[error("provided path {0} is not a directory")]
     PathNotDirectory(PathBuf),
+    #[error("provided path {0} is not a file")]
     PathNotFile(PathBuf),
+    #[error("provided path {0} is not exist")]
     PathDoesNotExist(PathBuf),
+    #[error("insufficient permission for provided path {0}")]
     PathInsufficientPermission(PathBuf),
-    UnexpectedIOError(std::io::Error),
-}
-
-impl Display for ErrorsFS {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ErrorsFS::PathNotDirectory(path) => {
-                writeln!(f, "provided path {} is not a directory.", path.display())
-            }
-            ErrorsFS::PathNotFile(path) => {
-                writeln!(f, "provided path {} is not a file.", path.display())
-            }
-            ErrorsFS::PathDoesNotExist(path) => {
-                writeln!(f, "provided path {} does not exist.", path.display())
-            }
-            ErrorsFS::PathInsufficientPermission(path) => writeln!(
-                f,
-                "insufficient permission for provided path {}.",
-                path.display()
-            ),
-            ErrorsFS::UnexpectedIOError(err) => writeln!(f, "got an unexpected error {}.", err),
-        }
-    }
-}
-
-impl From<std::io::Error> for ErrorsFS {
-    fn from(v: std::io::Error) -> Self {
-        ErrorsFS::UnexpectedIOError(v)
-    }
+    #[error("got an unexpected error {0}")]
+    UnexpectedIOError(#[from] std::io::Error),
 }
