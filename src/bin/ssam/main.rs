@@ -33,6 +33,12 @@ fn main() {
         .version(VERSION)
         .author(AUTHORS)
         .about(ABOUT)
+        .arg(
+            Arg::with_name("dry")
+                .long("dry")
+                .short("d")
+                .help("dry run, don't execute the final command."),
+        )
         .subcommand(App::new("run").about(ABOUT_SUB_RUN))
         .subcommand(
             App::new("alias")
@@ -46,14 +52,21 @@ fn main() {
         )
         .subcommand(App::new("bashrc").about(ABOUT_SUB_BASHRC))
         .get_matches();
+    let dry = matches.is_present("dry");
     let result = match matches.subcommand() {
-        ("alias", Some(e)) => run_alias(e.value_of("alias").unwrap()),
+        ("alias", Some(e)) => run_alias(e.value_of("alias").unwrap(), dry),
         ("bashrc", Some(_)) => bashrc(),
-        (&_, _) => run(),
+        (&_, _) => run(dry),
     };
     match result {
         Err(ErrorsSSAM::UI(userinterface::ErrorsUI::SkimAborted)) => {}
-        Err(e) => eprintln!("Could not run the program as expected because:\n-> {}", e),
+        Err(e) => eprintln!(
+            "{}Could not run the program as expected because:{}{}\n-> {}",
+            termion::color::Fg(termion::color::Red),
+            termion::style::Bold,
+            termion::style::Reset,
+            e
+        ),
         Ok(status) => std::process::exit(status),
     }
 }
@@ -86,24 +99,27 @@ impl AppContext {
     }
 }
 
-fn run() -> Result<i32> {
+fn run(dry: bool) -> Result<i32> {
     let mut ctx = AppContext::try_load()?;
     let item = ctx.ui_interface.select_alias(PROMPT, &ctx.aliases)?;
     let alias = item.alias();
-    execute_alias(&ctx, alias)
+    execute_alias(&ctx, alias, dry)
 }
 
-fn run_alias(alias_name: &'_ str) -> Result<i32> {
+fn run_alias(input: &'_ str, dry: bool) -> Result<i32> {
     let ctx = AppContext::try_load()?;
+    let mut elems: Vec<&str> = input.split("::").collect();
+    let name = elems.pop().unwrap_or_default();
+    let namespace = elems.pop();
     let alias = ctx
         .aliases
         .iter()
-        .find(|e| e.name() == alias_name)
+        .find(|e| e.name() == name && e.namespace() == namespace)
         .ok_or(ErrorsSSAM::InvalidAliasSelection)?;
-    execute_alias(&ctx, alias)
+    execute_alias(&ctx, alias, dry)
 }
 
-fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
+fn execute_alias(ctx: &AppContext, alias: &Alias, dry: bool) -> Result<i32> {
     let exec_seq = ctx.vars.execution_sequence(alias)?;
     let choices: HashMap<Identifier, Choice> = ctx
         .vars
@@ -112,9 +128,13 @@ fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
         .collect();
     let final_command = alias.substitute_for_choices(&choices).unwrap();
     logs::final_command(alias, &final_command);
-    let mut command: Command = ShellCommand::new(final_command).into();
-    let exit_status = command.status()?;
-    exit_status.code().ok_or(ErrorsSSAM::ExitCode)
+    if !dry {
+        let mut command: Command = ShellCommand::new(final_command).into();
+        let exit_status = command.status()?;
+        exit_status.code().ok_or(ErrorsSSAM::ExitCode)
+    } else {
+        Ok(0)
+    }
 }
 
 fn bashrc() -> Result<i32> {
@@ -132,13 +152,19 @@ fn bashrc() -> Result<i32> {
     println!("#                                             *");
     println!("# Put the following line in your (bash/zsh)rc *");
     println!("#                                             *");
-    println!("# eval \"$(ssam bashrc)\"                       *");
+    println!("# eval \"$(sam bashrc)\"                       *");
     println!("#                                             *");
     println!("# *********************************************");
     println!("# START SSAM generated aliases:");
-    println!("alias am='ssam run'");
+    println!("alias am='sam run'");
     for alias in aliases {
-        println!("alias {}='ssam alias {}'", alias.name(), alias.name());
+        println!(
+            "alias {}_{}='sam alias {}::{}'",
+            alias.namespace().unwrap_or_default(),
+            alias.name(),
+            alias.namespace().unwrap_or_default(),
+            alias.name()
+        );
     }
     println!("# STOP SSAM generated aliases:");
 
