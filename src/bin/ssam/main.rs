@@ -61,9 +61,9 @@ fn main() {
     match result {
         Err(ErrorsSSAM::UI(userinterface::ErrorsUI::SkimAborted)) => {}
         Err(e) => eprintln!(
-            "{}Could not run the program as expected because:{}{}\n-> {}",
-            termion::color::Fg(termion::color::Red),
+            "{}{}Could not run the program as expected because:{}\n-> {}",
             termion::style::Bold,
+            termion::color::Fg(termion::color::Red),
             termion::style::Reset,
             e
         ),

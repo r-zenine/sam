@@ -149,7 +149,7 @@ impl VarsRepository {
     }
 }
 
-#[derive(Debug, PartialEq, Error)]
+#[derive(Debug, Error)]
 pub enum ErrorsVarsRepository {
     #[error("missing the following dependencies:\n{0}")]
     MissingDependencies(Identifiers),
@@ -209,10 +209,12 @@ mod tests {
         let missing = vec![VAR_DIRECTORY.clone(), VAR_LISTING.clone()];
         let repo_err = VarsRepository::new(missing.into_iter());
         assert!(repo_err.is_err());
-        assert_eq!(
-            repo_err.unwrap_err(),
-            ErrorsVarsRepository::MissingDependencies(Identifiers(vec![VAR_PATTERN_NAME.clone()]))
-        );
+        match repo_err.unwrap_err() {
+            ErrorsVarsRepository::MissingDependencies(identifiers) => {
+                assert_eq!(identifiers, Identifiers(vec![VAR_PATTERN_NAME.clone()]));
+            }
+            _ => assert!(false),
+        }
     }
 
     #[test]

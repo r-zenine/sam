@@ -164,10 +164,12 @@ mod tests {
         };
         let r2 = var.substitute_for_choices(&missing_choices);
         assert!(r2.is_err());
-        assert_eq!(
-            ErrorsResolver::NoChoiceWasAvailable(VAR_DIRECTORY_NAME.clone()),
-            r2.unwrap_err()
-        );
+        match r2.unwrap_err() {
+            ErrorsResolver::NoChoiceWasAvailable(name) => {
+                assert_eq!(name, VAR_DIRECTORY_NAME.clone())
+            }
+            _ => assert!(false),
+        }
     }
 }
 

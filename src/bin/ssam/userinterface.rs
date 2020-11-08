@@ -250,14 +250,18 @@ impl Resolver for UserInterface {
         let sh_cmd = cmd.into();
         logs::command(&var, &sh_cmd.value());
 
-        let mut to_run = ShellCommand::as_command(sh_cmd);
+        let mut to_run = ShellCommand::as_command(sh_cmd.clone());
         let output = to_run
             .output()
-            .map_err(|_e| ErrorsResolver::NoChoiceWasAvailable(var.clone()))?;
+            .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), e.into()))?;
         let choices = read_choices(output.stdout.as_slice());
         match choices {
-            Err(_err) => Err(ErrorsResolver::NoChoiceWasAvailable(var)),
-            Ok(v) => self.resolve_static(var, v.into_iter()),
+            Err(e) => Err(ErrorsResolver::DynamicResolveFailure(var, e.into())),
+            Ok(v) if !v.is_empty() => self.resolve_static(var, v.into_iter()),
+            Ok(_) => Err(ErrorsResolver::DynamicResolveEmpty(
+                var,
+                sh_cmd.value().to_owned(),
+            )),
         }
     }
 

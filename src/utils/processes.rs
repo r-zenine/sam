@@ -2,8 +2,8 @@ use std::env;
 use std::ffi::OsStr;
 use std::process::Command;
 
-#[derive(Debug)]
-pub struct ShellCommand<T> {
+#[derive(Debug, Clone)]
+pub struct ShellCommand<T: Clone> {
     command: T,
 }
 
@@ -11,7 +11,10 @@ fn current_shell_or_sh() -> String {
     env::var("SHELL").unwrap_or(String::from("/bin/sh"))
 }
 
-impl<T> ShellCommand<T> {
+impl<T> ShellCommand<T>
+where
+    T: Clone,
+{
     pub fn new(command: T) -> Self {
         Self { command }
     }
@@ -31,7 +34,7 @@ impl<T> ShellCommand<T> {
 
 impl<T> Into<Command> for ShellCommand<T>
 where
-    T: AsRef<OsStr>,
+    T: AsRef<OsStr> + Clone,
 {
     fn into(self) -> Command {
         let mut command = Command::new(current_shell_or_sh());

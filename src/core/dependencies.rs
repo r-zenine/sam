@@ -4,6 +4,7 @@ use crate::core::identifiers::Identifier;
 use crate::utils::processes::ShellCommand;
 use regex::Regex;
 use std::collections::HashMap;
+use std::error;
 use thiserror::Error;
 
 pub trait Dependencies: Command {
@@ -52,11 +53,16 @@ pub trait Resolver {
         cmd: impl Iterator<Item = Choice>,
     ) -> Result<Choice, ErrorsResolver>;
 }
-
-#[derive(Debug, PartialEq, Error)]
+#[derive(Debug, Error)]
 pub enum ErrorsResolver {
     #[error("no choice is available for var {0}")]
     NoChoiceWasAvailable(Identifier),
+    #[error("an error happened when gathering choices for identifier {0}\n-> {1}")]
+    DynamicResolveFailure(Identifier, Box<dyn error::Error>),
+    #[error(
+        "gathering choices for {0} failed because the command\n   {}{}{1}{} \n   returned empty content on stdout.", termion::color::Fg(termion::color::Cyan), termion::style::Bold, termion::style::Reset
+    )]
+    DynamicResolveEmpty(Identifier, String),
     #[error("no choice was selected for var {0}")]
     NoChoiceWasSelected(Identifier),
 }
