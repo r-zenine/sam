@@ -56,24 +56,31 @@ impl VarsRepository {
         Deps: Dependencies,
     {
         let mut already_seen = HashSet::new();
+        let mut already_inserted = HashSet::new();
         let mut candidates = dep.dependencies();
         let mut missing = Vec::default();
         let mut execution_seq = VecDeque::default();
-        let mut push_front = 0;
 
         while let Some(cur) = candidates.pop() {
+            if already_seen.contains(&cur) && !already_inserted.contains(&cur) {
+                already_inserted.insert(cur.clone());
+                if let Some(cur_var) = self.vars.get(&cur) {
+                    execution_seq.push_back(Borrow::borrow(cur_var));
+                }
+                continue;
+            }
             if already_seen.contains(&cur) {
                 continue;
             }
             if let Some(cur_var) = self.vars.get(&cur) {
                 let deps = cur_var.dependencies();
-                already_seen.insert(cur);
+                already_seen.insert(cur.clone());
                 if deps.is_empty() {
+                    already_inserted.insert(cur.clone());
                     execution_seq.push_front(Borrow::borrow(cur_var));
-                    push_front += 1;
                 } else {
+                    candidates.push(cur);
                     candidates.extend_from_slice(deps.as_slice());
-                    execution_seq.insert(push_front, Borrow::borrow(cur_var));
                 }
             } else {
                 missing.push(cur);
