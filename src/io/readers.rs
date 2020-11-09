@@ -38,6 +38,9 @@ where
     let mut out = vec![];
     for line_r in r.lines() {
         let line = line_r?;
+        if line.is_empty() {
+            continue;
+        }
         let splits: Vec<&str> = line.split('\t').collect();
         let value_o = splits.get(0).map(|e| e.to_string());
         let desc = splits.get(1).map(|e| e.to_string());
