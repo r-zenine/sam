@@ -1,32 +1,43 @@
-version: 2
+version: 2.1
 
-jobs:
-  build:
-    docker:
-      - image: rust:latest
-    environment:
-      TZ: "/usr/share/zoneinfo/your/location"
-    steps:
-      - checkout
-      - restore_cache:
-          key: project-cache
-      - run: rustup component add rustfmt
-      - run: rustup component add clippy
-      - run:
-          name: Check formatting
-          command: cargo fmt -- --check
-      - run:
-          name: Stable Build
-          command: cargo build
-      - run:
-          name: Test
-          command: cargo test
-      - run:
-          name: Lint
-          command: cargo check
+commands: 
+  save_cache_cmd: 
+    steps: 
       - save_cache:
-          key: project-cache
+          key: ssam-{{checksum "Cargo.toml"}}
           paths:
             - "~/.cargo"
             - "./target"
-            
+  restore_cache_cmd: 
+    steps: 
+      - restore_cache:
+          key: ssam-{{checksum "Cargo.toml"}}
+  prepare_toolchain: 
+    steps: 
+      - run: rustup component add rustfmt clippy
+  package_linux:
+    steps:
+      - run:
+          name: packaging for linux x64
+          command: make package TARGET_PLATFORM="linux_x64"
+  store_artifact: 
+    steps: 
+      - store_artifacts:
+          path: "./*.tar.gz"
+
+jobs:
+  build_linux:
+    docker:
+      - image: 'cimg/rust:1.47.0'
+    steps:
+      - checkout
+      - restore_cache_cmd
+      - prepare_toolchain 
+      - package_linux
+      - save_cache_cmd
+      - store_artifact
+
+workflows:
+  build_linux:
+    jobs:
+      - build_linux 
