@@ -116,9 +116,9 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-            branches:
-              only:
-                - master
+            # branches:
+            #   only:
+            #     - master
       # We publish a release only in the presence of tags.
       - create_release:
           requires:
