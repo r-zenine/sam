@@ -18,10 +18,10 @@ test: build check
 	cargo test --release
 
 package_linux: test check build version 
-	tar -czvf ./$(PROJECT)_linux_x86_64_$(VERSION).tar.gz target/release/$(PROJECT)
+	tar -czvf ./target/release/$(PROJECT)_linux_x86_64_$(VERSION).tar.gz target/release/$(PROJECT)
 
 package_macos_cross: build_macos_osxcross version 
-	tar -czvf ./$(PROJECT)_macos_x86_64_$(VERSION).tar.gz target/x86_64-apple-darwin/release/$(PROJECT)
+	tar -czvf ./target/x86_64-apple-darwin/release/$(PROJECT)_macos_x86_64_$(VERSION).tar.gz target/x86_64-apple-darwin/release/$(PROJECT)
     
 version:
 	$(info =====  $@  =====)
@@ -40,8 +40,8 @@ endif
 create_release:
 ifneq ($(GIT_TAG),)
 	gh release create -t "Release $(VERSION)" -F ./CHANGELOG --target master $(VERSION)
-	gh release upload $(VERSION) ./$(PROJECT)_linux_x86_64_$(VERSION).tar.gz 
-	gh release upload $(VERSION) ./$(PROJECT)_macos_x86_64_$(VERSION).tar.gz 
+	gh release upload $(VERSION) ./target/release/$(PROJECT)_linux_x86_64_$(VERSION).tar.gz 
+	gh release upload $(VERSION) ./target/x86_64-apple-darwin/$(PROJECT)_macos_x86_64_$(VERSION).tar.gz 
 endif
 
 .PHONY: version create_release 
