@@ -1,13 +1,9 @@
 # ssam
 ssam stands for **small aliases manager**. it is a command line tool that helps you manage your **aliases** and other common command.
 
-## Features : 
+Let's say you have multiple `kubernetes` clusters, runing in multiple cloud regions for different purposes, and several `namespaces`. Or, multiple kafka clusters and several `topics`. Everytime, you want to interact with one of these tools from the command line, you have to specify which region/environment/cluster/topic etc... you want your command to be apllied to. `sam` allows, you to express all your command commandes in a `templated` from and guides you to chose a value for each template variable you introduce. 
 
-* Your aliases can be templated using variables and `ssam` will guide you and ask you to choose a value for each variable before runing your alias. 
-* Fuzzy search command line interface based on skim to search through your aliases (think `fzf`, `peco` or `skim`). 
-* Your aliases can be in version control and still be available in your bashrc.
-* Generates configuration for `bash` and `zsh` automatically. 
-
+`sam` can handle dependencies between template variables ( for ex, the namespaces depende on the chosen cluster, or the kafka topics depend on the chose cluster ) and will build a dependency graph and generate a terminal user interface dynamically to prompt you to chose an appropriate value for each variable.
 
 ## Getting started :
 
