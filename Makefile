@@ -39,7 +39,7 @@ endif
 
 create_release: version
 ifneq ($(GIT_TAG),)
-	gh release create -t "Release $(VERSION)" --target master $(VERSION)
+ 	gh release create -t "Release $(VERSION)" -n "" --target master $(VERSION)
 	gh release upload $(VERSION) ./target/release/$(PROJECT)_linux_x86_64_$(VERSION).tar.gz 
 	gh release upload $(VERSION) ./target/x86_64-apple-darwin/$(PROJECT)_macos_x86_64_$(VERSION).tar.gz 
 endif
