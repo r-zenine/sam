@@ -1,6 +1,18 @@
 version: 2.1
 
 commands: 
+  setup_github_cli: 
+    steps:
+      - run: 
+          name: make github cli too available
+          command: |
+            cd /tmp
+            wget https://github.com/cli/cli/releases/download/v1.2.0/gh_1.2.0_linux_amd64.tar.gz
+            tar -xvf gh_1.2.0_linux_amd64.tar.gz
+            sudo cp /tmp/gh_1.2.0_linux_amd64/bin/gh /usr/local/bin/gh
+            echo "$GITHUB_TOKEN" | gh auth login --with-token
+            gh auth status
+
   save_cache_cmd: 
     steps: 
       - save_cache:
@@ -8,22 +20,51 @@ commands:
           paths:
             - "~/.cargo"
             - "./target"
+
   restore_cache_cmd: 
     steps: 
       - restore_cache:
           key: ssam-{{checksum "Cargo.toml"}}
-  prepare_toolchain: 
+
+  prepare_toolchain_linux: 
     steps: 
       - run: rustup component add rustfmt clippy
+
+  prepare_toolchain_macos: 
+    steps: 
+      # source: https://wapl.es/rust/2019/02/17/rust-cross-compile-linux-to-macos.html
+      - run: |
+          sudo apt update
+          sudo apt install -y clang gcc g++ zlib1g-dev libmpc-dev libmpfr-dev libgmp-dev cmake libxml2-dev libssl-dev
+          rustup target add x86_64-apple-darwin
+          cd /tmp
+          git clone https://github.com/tpoechtrager/osxcross
+          cd osxcross
+          wget -nc https://s3.dockerproject.org/darwin/v2/MacOSX10.10.sdk.tar.xz
+          mv MacOSX10.10.sdk.tar.xz tarballs/
+          UNATTENDED=yes OSX_VERSION_MIN=10.7 ./build.sh
+          sudo cp ./target/bin/* /usr/local/bin/
+          ls /usr/local/bin
+
   package_linux:
     steps:
       - run:
           name: packaging for linux x64
-          command: make package TARGET_PLATFORM="linux_x64"
-  store_artifact: 
-    steps: 
-      - store_artifacts:
-          path: "./*.tar.gz"
+          command: make package_linux
+
+  package_macos:
+    steps:
+      - run:
+          name: packaging for linux x64
+          command: make package_macos_cross
+
+
+  create_release:
+    steps:
+      - run:
+          name: packaging for linux x64
+          command: make create_release
+
 
 jobs:
   build_linux:
@@ -32,12 +73,50 @@ jobs:
     steps:
       - checkout
       - restore_cache_cmd
-      - prepare_toolchain 
+      - prepare_toolchain_linux
       - package_linux
       - save_cache_cmd
-      - store_artifact
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .*.tar.gz
 
+
+  build_macos:
+    docker:
+      - image: 'cimg/rust:1.47.0'
+    steps:
+      - checkout
+      - restore_cache_cmd
+      - prepare_toolchain_macos
+      - package_macos
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .*.tar.gz
+
+  create_release: 
+    docker: 
+      - image: 'cimg/rust:1.47.0'
+    steps:
+      - setup_github_cli
+      - attach_workspace:
+          at: .
+      - create_release
+ 
 workflows:
-  build_linux:
+  build:
     jobs:
-      - build_linux 
+      - build_linux
+      # We cross compile for mac os only in the presence of tags.
+      - build_macos
+      # We publish a release only in the presence of tags.
+      - create_release:
+          requires:
+            - build_linux
+            - build_macos
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
