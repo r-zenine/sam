@@ -116,7 +116,8 @@ workflows:
             tags:
               only: /^v.*/
             branches:
-              ignore: /.*/
+              only:
+                - master
       # We publish a release only in the presence of tags.
       - create_release:
           requires:
@@ -126,4 +127,5 @@ workflows:
             tags:
               only: /^v.*/
             branches:
-              ignore: /.*/
+              only: 
+                - master
