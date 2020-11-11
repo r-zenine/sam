@@ -43,8 +43,6 @@ commands:
           wget -nc https://s3.dockerproject.org/darwin/v2/MacOSX10.10.sdk.tar.xz
           mv MacOSX10.10.sdk.tar.xz tarballs/
           UNATTENDED=yes OSX_VERSION_MIN=10.7 ./build.sh
-          sudo cp ./target/bin/* /usr/local/bin/
-          ls /usr/local/bin
 
   package_linux:
     steps:
@@ -56,7 +54,9 @@ commands:
     steps:
       - run:
           name: packaging for linux x64
-          command: make package_macos_cross
+          command: |
+            export PATH="/tmp/osxcross/target/bin:$PATH"
+            make package_macos_cross
 
 
   create_release:
