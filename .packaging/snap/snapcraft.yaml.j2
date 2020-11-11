@@ -2,7 +2,7 @@ name: rzenine-${PROJECT}
 version: ${APP_VERSION}
 summary: ${PROJECT_DESCRIPTION}
 description: ${PROJECT_DESCRIPTION}
-confinement: classic
+confinement: devmode
 base: core18
 license: ${PROJECT_LICENCE}
 
@@ -14,6 +14,10 @@ parts:
   sam:
     plugin: dump
     source: "${PROJECT_URL}/releases/download/v${APP_VERSION}/sam_linux_x86_64_v${APP_VERSION}.tar.gz"
+
+stage-packages:
+- libc6
+- libgcc1
 
 apps:
   sam:

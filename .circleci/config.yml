@@ -70,7 +70,10 @@ commands:
     steps:
       - run: 
           name: publishing packages.
-          command: ./.packaging/package_all.sh
+          command: |
+            sudo apt update
+            sudo apt install -y gettext-base
+            ./.packaging/package_all.sh
 
 jobs:
   build:
