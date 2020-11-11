@@ -124,8 +124,7 @@ workflows:
             tags:
               only: /^v.*/
             branches:
-              only:
-                - master
+              ignore: master
       # We cross compile for mac os only in the presence of tags.
       - build_macos:
           filters:
