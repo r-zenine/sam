@@ -1,0 +1,14 @@
+# Documentation: https://docs.brew.sh/Formula-Cookbook
+#                https://rubydoc.brew.sh/Formula
+# PLEASE REMOVE ALL GENERATED COMMENTS BEFORE SUBMITTING YOUR PULL REQUEST!
+class Sam < Formula
+    desc "${PROJECT_DESCRIPTION}"
+    homepage "${PROJECT_URL}"
+    url "${PROJECT_URL}/releases/download/v${APP_VERSION}/${PROJECT}_macos_x86_64_v${APP_VERSION}.tar.gz"
+    sha256 "${RELEASE_HASH}"
+    version "${APP_VERSION}"
+  
+    def install
+      bin.install "${PROJECT}"
+    end
+  end

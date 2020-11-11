@@ -66,6 +66,11 @@ commands:
           name: packaging for linux x64
           command: make create_release
 
+  publish_packages:
+    steps:
+      - run: 
+          name: publishing packages.
+          command: ./.packaging/package_all.sh
 
 jobs:
   build:
@@ -92,7 +97,6 @@ jobs:
           paths:
             - ./target/release
 
-
   build_macos:
     docker:
       - image: 'cimg/rust:1.47.0'
@@ -105,6 +109,7 @@ jobs:
           root: .
           paths:
             - ./target/x86_64-apple-darwin
+
   create_release: 
     docker: 
       - image: 'cimg/rust:1.47.0'
@@ -114,25 +119,29 @@ jobs:
       - attach_workspace:
           at: .
       - create_release
- 
+
+  publish_packages:
+    docker: 
+      - image: cibuilds/snapcraft:stable
+    steps: 
+      - checkout
+      - publish_packages
+
 workflows:
   build:
     jobs:
       - build
+
+# Release related jobs.
       - build_linux:
           filters:
             tags:
               only: /^v.*/
-            branches:
-              ignore: master
       # We cross compile for mac os only in the presence of tags.
       - build_macos:
           filters:
             tags:
               only: /^v.*/
-            branches:
-              only:
-                - master
       # We publish a release only in the presence of tags.
       - create_release:
           requires:
@@ -141,6 +150,10 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-            branches:
-              only: 
-                - master
+      # publish to snap and homebrew
+      - publish_packages:
+          requires:
+            - create_release
+          filters:
+            tags:
+              only: /^v.*/

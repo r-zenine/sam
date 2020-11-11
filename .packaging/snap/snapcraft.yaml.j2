@@ -1,0 +1,20 @@
+name: rzenine-${PROJECT}
+version: ${APP_VERSION}
+summary: ${PROJECT_DESCRIPTION}
+description: ${PROJECT_DESCRIPTION}
+confinement: classic
+base: core18
+license: ${PROJECT_LICENCE}
+
+architectures:
+  - build-on: ["amd64"]
+    run-on: ["amd64"]
+
+parts:
+  sam:
+    plugin: dump
+    source: "${PROJECT_URL}/releases/download/v${APP_VERSION}/sam_linux_x86_64_v${APP_VERSION}.tar.gz"
+
+apps:
+  sam:
+    command: sam
