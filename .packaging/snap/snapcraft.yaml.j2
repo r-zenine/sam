@@ -14,10 +14,9 @@ parts:
   sam:
     plugin: dump
     source: "${PROJECT_URL}/releases/download/v${APP_VERSION}/sam_linux_x86_64_v${APP_VERSION}.tar.gz"
-
-stage-packages:
-- libc6
-- libgcc1
+    stage-packages:
+      - libc6
+      - libgcc1
 
 apps:
   sam:

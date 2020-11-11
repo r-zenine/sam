@@ -5,4 +5,4 @@ cd .packaging/snap
 mkdir .snapcraft
 echo $SNAP_LOGIN_FILE | base64 --decode --ignore-garbage > .snapcraft/snapcraft.cfg
 snapcraft
-snapcraft upload *.snap --release stable
+snapcraft push *.snap --release stable
