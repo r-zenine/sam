@@ -91,7 +91,7 @@ jobs:
       - prepare_toolchain_macos
       - package_macos
       - persist_to_workspace:
-          root: .
+          root: workspace
           paths:
             - .*.tar.gz
 
@@ -101,7 +101,7 @@ jobs:
     steps:
       - setup_github_cli
       - attach_workspace:
-          at: .
+          at: /tmp/workspace
       - create_release
  
 workflows:
