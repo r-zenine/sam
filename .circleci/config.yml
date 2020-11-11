@@ -108,7 +108,12 @@ jobs:
 workflows:
   build:
     jobs:
-      - build_linux
+      - build_linux:
+          filters:
+            branches:
+              only:
+                - master
+                - /.*/
       # We cross compile for mac os only in the presence of tags.
       - build_macos:
           filters:
