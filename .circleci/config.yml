@@ -50,7 +50,6 @@ commands:
           name: packaging for linux x64
           command: |
             make package_linux
-            ls -l
 
   package_macos:
     steps:
@@ -59,7 +58,6 @@ commands:
           command: |
             export PATH="/tmp/osxcross/target/bin:$PATH"
             make package_macos_cross
-            ls -l 
 
 
   create_release:
