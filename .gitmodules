@@ -1,0 +1,3 @@
+[submodule ".packaging/homebrew/homebrew-ssam"]
+	path = .packaging/homebrew/homebrew-ssam
+	url = git@github.com:r-zenine/homebrew-ssam.git
