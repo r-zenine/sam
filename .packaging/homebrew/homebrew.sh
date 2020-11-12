@@ -1,7 +1,6 @@
 #!/bin/sh
-git submodule --init
-git submodule --update --recursive
 cd `git rev-parse --show-toplevel`
+git submodule update --init --recursive
 cd .packaging/homebrew
 cp ssam.rb homebrew-ssam/Formula/ssam.rb
 cd homebrew-ssam
