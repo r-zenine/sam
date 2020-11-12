@@ -8,4 +8,4 @@ cp ssam.rb homebrew-ssam/Formula/ssam.rb
 cd homebrew-ssam
 git add --all
 git commit -a -m"bump version"
-git push origin master
+git push origin main

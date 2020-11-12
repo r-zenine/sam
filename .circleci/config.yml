@@ -135,18 +135,30 @@ jobs:
 workflows:
   build:
     jobs:
-      - build
+      - build:
+          filters:
+            tags:
+              ignore: /^v.*/
+            branches:
+              ignore: master
 
-# Release related jobs.
+  # Release related jobs.
+  release:
+    jobs:
       - build_linux:
           filters:
             tags:
               only: /^v.*/
-      # We cross compile for mac os only in the presence of tags.
+            branches:
+              only: master
+
+ # We cross compile for mac os only in the presence of tags.
       - build_macos:
           filters:
             tags:
               only: /^v.*/
+            branches:
+              only: master
       # We publish a release only in the presence of tags.
       - create_release:
           requires:
@@ -155,6 +167,8 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+            branches:
+              only: master
       # publish to snap and homebrew
       - publish_packages:
           requires:
@@ -162,3 +176,5 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+            branches:
+              only: master
