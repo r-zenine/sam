@@ -9,7 +9,11 @@ Let's say you have multiple `kubernetes` clusters, runing in multiple cloud regi
 
 Run `cargo run run` on the root of this repository to see a demo. 
 
-### Initial configuration :
+
+You can also take a look at my own configuration here [r-zenine/oneliners](https://github.com/r-zenine/oneliners)
+
+
+## How to configure the tool:
 Fist, you want to start by creating a repository that will hold your scripts and aliases. 
 Ideally, we recommend it's stucture to be as follow : 
 ```bash
@@ -31,7 +35,7 @@ that should look as follow:
 root_dir="./examples/oneliners/"
 ```
 
-#### Alias management:
+### Aliases:
 the `aliases.yaml` file can look like this : 
 ```yaml
 - name: list stuff
@@ -42,7 +46,7 @@ you can use the `{{ variable }}` syntax to refer to variables defined in your `v
 
 `ssam` will first prompt your for a choice for each dependant `variable`. Once this is done, it will replace each `variable` with it's corresponding choice and run the resulting command.
 
-#### Variables : 
+### Variables : 
 in your `vars_file`, you can define variables. variables can either have a static list of choices or can get their choices dynamically by running a command. the `from_command` option expects one choice per line in the output command.
 
 ```yaml
@@ -68,5 +72,3 @@ in your `vars_file`, you can define variables. variables can either have a stati
   from_command: ls -1 {{ directory }}
 ```
 
-### Current Limitations: 
-name collisions between different variables in directories are not supported yet and could lead to undefined behaviour. The fix in on it's way.
