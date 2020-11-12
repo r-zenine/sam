@@ -212,7 +212,7 @@ impl Into<UISelector> for AliasItem {
 
 impl SkimItem for AliasItem {
     fn text(&self) -> Cow<str> {
-        self.alias.full_name()
+        Cow::Owned(format!("{}\t{}", self.alias.full_name(), self.alias.desc()))
     }
 }
 
