@@ -84,9 +84,9 @@ impl AppContext {
         let mut vars = VarsRepository::default();
         for f in files {
             if let Some(file_name) = f.file_name() {
-                if file_name == "aliases.yaml" {
+                if file_name == "aliases.yaml" || file_name == "aliases.yml" {
                     aliases.extend(read_aliases_from_path(f.as_path())?);
-                } else if file_name == "vars.yaml" {
+                } else if file_name == "vars.yaml" || file_name == "vars.yml" {
                     vars.merge(read_vars_repository(f.as_path())?);
                 }
             }
