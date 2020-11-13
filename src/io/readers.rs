@@ -11,6 +11,10 @@ use thiserror::Error;
 
 pub fn read_aliases_from_path(path: &'_ Path) -> Result<Vec<Alias>, ErrorsAliasRead> {
     let f = File::open(path)?;
+    let l = File::metadata(&f)?.len();
+    if l == 0 {
+        return Ok(vec![]);
+    }
     let buf = BufReader::new(f);
     let mut aliases = read_aliases(buf).map_err(|error| ErrorsAliasRead::AliasSerde {
         error,
@@ -53,6 +57,10 @@ where
 
 pub fn read_vars_repository(path: &'_ Path) -> Result<VarsRepository, ErrorsVarRead> {
     let f = File::open(path)?;
+    let l = File::metadata(&f)?.len();
+    if l == 0 {
+        return Ok(VarsRepository::default());
+    }
     let buf = BufReader::new(f);
     let mut vars = read_vars(buf).map_err(|e| ErrorsVarRead::VarsSerde {
         error: e,
