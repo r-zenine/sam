@@ -1,6 +1,6 @@
 [package]
 name = "ssam"
-version = "0.7.10"
+version = "0.7.11"
 authors = ["Ryad ZENINE <r.zenine@gmail.com>"]
 description = "sam lets you difine custom aliases and search them using fuzzy search."
 edition = "2018"

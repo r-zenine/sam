@@ -1034,7 +1034,7 @@ dependencies = [
 
 [[package]]
 name = "ssam"
-version = "0.7.10"
+version = "0.7.11"
 dependencies = [
  "clap",
  "config",
