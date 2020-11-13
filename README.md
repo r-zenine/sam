@@ -1,4 +1,6 @@
 # ssam
+![](demo.gif)
+
 ssam stands for **small aliases manager**. it is a command line tool that helps you manage your **aliases** and other common command.
 
 Let's say you have multiple `kubernetes` clusters, runing in multiple cloud regions for different purposes, and several `namespaces`. Or, multiple kafka clusters and several `topics`. Everytime, you want to interact with one of these tools from the command line, you have to specify which region/environment/cluster/topic etc... you want your command to be apllied to. `sam` allows, you to express all your command commandes in a `templated` from and guides you to chose a value for each template variable you introduce. 
