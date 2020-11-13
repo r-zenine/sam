@@ -18,11 +18,11 @@ test: build check
 	cargo test --release
 
 package_linux: test check build version 
-	de ./target/release/
+	cd ./target/release/
 	tar -czvf $(PROJECT)_linux_x86_64_$(VERSION).tar.gz $(PROJECT)
 
 package_macos_cross: build_macos_osxcross version 
-	de ./target/x86_64-apple-darwin/release
+	cd ./target/x86_64-apple-darwin/release
 	tar -czvf $(PROJECT)_macos_x86_64_$(VERSION).tar.gz $(PROJECT)
     
 version:
