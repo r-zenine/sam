@@ -12,5 +12,4 @@ export RELEASE_HASH=$(sha256sum ${ARCHIVE_PATH}|cut -d\  -f1)
 envsubst < .packaging/homebrew/ssam.rb.j2 > .packaging/homebrew/ssam.rb
 envsubst < .packaging/snap/snapcraft.yaml.j2 > .packaging/snap/snapcraft.yaml
 
-./.packaging/homebrew/homebrew.sh
-./.packaging/snap/snap.sh
+./.packaging/homebrew/homebrew.sh && ./.packaging/snap/snap.sh

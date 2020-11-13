@@ -150,7 +150,7 @@ workflows:
             tags:
               only: /^v.*/
             branches:
-              only: master
+              ignore: master
 
  # We cross compile for mac os only in the presence of tags.
       - build_macos:
@@ -158,7 +158,7 @@ workflows:
             tags:
               only: /^v.*/
             branches:
-              only: master
+              ignore: master
       # We publish a release only in the presence of tags.
       - create_release:
           requires:
@@ -168,7 +168,7 @@ workflows:
             tags:
               only: /^v.*/
             branches:
-              only: master
+              ignore: master
       # publish to snap and homebrew
       - publish_packages:
           requires:
@@ -177,4 +177,4 @@ workflows:
             tags:
               only: /^v.*/
             branches:
-              only: master
+              ignore: master
