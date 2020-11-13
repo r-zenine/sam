@@ -139,8 +139,6 @@ workflows:
           filters:
             tags:
               ignore: /^v.*/
-            branches:
-              ignore: master
 
   # Release related jobs.
   release:
