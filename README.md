@@ -25,7 +25,7 @@ brew install ssam
 ### Ubuntu using snap
 As I am still waiting for the manual validation on snap, you can only install it from the edge channel with the devmode confinment. 
 ```bash
-snap install --edge --devmode
+snap install --edge --devmode ssam
 ```
 
 
