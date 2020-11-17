@@ -14,6 +14,20 @@ Run `cargo run run` on the root of this repository to see a demo.
 
 You can also take a look at my own configuration here [r-zenine/oneliners](https://github.com/r-zenine/oneliners)
 
+## Installing the tool 
+You can download binaries for `linux` and `macos` from the release page. 
+You can also use a package manager : 
+### MacOS with homebrew: 
+```bash
+brew tap r-zenine/ssam
+brew install ssam
+```
+### Ubuntu using snap
+As I am still waiting for the manual validation on snap, you can only install it from the edge channel with the devmode confinment. 
+```bash
+snap install --edge --devmode
+```
+
 
 ## How to configure the tool:
 Fist, you want to start by creating a repository that will hold your scripts and aliases. 
