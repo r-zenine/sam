@@ -1,5 +1,4 @@
 use prettytable::{cell, format, row, Table};
-use skim::prelude::*;
 use sam::core::aliases::Alias;
 use sam::core::choices::Choice;
 use sam::core::dependencies::{Dependencies, ErrorsResolver, Resolver};
@@ -7,6 +6,7 @@ use sam::core::identifiers::Identifier;
 use sam::io::readers::read_choices;
 use sam::utils::fsutils::{ErrorsFS, TempFile};
 use sam::utils::processes::ShellCommand;
+use skim::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::File;
