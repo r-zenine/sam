@@ -81,9 +81,9 @@ impl Command for Var {
 /// Dependencies returns the dependencies of this variable if it gets it's
 /// choices from a command.
 ///```rust
-/// use ssam::core::vars::Var;
-/// use ssam::core::identifiers::Identifier;
-/// use ssam::core::commands::Command;
+/// use sam::core::vars::Var;
+/// use sam::core::identifiers::Identifier;
+/// use sam::core::commands::Command;
 /// let example = Var::from_command("name", "description", "ls -l {{ location }} | grep {{pattern}}");
 /// assert_eq!(example.dependencies(), vec![Identifier::new("location"), Identifier::new("pattern")]);
 ///```

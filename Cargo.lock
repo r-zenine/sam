@@ -922,6 +922,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
+name = "sam"
+version = "0.7.12"
+dependencies = [
+ "clap",
+ "config",
+ "crossbeam 0.8.0",
+ "crossbeam-channel 0.5.0",
+ "dirs 3.0.1",
+ "lazy_static",
+ "maplit",
+ "prettytable-rs",
+ "rand 0.7.3",
+ "regex",
+ "serde 1.0.117",
+ "serde_yaml",
+ "skim",
+ "tempdir",
+ "termion",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
 name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1030,29 +1053,6 @@ dependencies = [
  "tuikit",
  "unicode-width",
  "vte",
-]
-
-[[package]]
-name = "ssam"
-version = "0.7.12"
-dependencies = [
- "clap",
- "config",
- "crossbeam 0.8.0",
- "crossbeam-channel 0.5.0",
- "dirs 3.0.1",
- "lazy_static",
- "maplit",
- "prettytable-rs",
- "rand 0.7.3",
- "regex",
- "serde 1.0.117",
- "serde_yaml",
- "skim",
- "tempdir",
- "termion",
- "thiserror",
- "uuid",
 ]
 
 [[package]]

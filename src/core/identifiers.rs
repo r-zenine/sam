@@ -31,8 +31,8 @@ pub struct Identifier {
 impl Identifier {
     /// new creates an new Identifier object and it will sanitize the input.
     ///```rust
-    /// use ssam::core::identifiers::Identifier;
-    /// use ssam::core::namespaces::Namespace;
+    /// use sam::core::identifiers::Identifier;
+    /// use sam::core::namespaces::Namespace;
     /// let var = Identifier::new("{{ pattern }}");
     /// assert_eq!(var.name(), "pattern");
     /// let var = Identifier::new("{{ pattern}}");
@@ -55,8 +55,8 @@ impl Identifier {
     }
     /// new creates an new Identifier object and it will sanitize the input.
     ///```rust
-    /// use ssam::core::identifiers::Identifier;
-    /// use ssam::core::namespaces::Namespace;
+    /// use sam::core::identifiers::Identifier;
+    /// use sam::core::namespaces::Namespace;
     /// let var = Identifier::with_namespace("{{ pattern }}", Some("ns"));
     /// assert_eq!(var.name(), "pattern");
     /// assert_eq!(var.namespace(), Some("ns"));
@@ -83,8 +83,8 @@ impl Identifier {
     /// Dependencies returns the dependencies of this variable if it gets it's
     /// choices from a command.
     ///```rust
-    /// use ssam::core::identifiers::Identifier;
-    /// use ssam::core::commands::Command;
+    /// use sam::core::identifiers::Identifier;
+    /// use sam::core::commands::Command;
     /// let example = Identifier::parse::<&str>("ls -l {{ location }} | grep {{pattern}}", None);
     /// assert_eq!(example, vec![Identifier::new("location"), Identifier::new("pattern")]);
     ///```

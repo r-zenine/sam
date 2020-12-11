@@ -1,14 +1,14 @@
-use ssam::core::aliases::Alias;
-use ssam::core::choices::Choice;
-use ssam::core::dependencies::Dependencies;
-use ssam::core::identifiers::Identifier;
-use ssam::core::vars_repository::{ErrorsVarsRepository, VarsRepository};
-use ssam::io::readers::{
+use sam::core::aliases::Alias;
+use sam::core::choices::Choice;
+use sam::core::dependencies::Dependencies;
+use sam::core::identifiers::Identifier;
+use sam::core::vars_repository::{ErrorsVarsRepository, VarsRepository};
+use sam::io::readers::{
     read_aliases_from_path, read_vars_repository, ErrorsAliasRead, ErrorsVarRead,
 };
-use ssam::utils::fsutils;
-use ssam::utils::fsutils::walk_dir;
-use ssam::utils::processes::ShellCommand;
+use sam::utils::fsutils;
+use sam::utils::fsutils::walk_dir;
+use sam::utils::processes::ShellCommand;
 use std::collections::HashMap;
 use std::process::Command;
 use thiserror::Error;
@@ -21,7 +21,7 @@ use clap::{App, Arg};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
-const ABOUT: &str = "ssam lets you difine custom aliases and search them using fuzzy search.";
+const ABOUT: &str = "sam lets you difine custom aliases and search them using fuzzy search.";
 const ABOUT_SUB_RUN: &str = "show your aliases";
 const ABOUT_SUB_ALIAS: &str = "run's a provided alias";
 const ABOUT_SUB_BASHRC : &str = "output's a collection of aliases definitions into your bashrc. use 'source `ssa bashrc`' in your bashrc file";
@@ -29,7 +29,7 @@ const ABOUT_SUB_BASHRC : &str = "output's a collection of aliases definitions in
 const PROMPT: &str = "Choose an alias to run > ";
 
 fn main() {
-    let matches = App::new("ssam")
+    let matches = App::new("sam")
         .version(VERSION)
         .author(AUTHORS)
         .about(ABOUT)
@@ -59,7 +59,7 @@ fn main() {
         (&_, _) => run(dry),
     };
     match result {
-        Err(ErrorsSSAM::UI(userinterface::ErrorsUI::SkimAborted)) => {}
+        Err(Errorssam::UI(userinterface::ErrorsUI::SkimAborted)) => {}
         Err(e) => eprintln!(
             "{}{}Could not run the program as expected because:{}\n-> {}",
             termion::style::Bold,
@@ -115,7 +115,7 @@ fn run_alias(input: &'_ str, dry: bool) -> Result<i32> {
         .aliases
         .iter()
         .find(|e| e.name() == name && e.namespace() == namespace)
-        .ok_or(ErrorsSSAM::InvalidAliasSelection)?;
+        .ok_or(Errorssam::InvalidAliasSelection)?;
     execute_alias(&ctx, alias, dry)
 }
 
@@ -131,7 +131,7 @@ fn execute_alias(ctx: &AppContext, alias: &Alias, dry: bool) -> Result<i32> {
     if !dry {
         let mut command: Command = ShellCommand::new(final_command).into();
         let exit_status = command.status()?;
-        exit_status.code().ok_or(ErrorsSSAM::ExitCode)
+        exit_status.code().ok_or(Errorssam::ExitCode)
     } else {
         Ok(0)
     }
@@ -155,7 +155,7 @@ fn bashrc() -> Result<i32> {
     println!("# eval \"$(sam bashrc)\"                       *");
     println!("#                                             *");
     println!("# *********************************************");
-    println!("# START SSAM generated aliases:");
+    println!("# START sam generated aliases:");
     println!("alias am='sam run'");
     for alias in aliases {
         println!(
@@ -166,15 +166,15 @@ fn bashrc() -> Result<i32> {
             alias.name()
         );
     }
-    println!("# STOP SSAM generated aliases:");
+    println!("# STOP sam generated aliases:");
 
     Ok(0)
 }
 
 // Error handling for the sa app.
-type Result<T> = std::result::Result<T, ErrorsSSAM>;
+type Result<T> = std::result::Result<T, Errorssam>;
 #[derive(Debug, Error)]
-enum ErrorsSSAM {
+enum Errorssam {
     #[error("could not return an exit code.")]
     ExitCode,
     #[error("could not read the configuration file\n-> {0}")]
@@ -198,7 +198,7 @@ enum ErrorsSSAM {
 }
 
 mod logs {
-    use ssam::core::aliases::Alias;
+    use sam::core::aliases::Alias;
     use std::fmt::Display;
     pub fn final_command(alias: &Alias, fc: impl Display) {
         println!(

@@ -16,7 +16,7 @@ commands:
   save_cache_cmd: 
     steps: 
       - save_cache:
-          key: ssam-{{checksum "Cargo.toml"}}
+          key: sam-{{checksum "Cargo.toml"}}
           paths:
             - "~/.cargo"
             - "./target"
@@ -24,7 +24,7 @@ commands:
   restore_cache_cmd: 
     steps: 
       - restore_cache:
-          key: ssam-{{checksum "Cargo.toml"}}
+          key: sam-{{checksum "Cargo.toml"}}
 
   prepare_toolchain_linux: 
     steps: 

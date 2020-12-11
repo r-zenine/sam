@@ -1,4 +1,4 @@
 /target
-.packaging/homebrew/ssam.rb
+.packaging/homebrew/sam.rb
 .packaging/snap/snapcraft.yaml
 .packaging/snap/.snapcraft/snapcraft.cfg

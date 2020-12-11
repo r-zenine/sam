@@ -1,12 +1,12 @@
 use prettytable::{cell, format, row, Table};
 use skim::prelude::*;
-use ssam::core::aliases::Alias;
-use ssam::core::choices::Choice;
-use ssam::core::dependencies::{Dependencies, ErrorsResolver, Resolver};
-use ssam::core::identifiers::Identifier;
-use ssam::io::readers::read_choices;
-use ssam::utils::fsutils::{ErrorsFS, TempFile};
-use ssam::utils::processes::ShellCommand;
+use sam::core::aliases::Alias;
+use sam::core::choices::Choice;
+use sam::core::dependencies::{Dependencies, ErrorsResolver, Resolver};
+use sam::core::identifiers::Identifier;
+use sam::io::readers::read_choices;
+use sam::utils::fsutils::{ErrorsFS, TempFile};
+use sam::utils::processes::ShellCommand;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::File;
@@ -267,7 +267,7 @@ impl Resolver for UserInterface {
 
     fn resolve_static(
         &self,
-        var: ssam::core::identifiers::Identifier,
+        var: sam::core::identifiers::Identifier,
         cmd: impl Iterator<Item = Choice>,
     ) -> Result<Choice, ErrorsResolver> {
         let mut choices: Vec<Choice> = cmd.collect();
@@ -311,7 +311,7 @@ where
 }
 
 mod logs {
-    use ssam::core::aliases::Alias;
+    use sam::core::aliases::Alias;
     use std::fmt::Display;
     pub fn command(var: impl Display, cmd: impl AsRef<str>) {
         println!(

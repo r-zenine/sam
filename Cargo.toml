@@ -6,11 +6,11 @@ description = "sam lets you difine custom aliases and search them using fuzzy se
 edition = "2018"
 readme = "README.md"
 license = "GPL-3.0"
-repository = "https://github.com/r-zenine/ssam"
+repository = "https://github.com/r-zenine/sam"
 
 [[bin]]
 name = "sam"
-path = "src/bin/ssam/main.rs"
+path = "src/bin/sam/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 # Metadata for the debian package.
