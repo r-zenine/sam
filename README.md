@@ -1,7 +1,7 @@
 # sam
 ![](demo.gif)
 
-ssam stands for **small aliases manager**. it is a command line tool that helps you manage your **aliases** and other common command.
+sam stands for **small aliases manager**. it is a command line tool that helps you manage your **aliases** and other common command.
 
 Let's say you have multiple `kubernetes` clusters, runing in multiple cloud regions for different purposes, and several `namespaces`. Or, multiple kafka clusters and several `topics`. Everytime, you want to interact with one of these tools from the command line, you have to specify which region/environment/cluster/topic etc... you want your command to be apllied to. `sam` allows, you to express all your command commandes in a `templated` from and guides you to chose a value for each template variable you introduce. 
 
@@ -44,7 +44,7 @@ your_root_directory
             ├── aliases.yaml
             └── vars.yaml
 ```
-Once it's done, you can continue by editing a configuration file in `$HOME/.ssam_rc.toml`
+Once it's done, you can continue by editing a configuration file in `$HOME/.sam_rc.toml`
 that should look as follow: 
 
 ```toml
@@ -60,7 +60,7 @@ the `aliases.yaml` file can look like this :
 ```
 you can use the `{{ variable }}` syntax to refer to variables defined in your `vars_file`
 
-`ssam` will first prompt your for a choice for each dependant `variable`. Once this is done, it will replace each `variable` with it's corresponding choice and run the resulting command.
+`sam` will first prompt your for a choice for each dependant `variable`. Once this is done, it will replace each `variable` with it's corresponding choice and run the resulting command.
 
 ### Variables : 
 in your `vars_file`, you can define variables. variables can either have a static list of choices or can get their choices dynamically by running a command. the `from_command` option expects one choice per line in the output command.
