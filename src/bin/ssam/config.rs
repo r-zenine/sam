@@ -25,11 +25,11 @@ impl AppSettings {
 
     pub fn load() -> Result<Self> {
         let home_dir_o = dirs::home_dir()
-            .map(|e| e.join(".ssam_rc.toml"))
+            .map(|e| e.join(".sam_rc.toml"))
             .ok_or(ErrorsConfig::CantFindHomeDirectory)?;
         let current_dir_o = std::env::current_dir()
             .map_err(|_| ErrorsConfig::CantFindCurrentDirectory)
-            .map(|e| e.join("ssam_rc.toml"))?;
+            .map(|e| e.join("sam_rc.toml"))?;
 
         let config_home_dir = Self::load_from_path(home_dir_o);
         let config_current_dir = Self::load_from_path(current_dir_o);
