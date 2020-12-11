@@ -1,4 +1,4 @@
-# ssam
+# sam
 ![](demo.gif)
 
 ssam stands for **small aliases manager**. it is a command line tool that helps you manage your **aliases** and other common command.
@@ -19,13 +19,13 @@ You can download binaries for `linux` and `macos` from the release page.
 You can also use a package manager : 
 ### MacOS with homebrew: 
 ```bash
-brew tap r-zenine/ssam
-brew install ssam
+brew tap r-zenine/sam
+brew install sam
 ```
 ### Ubuntu using snap
 As I am still waiting for the manual validation on snap, you can only install it from the edge channel with the devmode confinment. 
 ```bash
-snap install --edge --devmode ssam
+snap install --edge --devmode sam
 ```
 
 
