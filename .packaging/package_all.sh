@@ -10,6 +10,6 @@ export ARCHIVE_PATH="./target/x86_64-apple-darwin/release/sam_macos_x86_64_v${AP
 export RELEASE_HASH=$(sha256sum ${ARCHIVE_PATH}|cut -d\  -f1)
 
 envsubst < .packaging/homebrew/sam.rb.j2 > .packaging/homebrew/sam.rb
-envsubst < .packaging/snap/snapcraft.yaml.j2 > .packaging/snap/snapcraft.yaml
+# envsubst < .packaging/snap/snapcraft.yaml.j2 > .packaging/snap/snapcraft.yaml
 
 ./.packaging/homebrew/homebrew.sh && ./.packaging/snap/snap.sh
