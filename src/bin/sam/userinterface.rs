@@ -21,10 +21,11 @@ pub struct UserInterface {
     preview_command: String,
     chosen_alias: Option<Alias>,
     choices: RefCell<HashMap<Identifier, Choice>>,
+    silent: bool,
 }
 
 impl UserInterface {
-    pub fn new() -> Result<UserInterface, ErrorsUI> {
+    pub fn new(silent: bool) -> Result<UserInterface, ErrorsUI> {
         let preview_file = TempFile::new()?;
         let preview_command = format!("cat {}", &preview_file.path.as_path().display());
         Ok(UserInterface {
@@ -32,6 +33,7 @@ impl UserInterface {
             preview_command,
             chosen_alias: None,
             choices: RefCell::new(HashMap::new()),
+            silent,
         })
     }
 
@@ -62,7 +64,9 @@ impl UserInterface {
             .map(AliasItem::from)
             .ok_or(ErrorsUI::SkimNoSelection)?;
         self.chosen_alias = Some(selected_alias.clone().alias);
-        logs::alias(&selected_alias.alias);
+        if !self.silent {
+            logs::alias(&selected_alias.alias);
+        }
         Ok(selected_alias)
     }
     pub fn choose(&self, choices: Vec<UISelector>, prompt: &str) -> Result<usize, ErrorsUI> {
@@ -248,7 +252,10 @@ impl Resolver for UserInterface {
         CMD: Into<ShellCommand<String>>,
     {
         let sh_cmd = cmd.into();
-        logs::command(&var, &sh_cmd.value());
+
+        if !self.silent {
+            logs::command(&var, &sh_cmd.value());
+        }
 
         let mut to_run = ShellCommand::as_command(sh_cmd.clone());
         let output = to_run
@@ -293,7 +300,9 @@ impl Resolver for UserInterface {
                     .ok_or_else(|| ErrorsResolver::NoChoiceWasSelected(var.clone()))
             })?;
         let mut mp = self.choices.borrow_mut();
-        logs::choice(&var, &choice);
+        if !self.silent {
+            logs::choice(&var, &choice);
+        }
         (*mp).insert(var, choice.clone());
         Ok(choice)
     }
@@ -314,7 +323,7 @@ mod logs {
     use sam::core::aliases::Alias;
     use std::fmt::Display;
     pub fn command(var: impl Display, cmd: impl AsRef<str>) {
-        println!(
+        eprintln!(
             "{}{}[SAM][ var = '{}' ]{} Running: '{}'",
             termion::color::Fg(termion::color::Green),
             termion::style::Bold,
@@ -324,7 +333,7 @@ mod logs {
         );
     }
     pub fn choice(var: impl Display, choice: impl Display) {
-        println!(
+        eprintln!(
             "{}{}[SAM][ var = '{}' ]{} Choice was: '{}'",
             termion::color::Fg(termion::color::Green),
             termion::style::Bold,
@@ -334,7 +343,7 @@ mod logs {
         );
     }
     pub fn alias(alias: &Alias) {
-        println!(
+        eprintln!(
             "{}{}[SAM][ alias = '{}::{}' ]{}",
             termion::color::Fg(termion::color::Green),
             termion::style::Bold,

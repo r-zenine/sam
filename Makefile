@@ -20,6 +20,9 @@ test: build check
 package_linux: test check build version 
 	cd ./target/release/ && tar -czvf $(PROJECT)_linux_x86_64_$(VERSION).tar.gz $(PROJECT)
 
+package_debian:
+    cargo deb
+
 package_macos_cross: build_macos_osxcross version 
 	cd ./target/x86_64-apple-darwin/release && tar -czvf $(PROJECT)_macos_x86_64_$(VERSION).tar.gz $(PROJECT)
 
@@ -40,6 +43,7 @@ endif
 create_release: version
 ifneq ($(GIT_TAG),)
 	gh release create -t "Release $(VERSION)" -n "" --target master $(GIT_TAG)
+	gh release upload $(GIT_TAG) ./target/debian/$(PROJECT)_$(VERSION)_amd64.deb
 	gh release upload $(GIT_TAG) ./target/release/$(PROJECT)_linux_x86_64_$(VERSION).tar.gz 
 	gh release upload $(GIT_TAG) ./target/x86_64-apple-darwin/release/$(PROJECT)_macos_x86_64_$(VERSION).tar.gz 
 endif

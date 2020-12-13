@@ -39,6 +39,12 @@ fn main() {
                 .short("d")
                 .help("dry run, don't execute the final command."),
         )
+        .arg(
+            Arg::with_name("silent")
+                .long("silent")
+                .short("s")
+                .help("avoid outputing logs to the standard output."),
+        )
         .subcommand(App::new("run").about(ABOUT_SUB_RUN))
         .subcommand(
             App::new("alias")
@@ -53,10 +59,11 @@ fn main() {
         .subcommand(App::new("bashrc").about(ABOUT_SUB_BASHRC))
         .get_matches();
     let dry = matches.is_present("dry");
+    let silent = matches.is_present("silent");
     let result = match matches.subcommand() {
-        ("alias", Some(e)) => run_alias(e.value_of("alias").unwrap(), dry),
+        ("alias", Some(e)) => run_alias(e.value_of("alias").unwrap(), dry, silent),
         ("bashrc", Some(_)) => bashrc(),
-        (&_, _) => run(dry),
+        (&_, _) => run(dry, silent),
     };
     match result {
         Err(Errorssam::UI(userinterface::ErrorsUI::SkimAborted)) => {}
@@ -74,11 +81,14 @@ struct AppContext {
     ui_interface: userinterface::UserInterface,
     aliases: Vec<Alias>,
     vars: VarsRepository,
+    silent: bool,
+    dry: bool,
 }
+
 impl AppContext {
-    fn try_load() -> Result<AppContext> {
+    fn try_load(dry: bool, silent: bool) -> Result<AppContext> {
         let config = AppSettings::load()?;
-        let ui_interface = userinterface::UserInterface::new()?;
+        let ui_interface = userinterface::UserInterface::new(silent)?;
         let files = walk_dir(config.root_dir())?;
         let mut aliases = vec![];
         let mut vars = VarsRepository::default();
@@ -95,19 +105,21 @@ impl AppContext {
             ui_interface,
             aliases,
             vars,
+            dry,
+            silent,
         })
     }
 }
 
-fn run(dry: bool) -> Result<i32> {
-    let mut ctx = AppContext::try_load()?;
+fn run(dry: bool, silent: bool) -> Result<i32> {
+    let mut ctx = AppContext::try_load(dry, silent)?;
     let item = ctx.ui_interface.select_alias(PROMPT, &ctx.aliases)?;
     let alias = item.alias();
     execute_alias(&ctx, alias, dry)
 }
 
-fn run_alias(input: &'_ str, dry: bool) -> Result<i32> {
-    let ctx = AppContext::try_load()?;
+fn run_alias(input: &'_ str, dry: bool, silent: bool) -> Result<i32> {
+    let ctx = AppContext::try_load(dry, silent)?;
     let mut elems: Vec<&str> = input.split("::").collect();
     let name = elems.pop().unwrap_or_default();
     let namespace = elems.pop();
@@ -127,7 +139,9 @@ fn execute_alias(ctx: &AppContext, alias: &Alias, dry: bool) -> Result<i32> {
         .into_iter()
         .collect();
     let final_command = alias.substitute_for_choices(&choices).unwrap();
-    logs::final_command(alias, &final_command);
+    if !ctx.silent {
+        logs::final_command(alias, &final_command);
+    }
     if !dry {
         let mut command: Command = ShellCommand::new(final_command).into();
         let exit_status = command.status()?;
