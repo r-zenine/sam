@@ -21,7 +21,7 @@ package_linux: test check build version
 	cd ./target/release/ && tar -czvf $(PROJECT)_linux_x86_64_$(VERSION).tar.gz $(PROJECT)
 
 package_debian:
-    cargo deb
+	cargo deb
 
 package_macos_cross: build_macos_osxcross version 
 	cd ./target/x86_64-apple-darwin/release && tar -czvf $(PROJECT)_macos_x86_64_$(VERSION).tar.gz $(PROJECT)
