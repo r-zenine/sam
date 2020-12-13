@@ -51,6 +51,13 @@ commands:
           command: |
             make package_linux
 
+  package_debian:
+    steps:
+      - run:
+          name: packaging for linux x64 debian
+          command: |
+            make package_debian
+
   package_macos:
     steps:
       - run:
@@ -94,11 +101,13 @@ jobs:
       - restore_cache_cmd
       - prepare_toolchain_linux
       - package_linux
+      - package_debian
       - save_cache_cmd
       - persist_to_workspace:
           root: .
           paths:
             - ./target/release
+            - ./target/debian
 
   build_macos:
     docker:
