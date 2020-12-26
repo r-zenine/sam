@@ -1,10 +1,10 @@
 - name: directory
   desc: an example variable
   choices:
+    - value: /etc/acpi
+      desc: etc acpi directory
     - value: /etc/default
       desc: etc default directory
-    - value: /etc
-      desc: etc directory
 
 - name: pager
   desc: the pager tool to use

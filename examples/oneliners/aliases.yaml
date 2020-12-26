@@ -1,6 +1,6 @@
 - name: list_stuff
   desc: list current directory. 
-  alias: cd {{directory}} && {{pager}} {{file}}
+  alias: cd {{docker::directory}} && {{kubernetes::pager}} {{docker::file}}
 
 
 
