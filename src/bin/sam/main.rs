@@ -115,7 +115,7 @@ fn run(dry: bool, silent: bool) -> Result<i32> {
     let mut ctx = AppContext::try_load(dry, silent)?;
     let item = ctx.ui_interface.select_alias(PROMPT, &ctx.aliases)?;
     let alias = item.alias();
-    execute_alias(&ctx, alias, dry)
+    execute_alias(&ctx, alias)
 }
 
 fn run_alias(input: &'_ str, dry: bool, silent: bool) -> Result<i32> {
@@ -128,10 +128,10 @@ fn run_alias(input: &'_ str, dry: bool, silent: bool) -> Result<i32> {
         .iter()
         .find(|e| e.name() == name && e.namespace() == namespace)
         .ok_or(Errorssam::InvalidAliasSelection)?;
-    execute_alias(&ctx, alias, dry)
+    execute_alias(&ctx, alias)
 }
 
-fn execute_alias(ctx: &AppContext, alias: &Alias, dry: bool) -> Result<i32> {
+fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
     let exec_seq = ctx.vars.execution_sequence(alias)?;
     let choices: HashMap<Identifier, Choice> = ctx
         .vars
@@ -142,7 +142,7 @@ fn execute_alias(ctx: &AppContext, alias: &Alias, dry: bool) -> Result<i32> {
     if !ctx.silent {
         logs::final_command(alias, &final_command);
     }
-    if !dry {
+    if !ctx.dry {
         let mut command: Command = ShellCommand::new(final_command).into();
         let exit_status = command.status()?;
         exit_status.code().ok_or(Errorssam::ExitCode)
