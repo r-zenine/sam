@@ -101,6 +101,7 @@ impl AppContext {
                 }
             }
         }
+        vars.ensure_no_missing_dependency()?;
         Ok(AppContext {
             ui_interface,
             aliases,

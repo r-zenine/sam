@@ -26,24 +26,29 @@ impl<'repository> AsRef<[&'repository Identifier]> for ExecutionSequence<'reposi
 impl VarsRepository {
     /// new creates a var Repository. this function will return an `ErrorVarRepository::ErrorMissingDependencies`
     /// if a Var provided has a dependency that is not found in the Iterator.
-    pub fn new(value: impl Iterator<Item = Var>) -> Result<Self, ErrorsVarsRepository> {
+    pub fn new(value: impl Iterator<Item = Var>) -> Self {
         let vars: HashSet<Var> = value.collect();
-        let missing: Vec<Identifier> = vars
+        VarsRepository { vars }
+    }
+
+    pub fn merge(&mut self, other: VarsRepository) {
+        self.vars.extend(other.vars);
+    }
+
+    pub fn ensure_no_missing_dependency(&self) -> Result<(), ErrorsVarsRepository> {
+        let missing: Vec<Identifier> = self
+            .vars
             .iter()
             .flat_map(Var::dependencies)
-            .filter(|e| !vars.contains(e))
+            .filter(|e| !self.vars.contains(e))
             .collect();
         if missing.is_empty() {
-            Ok(VarsRepository { vars })
+            Ok(())
         } else {
             Err(ErrorsVarsRepository::MissingDependencies(Identifiers(
                 missing,
             )))
         }
-    }
-
-    pub fn merge(&mut self, other: VarsRepository) {
-        self.vars.extend(other.vars);
     }
 
     /// Execution sequence returns for a given `Dep: Dependencies`
@@ -211,12 +216,12 @@ mod tests {
             VAR_LISTING.clone(),
             VAR_PATTERN.clone(),
         ];
-        let repo = VarsRepository::new(full.into_iter());
-        assert!(repo.is_ok());
+        let _repo = VarsRepository::new(full.into_iter());
         let missing = vec![VAR_DIRECTORY.clone(), VAR_LISTING.clone()];
         let repo_err = VarsRepository::new(missing.into_iter());
-        assert!(repo_err.is_err());
-        match repo_err.unwrap_err() {
+        let missing_err = repo_err.ensure_no_missing_dependency();
+        assert!(missing_err.is_err());
+        match missing_err.unwrap_err() {
             ErrorsVarsRepository::MissingDependencies(identifiers) => {
                 assert_eq!(identifiers, Identifiers(vec![VAR_PATTERN_NAME.clone()]));
             }
@@ -231,7 +236,7 @@ mod tests {
             VAR_LISTING.clone(),
             VAR_PATTERN.clone(),
         ];
-        let repo = VarsRepository::new(full.into_iter()).unwrap();
+        let repo = VarsRepository::new(full.into_iter());
         let seq = repo.execution_sequence(VAR_LISTING.clone());
         assert!(seq.is_ok());
         let seq = repo.execution_sequence(VAR_USE_LISTING.clone());
@@ -264,7 +269,8 @@ mod tests {
             VAR_LISTING.clone(),
             VAR_PATTERN.clone(),
         ];
-        let repo = VarsRepository::new(full.into_iter()).unwrap();
+        println!("{:?}", VAR_LISTING.dependencies());
+        let repo = VarsRepository::new(full.into_iter());
         let seq = repo.execution_sequence(VAR_USE_LISTING.clone()).unwrap();
         let res = repo.choices(&resolver, seq);
         assert!(res.is_ok());

@@ -15,7 +15,7 @@ pub trait Dependencies: Command {
         let mut command = self.command().to_string();
         for dep in self.dependencies() {
             if let Some(chce) = choices.get(&dep) {
-                command = substitute_choice(&command, dep.name(), chce.value());
+                command = substitute_choice(&command, &dep, chce.value());
             } else {
                 return Err(ErrorsResolver::NoChoiceWasAvailable(dep));
             }
@@ -30,17 +30,24 @@ pub trait Dependencies: Command {
         let mut command = self.command().to_string();
         for dep in self.dependencies() {
             if let Some(chce) = choices.get(&dep) {
-                command = substitute_choice(&command, dep.name(), chce.value());
+                command = substitute_choice(&command, &dep, chce.value());
             }
         }
         command
     }
 }
 
-fn substitute_choice(origin: &str, dependency: &str, choice: &str) -> String {
-    let re_fmt = format!(r#"(?P<var>\{{\{{ ?{} ?\}}\}})"#, dependency);
+fn substitute_choice(origin: &str, dependency: &Identifier, choice: &str) -> String {
+    let re_fmt = format!(r#"(?P<var>\{{\{{ ?{} ?\}}\}})"#, dependency.name());
+    let re2_fmt = format!(
+        r#"(?P<var>\{{\{{ ?{}::{} ?\}}\}})"#,
+        dependency.namespace.clone().unwrap_or_default(),
+        dependency.name()
+    );
     let re: Regex = Regex::new(re_fmt.as_str()).unwrap();
-    re.replace(origin, choice).to_string()
+    let re2: Regex = Regex::new(re2_fmt.as_str()).unwrap();
+    let tmp = re.replace(origin, choice).to_string();
+    re2.replace(&tmp, choice).to_string()
 }
 
 pub trait Resolver {

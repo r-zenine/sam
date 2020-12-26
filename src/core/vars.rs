@@ -179,7 +179,7 @@ pub mod fixtures {
     use lazy_static::lazy_static;
     lazy_static! {
         pub static ref VAR_USE_LISTING_COMMAND: String =
-            String::from("cat {{listing}} |grep -v {{pattern}}");
+            String::from("cat {{listing}} |grep -v {{ns::pattern}}");
         pub static ref VAR_USE_LISTING_DESC: String = String::from(
             "output element in {{listing}} and discards everything that matches {{pattern}}"
         );
@@ -193,13 +193,15 @@ pub mod fixtures {
             choices: VAR_USE_LISTING_CHOICES.clone(),
         };
         pub static ref VAR_LISTING_COMMAND: String =
-            String::from("ls -l {{directory}} |grep -v {{pattern}}");
+            String::from("ls -l {{directory}} |grep -v {{ ns::pattern }}");
         pub static ref VAR_LISTING_DESC: String = String::from(
             "list element in {{directory}} and discards everything that matches {{pattern}}"
         );
         pub static ref VAR_LISTING_CHOICES: Vec<Choice> = vec![];
-        pub static ref VAR_LISTING_DEPS: Vec<Identifier> =
-            vec![Identifier::new("directory"), Identifier::new("pattern")];
+        pub static ref VAR_LISTING_DEPS: Vec<Identifier> = vec![
+            Identifier::new("directory"),
+            Identifier::with_namespace("pattern", Some("ns"))
+        ];
         pub static ref VAR_LISTING: Var = Var {
             name: VAR_LISTING_NAME.clone(),
             from_command: Some(VAR_LISTING_COMMAND.clone()),

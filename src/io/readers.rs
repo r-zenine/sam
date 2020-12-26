@@ -71,7 +71,7 @@ pub fn read_vars_repository(path: &'_ Path) -> Result<VarsRepository, ErrorsVarR
         NamespaceUpdater::update_from_path(a, path);
     }
 
-    VarsRepository::new(vars.into_iter()).map_err(|e| e.into())
+    Ok(VarsRepository::new(vars.into_iter()))
 }
 
 fn read_vars<T>(r: T) -> Result<Vec<Var>, serde_yaml::Error>

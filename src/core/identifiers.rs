@@ -10,21 +10,14 @@ lazy_static! {
     // - {{ some_name_1 }}
     // - {{some_name_1 }}
     // - {{ some_name_1}}
-    static ref VARSRE: Regex = Regex::new("(?P<vars>\\{\\{ ?[a-zA-Z0-9_]+ ?\\}\\})").unwrap();
-}
-
-pub fn parse_identifiers(s: &str) -> Vec<Identifier> {
-    VARSRE
-        .captures_iter(s)
-        .map(|e| e["vars"].to_owned())
-        .map(Identifier::new)
-        .collect()
+    static ref VARSRE: Regex = Regex::new("(?P<vars>\\{\\{ ?[a-zA-Z0-9_:]+ ?\\}\\})").unwrap();
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Identifier {
     #[serde(rename(serialize = "name", deserialize = "name"))]
     pub inner: String,
+    #[serde(skip)]
     pub namespace: Option<String>,
 }
 
@@ -72,11 +65,7 @@ impl Identifier {
         namespace: Option<impl Into<String>>,
     ) -> Identifier {
         Identifier {
-            inner: name
-                .into()
-                .replace(" ", "")
-                .replace("{{", "")
-                .replace("}}", ""),
+            inner: Identifier::sanitize_identifier(name.into()),
             namespace: namespace.map(Into::into),
         }
     }
@@ -92,15 +81,32 @@ impl Identifier {
     where
         IntoStr: Into<String> + Clone,
     {
+        let default_namespace = namespace.map(Into::<String>::into);
         VARSRE
             .captures_iter(s)
-            .map(|e| e["vars"].to_owned())
-            .map(|name| Identifier::with_namespace(name.as_str(), namespace.clone()))
+            .map(|e| Identifier::maybe_namespace(e["vars"].to_owned()))
+            .map(|(name, ns)| {
+                Identifier::with_namespace(name.as_str(), ns.or(default_namespace.clone()).clone())
+            })
             .collect()
     }
 
     pub fn name(&self) -> &str {
         self.inner.as_str()
+    }
+
+    fn maybe_namespace(s: String) -> (String, Option<String>) {
+        if s.contains("::") {
+            let parts: Vec<&str> = s.split("::").take(2).collect();
+            return (
+                Identifier::sanitize_identifier(parts[1].to_string()),
+                Some(Identifier::sanitize_identifier(parts[0].to_string())),
+            );
+        }
+        return (s, None);
+    }
+    fn sanitize_identifier(s: String) -> String {
+        s.replace(" ", "").replace("{{", "").replace("}}", "")
     }
 }
 
@@ -150,7 +156,8 @@ pub mod fixtures {
         pub static ref VAR_USE_LISTING_NAME: Identifier = Identifier::new("use_listing");
         pub static ref VAR_LISTING_NAME: Identifier = Identifier::new("listing");
         pub static ref VAR_DIRECTORY_NAME: Identifier = Identifier::new("directory");
-        pub static ref VAR_PATTERN_NAME: Identifier = Identifier::new("pattern");
+        pub static ref VAR_PATTERN_NAME: Identifier =
+            Identifier::with_namespace("pattern", Some("ns"));
         pub static ref VAR_PATTERN_2_NAME: Identifier = Identifier::new("pattern2");
         pub static ref VAR_MISSING_NAME: Identifier = Identifier::new("missing");
     }
