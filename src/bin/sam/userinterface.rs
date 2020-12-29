@@ -268,6 +268,7 @@ impl Resolver for UserInterface {
             Ok(_) => Err(ErrorsResolver::DynamicResolveEmpty(
                 var,
                 sh_cmd.value().to_owned(),
+                std::str::from_utf8(&output.stderr).unwrap_or("").to_owned(),
             )),
         }
     }

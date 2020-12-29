@@ -67,9 +67,9 @@ pub enum ErrorsResolver {
     #[error("an error happened when gathering choices for identifier {0}\n-> {1}")]
     DynamicResolveFailure(Identifier, Box<dyn error::Error>),
     #[error(
-        "gathering choices for {0} failed because the command\n   {}{}{1}{} \n   returned empty content on stdout.", termion::color::Fg(termion::color::Cyan), termion::style::Bold, termion::style::Reset
+        "gathering choices for {0} failed because the command\n   {}{}{1}{} \n   returned empty content on stdout. stderr content was \n {2}", termion::color::Fg(termion::color::Cyan), termion::style::Bold, termion::style::Reset
     )]
-    DynamicResolveEmpty(Identifier, String),
+    DynamicResolveEmpty(Identifier, String, String),
     #[error("no choice was selected for var {0}")]
     NoChoiceWasSelected(Identifier),
 }
