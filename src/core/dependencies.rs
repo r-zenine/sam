@@ -75,7 +75,6 @@ pub enum ErrorsResolver {
     NoChoiceWasSelected(Identifier),
     #[error("no input for for var {0} because {1}")]
     NoInputWasProvided(Identifier, String),
-
 }
 
 pub mod mocks {

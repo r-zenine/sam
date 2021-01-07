@@ -923,7 +923,7 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
 name = "sam"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "clap",
  "config",
