@@ -155,6 +155,9 @@ impl VarsRepository {
         if var.is_command() {
             let command = var.substitute_for_choices(choices)?;
             resolver.resolve_dynamic(var.name(), ShellCommand::new(command))
+        } else if var.is_input() {
+            let prompt = var.prompt().unwrap_or("no provided prompt");
+            resolver.resolve_input(var.name(), prompt)
         } else {
             resolver.resolve_static(var.name(), var.choices().into_iter())
         }

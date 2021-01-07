@@ -119,6 +119,7 @@ mod tests {
     use crate::core::vars::Var;
     use std::io::BufReader;
     use std::panic;
+
     #[test]
     fn test_read_vars() {
         let vars_str = "
@@ -133,14 +134,20 @@ mod tests {
               - value: 'val2'
                 desc: val2 description
               - value: 'val1'
-                desc: val1 description"
+                desc: val1 description
+            - desc: 'desc3'
+              name: 'name3'
+              from_command: 'echo 1'
+            - desc: 'desc4'
+              name: 'name4'
+              from_input: prompt"
             .as_bytes();
 
         let r = BufReader::new(vars_str);
         let vars_r = read_vars(r);
         assert!(vars_r.is_ok());
         let vars = vars_r.unwrap();
-        assert_eq!(vars.len(), 2);
+        assert_eq!(vars.len(), 4);
         let exp_choices_1 = vec![Choice::new("val1", Some("val1 description"))];
         let exp_choices_2 = vec![
             Choice::new("val2", Some("val2 description")),
@@ -148,8 +155,14 @@ mod tests {
         ];
         let exp_var_listing = Var::new("name1", "desc1", exp_choices_1);
         let exp_var_2 = Var::new("name2", "desc2", exp_choices_2);
-        assert_eq!(vars, vec![exp_var_listing, exp_var_2]);
+        let exp_var_command = Var::from_command("name3", "desc3", "echo 1");
+        let exp_var_input = Var::from_input("name4", "desc4", "prompt");
+        assert_eq!(
+            vars,
+            vec![exp_var_listing, exp_var_2, exp_var_command, exp_var_input]
+        );
     }
+
     #[test]
     fn test_read_aliases() {
         let aliase_str = "

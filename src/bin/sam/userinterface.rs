@@ -10,6 +10,7 @@ use skim::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::File;
+use std::io;
 use std::io::Write;
 use std::process::Command;
 
@@ -247,6 +248,17 @@ impl SkimItem for ChoiceItem {
 }
 
 impl Resolver for UserInterface {
+    fn resolve_input(&self, var: Identifier, prompt: &str) -> Result<Choice, ErrorsResolver> {
+        let mut buffer = String::new();
+        println!(
+            "Please provide an input for variable {}.\n{} :",
+            &var, prompt
+        );
+        match io::stdin().read_line(&mut buffer) {
+            Ok(_) => Ok(Choice::new(buffer.replace("\n", ""), None)),
+            Err(err) => Err(ErrorsResolver::NoInputWasProvided(var, err.to_string())),
+        }
+    }
     fn resolve_dynamic<CMD>(&self, var: Identifier, cmd: CMD) -> Result<Choice, ErrorsResolver>
     where
         CMD: Into<ShellCommand<String>>,

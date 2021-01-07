@@ -9,7 +9,7 @@ use std::hash::Hash;
 
 // Var represent a variable with a command that can be used in an crate::core:Alias.
 // Var can be static when choices is not empty or dyamic whenthe from_command is not empty
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Var {
     #[serde(flatten)]
     name: Identifier,
@@ -18,6 +18,8 @@ pub struct Var {
     choices: Vec<Choice>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     from_command: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    from_input: Option<String>,
 }
 
 impl Var {
@@ -31,6 +33,7 @@ impl Var {
             desc: desc.into(),
             choices,
             from_command: None,
+            from_input: None,
         }
     }
 
@@ -45,11 +48,29 @@ impl Var {
             desc: desc.into(),
             choices: vec![],
             from_command: Some(from_command.into()),
+            from_input: None,
+        }
+    }
+
+    pub fn from_input<IntoStr>(name: IntoStr, desc: IntoStr, from_input: IntoStr) -> Var
+    where
+        IntoStr: Into<String>,
+    {
+        Var {
+            name: Identifier::new(name),
+            desc: desc.into(),
+            choices: vec![],
+            from_command: None,
+            from_input: Some(from_input.into()),
         }
     }
 
     pub fn is_command(&self) -> bool {
         self.from_command.is_some()
+    }
+
+    pub fn is_input(&self) -> bool {
+        self.from_input.is_some()
     }
 
     pub fn name(&self) -> Identifier {
@@ -59,7 +80,12 @@ impl Var {
     pub fn choices(&self) -> Vec<Choice> {
         self.choices.clone()
     }
+
+    pub fn prompt(&self) -> Option<&str> {
+        self.from_input.as_ref().map(|e| e.as_str())
+    }
 }
+
 impl NamespaceUpdater for Var {
     fn update(&mut self, namespace: impl Into<String>) {
         self.name.update(namespace)
@@ -107,6 +133,7 @@ impl Borrow<Identifier> for Var {
 }
 
 impl Eq for Var {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -181,7 +208,7 @@ pub mod fixtures {
         pub static ref VAR_USE_LISTING_COMMAND: String =
             String::from("cat {{listing}} |grep -v {{ns::pattern}}");
         pub static ref VAR_USE_LISTING_DESC: String = String::from(
-            "output element in {{listing}} and discards everything that matches {{pattern}}"
+            "output element in {{listing}} and discards everything that matches {{pattern}}",
         );
         pub static ref VAR_USE_LISTING_CHOICES: Vec<Choice> = vec![];
         pub static ref VAR_USE_LISTING_DEPS: Vec<Identifier> =
@@ -191,22 +218,24 @@ pub mod fixtures {
             from_command: Some(VAR_USE_LISTING_COMMAND.clone()),
             desc: VAR_USE_LISTING_DESC.clone(),
             choices: VAR_USE_LISTING_CHOICES.clone(),
+            from_input: None,
         };
         pub static ref VAR_LISTING_COMMAND: String =
             String::from("ls -l {{directory}} |grep -v {{ ns::pattern }}");
         pub static ref VAR_LISTING_DESC: String = String::from(
-            "list element in {{directory}} and discards everything that matches {{pattern}}"
+            "list element in {{directory}} and discards everything that matches {{pattern}}",
         );
         pub static ref VAR_LISTING_CHOICES: Vec<Choice> = vec![];
         pub static ref VAR_LISTING_DEPS: Vec<Identifier> = vec![
             Identifier::new("directory"),
-            Identifier::with_namespace("pattern", Some("ns"))
+            Identifier::with_namespace("pattern", Some("ns")),
         ];
         pub static ref VAR_LISTING: Var = Var {
             name: VAR_LISTING_NAME.clone(),
             from_command: Some(VAR_LISTING_COMMAND.clone()),
             desc: VAR_LISTING_DESC.clone(),
             choices: VAR_LISTING_CHOICES.clone(),
+            from_input: None,
         };
         pub static ref VAR_DIRECTORY_DESC: String =
             String::from("A list of safe directory paths where to perform commands.");
@@ -216,13 +245,14 @@ pub mod fixtures {
             Choice::new("/home", Some("users directory"));
         pub static ref VAR_DIRECTORY_CHOICES: Vec<Choice> = vec![
             VAR_DIRECTORY_CHOICE_1.clone(),
-            VAR_DIRECTORY_CHOICE_2.clone()
+            VAR_DIRECTORY_CHOICE_2.clone(),
         ];
         pub static ref VAR_DIRECTORY: Var = Var {
             name: VAR_DIRECTORY_NAME.clone(),
             from_command: None,
             desc: VAR_DIRECTORY_DESC.clone(),
             choices: VAR_DIRECTORY_CHOICES.clone(),
+            from_input: None,
         };
         pub static ref VAR_PATTERN_DESC: String = String::from("A black list of patterns");
         pub static ref VAR_PATTERN_CHOICE_1: Choice =
@@ -236,11 +266,12 @@ pub mod fixtures {
             from_command: None,
             desc: VAR_PATTERN_DESC.clone(),
             choices: VAR_PATTERN_CHOICES.clone(),
+            from_input: None,
         };
         pub static ref VAR_MISSING_COMMAND: String =
             String::from("ls -l {{directory}} |grep -v {{pattern2}}");
         pub static ref VAR_MISSING_DESC: String = String::from(
-            "list element in {{directory}} and discards everything that matches {{pattern}}"
+            "list element in {{directory}} and discards everything that matches {{pattern}}",
         );
         pub static ref VAR_MISSING_CHOICES: Vec<Choice> = vec![];
         pub static ref VAR_MISSING_DEPS: Vec<Identifier> =
@@ -250,6 +281,7 @@ pub mod fixtures {
             from_command: Some(VAR_MISSING_COMMAND.clone()),
             desc: VAR_MISSING_DESC.clone(),
             choices: VAR_MISSING_CHOICES.clone(),
+            from_input: None,
         };
     }
 }

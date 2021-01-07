@@ -2,6 +2,9 @@
   desc: list current directory docker 
   alias: cd {{directory}} && {{pager}} {{file}}
 
+- name: echo_input
+  desc: do something with input
+  alias: echo {{ value }}
 
 
 

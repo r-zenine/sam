@@ -51,6 +51,7 @@ fn substitute_choice(origin: &str, dependency: &Identifier, choice: &str) -> Str
 }
 
 pub trait Resolver {
+    fn resolve_input(&self, var: Identifier, prompt: &str) -> Result<Choice, ErrorsResolver>;
     fn resolve_dynamic<CMD>(&self, var: Identifier, cmd: CMD) -> Result<Choice, ErrorsResolver>
     where
         CMD: Into<ShellCommand<String>>;
@@ -72,6 +73,9 @@ pub enum ErrorsResolver {
     DynamicResolveEmpty(Identifier, String, String),
     #[error("no choice was selected for var {0}")]
     NoChoiceWasSelected(Identifier),
+    #[error("no input for for var {0} because {1}")]
+    NoInputWasProvided(Identifier, String),
+
 }
 
 pub mod mocks {
@@ -98,6 +102,12 @@ pub mod mocks {
         }
     }
     impl Resolver for StaticResolver {
+        fn resolve_input(&self, var: Identifier, _: &str) -> Result<Choice, ErrorsResolver> {
+            self.static_res
+                .get(&var)
+                .map(|e| e.to_owned())
+                .ok_or(ErrorsResolver::NoChoiceWasAvailable(var))
+        }
         fn resolve_dynamic<CMD>(&self, var: Identifier, cmd: CMD) -> Result<Choice, ErrorsResolver>
         where
             CMD: Into<ShellCommand<String>>,

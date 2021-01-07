@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Debug, Clone ,Default, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Choice {
     value: String,
     desc: Option<String>,

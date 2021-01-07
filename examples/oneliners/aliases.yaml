@@ -2,6 +2,9 @@
   desc: list current directory. 
   alias: cd {{docker::directory}} && {{kubernetes::pager}} {{docker::file}}
 
+- name: echo $HOME
+  desc: prints home directory
+  alias: echo $HOME
 
 
 

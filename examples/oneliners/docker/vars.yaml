@@ -18,3 +18,7 @@
 - name: file
   desc: file selection
   from_command: ls -1 {{ directory }}
+
+- name: value
+  desc: file selection
+  from_input: "select an input"
