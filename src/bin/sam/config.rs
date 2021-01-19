@@ -1,26 +1,31 @@
 use sam::utils::fsutils;
 use sam::utils::fsutils::ErrorsFS;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
+use toml::Value;
 
 const CONFIG_FILE_NAME: &str = ".sam_rc.toml";
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct AppSettings {
     root_dir: PathBuf,
+    #[serde(flatten)]
+    variables: HashMap<String, Value>,
 }
 
 type Result<T> = std::result::Result<T, ErrorsConfig>;
 
 impl AppSettings {
-    fn read_config(path: PathBuf) -> Result<config::Config> {
+    fn read_config(path: PathBuf) -> Result<AppSettings> {
         let path = fsutils::ensure_exists(path)
             .and_then(fsutils::ensure_is_file)
             .and_then(fsutils::ensure_sufficient_permisions)?;
-        let mut conf = config::Config::default();
-        conf.merge(config::File::from(path.as_path()))
-            .map_err(ErrorsConfig::from)?;
+        let content = fs::read_to_string(&path)?;
+        let conf: AppSettings = toml::from_str(content.as_str())?;
         Ok(conf)
     }
 
@@ -32,9 +37,7 @@ impl AppSettings {
         let config_current_dir = Self::read_config(current_dir_o);
 
         config_current_dir
-            .or(config_home_dir)?
-            .try_into::<Self>()
-            .map_err(ErrorsConfig::from)
+            .or(config_home_dir)
             .and_then(AppSettings::validate)
     }
 
@@ -66,7 +69,9 @@ impl AppSettings {
 #[derive(Debug, Error)]
 pub enum ErrorsConfig {
     #[error("got the following error\n-> {0}")]
-    ReadConfig(#[from] config::ConfigError),
+    CantDeserialize(#[from] toml::de::Error),
+    #[error("got the following error\n-> {0}")]
+    CantReadConfigFile(#[from] io::Error),
     #[error("got the following error\n-> {0}")]
     FileSystem(#[from] ErrorsFS),
     #[error("we were unable to locate the home directory for the current user")]

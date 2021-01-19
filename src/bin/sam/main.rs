@@ -88,6 +88,7 @@ struct AppContext {
 impl AppContext {
     fn try_load(dry: bool, silent: bool) -> Result<AppContext> {
         let config = AppSettings::load()?;
+        println!("{:?}", config);
         let ui_interface = userinterface::UserInterface::new(silent)?;
         let files = walk_dir(config.root_dir())?;
         let mut aliases = vec![];
