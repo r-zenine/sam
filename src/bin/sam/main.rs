@@ -83,13 +83,13 @@ struct AppContext {
     vars: VarsRepository,
     silent: bool,
     dry: bool,
+    variables: HashMap<String, String>,
 }
 
 impl AppContext {
     fn try_load(dry: bool, silent: bool) -> Result<AppContext> {
         let config = AppSettings::load()?;
-        println!("{:?}", config);
-        let ui_interface = userinterface::UserInterface::new(silent)?;
+        let ui_interface = userinterface::UserInterface::new(silent, config.variables())?;
         let files = walk_dir(config.root_dir())?;
         let mut aliases = vec![];
         let mut vars = VarsRepository::default();
@@ -109,6 +109,7 @@ impl AppContext {
             vars,
             dry,
             silent,
+            variables: config.variables(),
         })
     }
 }
@@ -146,6 +147,7 @@ fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
     }
     if !ctx.dry {
         let mut command: Command = ShellCommand::new(final_command).into();
+        command.envs(&ctx.variables);
         let exit_status = command.status()?;
         exit_status.code().ok_or(Errorssam::ExitCode)
     } else {

@@ -6,7 +6,6 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-use toml::Value;
 
 const CONFIG_FILE_NAME: &str = ".sam_rc.toml";
 
@@ -14,7 +13,7 @@ const CONFIG_FILE_NAME: &str = ".sam_rc.toml";
 pub struct AppSettings {
     root_dir: PathBuf,
     #[serde(flatten)]
-    variables: HashMap<String, Value>,
+    variables: HashMap<String, String>,
 }
 
 type Result<T> = std::result::Result<T, ErrorsConfig>;
@@ -63,6 +62,9 @@ impl AppSettings {
         std::env::current_dir()
             .map_err(|_| ErrorsConfig::CantFindCurrentDirectory)
             .map(|e| e.join(CONFIG_FILE_NAME))
+    }
+    pub fn variables(&self) -> HashMap<String, String> {
+        self.variables.clone()
     }
 }
 
