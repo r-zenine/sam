@@ -33,7 +33,6 @@ assets = [
 serde = { version = "1.0", features = ["derive"] }
 clap = "2.33"
 serde_yaml = "0.8"
-config = "0.10.1"
 skim = "0.9.1"
 dirs = "3.0.1"
 crossbeam = "0.8.0"
@@ -45,6 +44,7 @@ uuid = { version = "0.8.1", features = ["serde", "v4"] }
 prettytable-rs = "0.8.0"
 termion = "1.0.0"
 thiserror = "1.0.22"
+toml = "0.4.2"
 
 [dev-dependencies]
 rand = "0.7.3"
