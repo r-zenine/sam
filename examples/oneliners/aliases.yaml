@@ -6,5 +6,8 @@
   desc: prints home directory
   alias: echo $HOME
 
+- name: echo_env_var
+  desc: prints a variable defined in the configuration
+  alias: echo $variable
 
 

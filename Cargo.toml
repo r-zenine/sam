@@ -33,7 +33,7 @@ assets = [
 serde = { version = "1.0", features = ["derive"] }
 clap = "2.33"
 serde_yaml = "0.8"
-skim = "0.9.1"
+skim = "0.9.3"
 dirs = "3.0.1"
 crossbeam = "0.8.0"
 crossbeam-channel = "0.5.0"

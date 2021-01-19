@@ -23,10 +23,14 @@ pub struct UserInterface {
     chosen_alias: Option<Alias>,
     choices: RefCell<HashMap<Identifier, Choice>>,
     silent: bool,
+    variables: HashMap<String, String>,
 }
 
 impl UserInterface {
-    pub fn new(silent: bool) -> Result<UserInterface, ErrorsUI> {
+    pub fn new(
+        silent: bool,
+        variables: HashMap<String, String>,
+    ) -> Result<UserInterface, ErrorsUI> {
         let preview_file = TempFile::new()?;
         let preview_command = format!("cat {}", &preview_file.path.as_path().display());
         Ok(UserInterface {
@@ -35,6 +39,7 @@ impl UserInterface {
             chosen_alias: None,
             choices: RefCell::new(HashMap::new()),
             silent,
+            variables,
         })
     }
 
@@ -270,6 +275,7 @@ impl Resolver for UserInterface {
         }
 
         let mut to_run = ShellCommand::as_command(sh_cmd.clone());
+        to_run.envs(&self.variables);
         let output = to_run
             .output()
             .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), e.into()))?;
