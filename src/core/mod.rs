@@ -1,4 +1,5 @@
 pub mod aliases;
+pub mod aliases_repository;
 pub mod choices;
 pub mod commands;
 pub mod dependencies;

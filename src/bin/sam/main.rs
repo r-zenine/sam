@@ -1,4 +1,5 @@
 use sam::core::aliases::Alias;
+use sam::core::aliases_repository::{AliasesRepository, ErrorsAliasesRepository};
 use sam::core::choices::Choice;
 use sam::core::dependencies::Dependencies;
 use sam::core::identifiers::Identifier;
@@ -79,7 +80,7 @@ fn main() {
 }
 struct AppContext {
     ui_interface: userinterface::UserInterface,
-    aliases: Vec<Alias>,
+    aliases: AliasesRepository,
     vars: VarsRepository,
     silent: bool,
     dry: bool,
@@ -91,17 +92,18 @@ impl AppContext {
         let config = AppSettings::load()?;
         let ui_interface = userinterface::UserInterface::new(silent, config.variables())?;
         let files = walk_dir(config.root_dir())?;
-        let mut aliases = vec![];
+        let mut aliases_vec = vec![];
         let mut vars = VarsRepository::default();
         for f in files {
             if let Some(file_name) = f.file_name() {
                 if file_name == "aliases.yaml" || file_name == "aliases.yml" {
-                    aliases.extend(read_aliases_from_path(f.as_path())?);
+                    aliases_vec.extend(read_aliases_from_path(f.as_path())?);
                 } else if file_name == "vars.yaml" || file_name == "vars.yml" {
                     vars.merge(read_vars_repository(f.as_path())?);
                 }
             }
         }
+        let aliases = AliasesRepository::new(aliases_vec.into_iter())?;
         vars.ensure_no_missing_dependency()?;
         Ok(AppContext {
             ui_interface,
@@ -116,7 +118,9 @@ impl AppContext {
 
 fn run(dry: bool, silent: bool) -> Result<i32> {
     let mut ctx = AppContext::try_load(dry, silent)?;
-    let item = ctx.ui_interface.select_alias(PROMPT, &ctx.aliases)?;
+    let item = ctx
+        .ui_interface
+        .select_alias(PROMPT, &ctx.aliases.aliases())?;
     let alias = item.alias();
     execute_alias(&ctx, alias)
 }
@@ -126,8 +130,8 @@ fn run_alias(input: &'_ str, dry: bool, silent: bool) -> Result<i32> {
     let mut elems: Vec<&str> = input.split("::").collect();
     let name = elems.pop().unwrap_or_default();
     let namespace = elems.pop();
-    let alias = ctx
-        .aliases
+    let alias_ls = ctx.aliases.aliases();
+    let alias = alias_ls
         .iter()
         .find(|e| e.name() == name && e.namespace() == namespace)
         .ok_or(Errorssam::InvalidAliasSelection)?;
@@ -203,6 +207,8 @@ enum Errorssam {
     VarRead(#[from] ErrorsVarRead),
     #[error("could not figure out dependencies\n-> {0}")]
     VarsRepository(#[from] ErrorsVarsRepository),
+    #[error("could not figure out alias substitution\n-> {0}")]
+    AliasRepository(#[from] ErrorsAliasesRepository),
     #[error("could not run the terminal user interface\n-> {0}")]
     UI(#[from] userinterface::ErrorsUI),
     #[error("could not run a command\n-> {0}")]
