@@ -95,7 +95,11 @@ impl Identifier {
         self.inner.as_str()
     }
 
-    fn maybe_namespace(s: String) -> (String, Option<String>) {
+    pub fn maybe_namespace<IntoStr>(str: IntoStr) -> (String, Option<String>)
+    where
+        IntoStr: Into<String>,
+    {
+        let s = str.into();
         if s.contains("::") {
             let parts: Vec<&str> = s.split("::").take(2).collect();
             return (
@@ -106,7 +110,11 @@ impl Identifier {
         return (s, None);
     }
     fn sanitize_identifier(s: String) -> String {
-        s.replace(" ", "").replace("{{", "").replace("}}", "")
+        s.replace(" ", "")
+            .replace("{{", "")
+            .replace("}}", "")
+            .replace("]]", "")
+            .replace("[[", "")
     }
 }
 
@@ -149,6 +157,7 @@ impl Display for Identifiers {
         Ok(())
     }
 }
+
 pub mod fixtures {
     use super::*;
     use lazy_static::lazy_static;
@@ -160,6 +169,10 @@ pub mod fixtures {
             Identifier::with_namespace("pattern", Some("ns"));
         pub static ref VAR_PATTERN_2_NAME: Identifier = Identifier::new("pattern2");
         pub static ref VAR_MISSING_NAME: Identifier = Identifier::new("missing");
+        pub static ref ALIAS_LS_DIR_NAME: Identifier =
+            Identifier::with_namespace("list", Some("dirs"));
+        pub static ref ALIAS_GREP_DIR_NAME: Identifier =
+            Identifier::with_namespace("grep", Some("dirs"));
     }
 }
 

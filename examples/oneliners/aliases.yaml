@@ -1,10 +1,10 @@
 - name: list_stuff
   desc: list current directory. 
-  alias: cd {{docker::directory}} && {{kubernetes::pager}} {{docker::file}}
+  alias: "cd {{docker::directory}} && {{kubernetes::pager}} {{docker::file}}"
 
 - name: echo $HOME
   desc: prints home directory
-  alias: echo $HOME
+  alias: "[[docker::echo_input]] && echo $HOME"
 
 - name: echo_env_var
   desc: prints a variable defined in the configuration
