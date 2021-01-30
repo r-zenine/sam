@@ -119,14 +119,14 @@ mod tests {
         let up_alias = AliasesRepository::substitute_alias_defs(&a, &aliases);
         assert!(up_alias.is_ok());
         assert_eq!(
-            "ls {{ directory }}|grep {{ pattern }}",
+            "ls {{ dirs::directory }}|grep {{ pattern }}",
             up_alias.unwrap().alias()
         );
         let a_no_ns = ALIAS_GREP_DIR_NO_NS.clone();
         let up_alias_no_ns = AliasesRepository::substitute_alias_defs(&a_no_ns, &aliases);
         assert!(up_alias_no_ns.is_ok());
         assert_eq!(
-            "ls {{ directory }}| grep {{ pattern }}",
+            "ls {{ dirs::directory }}| grep {{ pattern }}",
             up_alias_no_ns.unwrap().alias()
         );
     }
@@ -143,7 +143,7 @@ mod tests {
         let alias = ar.aliases.get(&ALIAS_GREP_DIR_NAME.clone());
         assert!(alias.is_some());
         assert_eq!(
-            "ls {{ directory }}| grep {{ pattern }}",
+            "ls {{ dirs::directory }}| grep {{ pattern }}",
             alias.unwrap().alias()
         );
     }
