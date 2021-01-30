@@ -82,7 +82,7 @@ impl Var {
     }
 
     pub fn prompt(&self) -> Option<&str> {
-        self.from_input.as_ref().map(|e| e.as_str())
+        self.from_input.as_deref()
     }
 }
 

@@ -8,7 +8,7 @@ pub struct ShellCommand<T: Clone> {
 }
 
 fn current_shell_or_sh() -> String {
-    env::var("SHELL").unwrap_or(String::from("/bin/sh"))
+    env::var("SHELL").unwrap_or_else(|_| String::from("/bin/sh"))
 }
 
 impl<T> ShellCommand<T>
@@ -19,7 +19,7 @@ where
         Self { command }
     }
 
-    pub fn as_command<U>(u: U) -> Command
+    pub fn make_command<U>(u: U) -> Command
     where
         U: Into<ShellCommand<T>>,
         T: AsRef<OsStr>,

@@ -44,7 +44,7 @@ impl AliasesRepository {
     ) -> Result<Alias, ErrorsAliasesRepository> {
         let mut t_alias = alias.clone();
         let deps = Self::parse(&alias);
-        if deps.len() > 0 {
+        if !deps.is_empty() {
             let alias_str = alias.alias();
             let mut alias_parts = vec![];
             for (range, id) in deps.iter() {
@@ -56,7 +56,7 @@ impl AliasesRepository {
                     alias_parts.push(suffix.to_string());
                 } else {
                     return Err(ErrorsAliasesRepository::MissingDependencies(
-                        alias.identifier().clone(),
+                        alias.identifier(),
                         id.clone(),
                     ));
                 }
@@ -75,7 +75,7 @@ impl AliasesRepository {
             .map(|(r, (n, ns))| {
                 (
                     r,
-                    Identifier::with_namespace(n, ns.or(default_namespace.clone())),
+                    Identifier::with_namespace(n, ns.or_else(|| default_namespace.clone())),
                 )
             })
             .collect()

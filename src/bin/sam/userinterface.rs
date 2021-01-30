@@ -228,7 +228,7 @@ impl SkimItem for AliasItem {
 
 impl Into<Command> for AliasItem {
     fn into(self) -> Command {
-        ShellCommand::as_command(self.alias)
+        ShellCommand::make_command(self.alias)
     }
 }
 
@@ -274,7 +274,7 @@ impl Resolver for UserInterface {
             logs::command(&var, &sh_cmd.value());
         }
 
-        let mut to_run = ShellCommand::as_command(sh_cmd.clone());
+        let mut to_run = ShellCommand::make_command(sh_cmd.clone());
         to_run.envs(&self.variables);
         let output = to_run
             .output()

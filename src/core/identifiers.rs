@@ -86,7 +86,7 @@ impl Identifier {
             .captures_iter(s)
             .map(|e| Identifier::maybe_namespace(e["vars"].to_owned()))
             .map(|(name, ns)| {
-                Identifier::with_namespace(name.as_str(), ns.or(default_namespace.clone()).clone())
+                Identifier::with_namespace(name.as_str(), ns.or_else(|| default_namespace.clone()))
             })
             .collect()
     }
@@ -107,7 +107,7 @@ impl Identifier {
                 Some(Identifier::sanitize_identifier(parts[0].to_string())),
             );
         }
-        return (s, None);
+        (s, None)
     }
     fn sanitize_identifier(s: String) -> String {
         s.replace(" ", "")
