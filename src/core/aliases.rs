@@ -52,7 +52,7 @@ impl Alias {
     pub fn alias(&self) -> &'_ str {
         self.alias.as_str()
     }
-    pub fn sanitized_alias(&self) -> String { 
+    pub fn sanitized_alias(&self) -> String {
         Self::sanitize(self.alias(), self.namespace().unwrap_or(""))
     }
     pub fn identifier(&self) -> Identifier {

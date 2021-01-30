@@ -53,10 +53,10 @@ impl VarsRepository {
 
     /// Execution sequence returns for a given `Dep: Dependencies`
     /// an execution sequence of VARs in order to fulfill it's dependencies.
-    pub fn execution_sequence<'repository, Deps>(
-        &'repository self,
+    pub fn execution_sequence<Deps>(
+        &self,
         dep: Deps,
-    ) -> Result<ExecutionSequence<'repository>, ErrorsVarsRepository>
+    ) -> Result<ExecutionSequence<'_>, ErrorsVarsRepository>
     where
         Deps: Dependencies,
     {
