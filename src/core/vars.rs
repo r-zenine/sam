@@ -98,12 +98,23 @@ impl Namespace for Var {
     }
 }
 
+impl Namespace for &Var {
+    fn namespace(&self) -> Option<&str> {
+        self.name.namespace()
+    }
+}
+
 impl Command for Var {
     fn command(&self) -> &str {
         self.from_command.as_deref().unwrap_or("")
     }
 }
 
+impl Command for &Var {
+    fn command(&self) -> &str {
+        self.from_command.as_deref().unwrap_or("")
+    }
+}
 /// Dependencies returns the dependencies of this variable if it gets it's
 /// choices from a command.
 ///```rust

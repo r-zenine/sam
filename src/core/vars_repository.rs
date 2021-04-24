@@ -162,6 +162,10 @@ impl VarsRepository {
             resolver.resolve_static(var.name(), var.choices().into_iter())
         }
     }
+
+    pub fn vars_iter(&self) -> impl Iterator<Item = &Var> {
+        self.vars.iter()
+    }
 }
 
 #[derive(Debug, Error)]

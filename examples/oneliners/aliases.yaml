@@ -10,4 +10,9 @@
   desc: prints a variable defined in the configuration
   alias: echo $variable
 
+- name: echo_undifined_var
+  desc: prints a variable defined in the configuration
+  alias: echo $(variable_undef)
+
+
 
