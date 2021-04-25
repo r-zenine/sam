@@ -3,9 +3,9 @@
 
 sam stands for **small aliases manager**. It is a command line tool that helps you manage your **aliases** and other common command.
 
-Let's say you have multiple `kubernetes` clusters, runing in multiple cloud regions for different purposes, and several `namespaces`. Or, multiple kafka clusters and several `topics`. Everytime, you want to interact with one of these tools from the command line, you have to specify which region/environment/cluster/topic etc... you want your command to be apllied to. `sam` allows, you to express all your command commandes in a `templated` from and guides you to chose a value for each template variable you introduce. 
+Let's say you have multiple `kubernetes` clusters, running in several cloud regions for different purposes, and several `namespaces`. Or, multiple kafka clusters and several `topics`. Everytime, you want to interact with one of these tools from the command line, you have to specify which region/environment/cluster/topic etc... you want your command to be apllied to. `sam` allows, you to express all your command commandes in a `templated` from and guides you to chose a value for each template variable you introduce. 
 
-`sam` can handle dependencies between template variables ( for ex, the namespaces depende on the chosen cluster, or the kafka topics depend on the chose cluster ) and will build a dependency graph and generate a terminal user interface dynamically to prompt you to chose an appropriate value for each variable.
+`sam` can handle dependencies between template variables ( for ex, the namespaces depends on the chosen cluster, or the kafka topics depend on the chose cluster ) and will build a dependency graph and generate a terminal user interface dynamically to prompt you to chose an appropriate value for each variable.
 
 ## Getting started :
 
@@ -54,11 +54,17 @@ root_dir="./examples/oneliners/"
 ### Aliases:
 The `aliases.yaml` file can look like this : 
 ```yaml
-- name: list stuff
+- name: echo_hello
+  desc: echo hello
+  alias: echo hello
+
+- name: list_stuff
   desc: list current directory. 
-  alias: cd {{directory}} && {{pager}} {{file}}
+  alias: [[ echo_hello ]] && cd {{directory}} && {{pager}} {{file}}
 ```
 You can use the `{{ variable }}` syntax to refer to variables defined in your `vars_file`
+
+You can use the `[[ ns::alias ]]` syntax to insert the content of an alias in another one.
 
 `sam` will first prompt your for a choice for each dependant `variable`. Once this is done, it will replace each `variable` with it's corresponding choice and run the resulting command.
 
@@ -87,4 +93,3 @@ In your `vars_file`, you can define variables. Variables can either have a stati
   desc: file selection
   from_command: ls -1 {{ directory }}
 ```
-
