@@ -1,7 +1,7 @@
 - name: directory
   desc: an example variable
   choices:
-    - value: /etc/acpi
+    - value: /etc
       desc: etc acpi directory
     - value: /etc/default
       desc: etc default directory
@@ -17,7 +17,7 @@
 
 - name: file
   desc: file selection
-  from_command: ls -1 {{ directory }}
+  from_command: "sleep 10 && ls -1 {{ directory }}"
 
 - name: value
   desc: file selection

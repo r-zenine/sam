@@ -1,6 +1,7 @@
+use rand::Rng;
 use std::cell::RefCell;
 use std::env::temp_dir;
-use std::fs;
+use std::fs::remove_dir_all;
 use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
@@ -8,6 +9,27 @@ use thiserror::Error;
 use uuid::Uuid;
 
 type Result<T> = std::result::Result<T, ErrorsFS>;
+
+#[derive(Debug)]
+pub struct TempDirectory {
+    pub path: PathBuf,
+}
+
+impl TempDirectory {
+    pub fn new() -> Result<Self> {
+        let seed: u16 = rand::thread_rng().gen();
+        let dir_name = format!("sam-temp-dir-{}", seed);
+        let path = temp_dir().join(dir_name);
+        std::fs::create_dir(path.clone()).map_err(ErrorsFS::UnexpectedIOError)?;
+        Ok(TempDirectory { path })
+    }
+}
+
+impl Drop for TempDirectory {
+    fn drop(&mut self) {
+        remove_dir_all(&self.path).expect("Can't cleanup directory")
+    }
+}
 
 #[derive(Debug)]
 pub struct TempFile {

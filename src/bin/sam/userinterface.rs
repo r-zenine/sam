@@ -10,11 +10,12 @@ use skim::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io;
 use std::io::Write;
 use std::process::Command;
 
 use thiserror::Error;
+
+use crate::vars_cache::VarsCache;
 
 type UISelector = Arc<dyn SkimItem>;
 pub struct UserInterface {
@@ -24,12 +25,14 @@ pub struct UserInterface {
     choices: RefCell<HashMap<Identifier, Choice>>,
     silent: bool,
     variables: HashMap<String, String>,
+    cache: Box<dyn VarsCache>,
 }
 
 impl UserInterface {
     pub fn new(
         silent: bool,
         variables: HashMap<String, String>,
+        cache: Box<dyn VarsCache>,
     ) -> Result<UserInterface, ErrorsUI> {
         let preview_file = TempFile::new()?;
         let preview_command = format!("cat {}", &preview_file.path.as_path().display());
@@ -40,6 +43,7 @@ impl UserInterface {
             choices: RefCell::new(HashMap::new()),
             silent,
             variables,
+            cache,
         })
     }
 
@@ -259,7 +263,7 @@ impl Resolver for UserInterface {
             "Please provide an input for variable {}.\n{} :",
             &var, prompt
         );
-        match io::stdin().read_line(&mut buffer) {
+        match std::io::stdin().read_line(&mut buffer) {
             Ok(_) => Ok(Choice::new(buffer.replace("\n", ""), None)),
             Err(err) => Err(ErrorsResolver::NoInputWasProvided(var, err.to_string())),
         }
@@ -273,20 +277,36 @@ impl Resolver for UserInterface {
         if !self.silent {
             logs::command(&var, &sh_cmd.value());
         }
+        let cmd_key = sh_cmd
+            .replace_env_vars_in_command(&self.variables)
+            .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), Box::new(e)))?;
+        let cache_entry = self.cache.get(cmd_key.value());
 
-        let mut to_run = ShellCommand::make_command(sh_cmd.clone());
-        to_run.envs(&self.variables);
-        let output = to_run
-            .output()
-            .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), e.into()))?;
-        let choices = read_choices(output.stdout.as_slice());
+        let (stdout_output, stderr) = if let Ok(Some(out)) = cache_entry {
+            (out.as_bytes().to_owned(), vec![])
+        } else {
+            let mut to_run = ShellCommand::make_command(sh_cmd.clone());
+            to_run.envs(&self.variables);
+            let output = to_run
+                .output()
+                .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), e.into()))?;
+            self.cache
+                .put(
+                    cmd_key.value(),
+                    &String::from_utf8_lossy(output.stdout.as_slice()).to_owned(),
+                )
+                .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), Box::new(e)))?;
+            (output.stdout, output.stderr)
+        };
+
+        let choices = read_choices(stdout_output.as_slice());
         match choices {
             Err(e) => Err(ErrorsResolver::DynamicResolveFailure(var, e.into())),
             Ok(v) if !v.is_empty() => self.resolve_static(var, v.into_iter()),
             Ok(_) => Err(ErrorsResolver::DynamicResolveEmpty(
                 var,
                 sh_cmd.value().to_owned(),
-                std::str::from_utf8(&output.stderr).unwrap_or("").to_owned(),
+                std::str::from_utf8(&stderr).unwrap_or("").to_owned(),
             )),
         }
     }

@@ -1,3 +1,4 @@
+use crate::vars_cache::{NoopVarsCache, RocksDBVarsCache, VarsCache};
 use sam::core::aliases::Alias;
 use sam::core::aliases_repository::{AliasesRepository, ErrorsAliasesRepository};
 use sam::core::choices::Choice;
@@ -18,15 +19,18 @@ use thiserror::Error;
 
 mod config;
 mod userinterface;
+mod vars_cache;
 
 use crate::config::{AppSettings, ErrorsConfig};
 use clap::{App, Arg};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
+
 const ABOUT: &str = "sam lets you difine custom aliases and search them using fuzzy search.";
 const ABOUT_SUB_RUN: &str = "show your aliases";
 const ABOUT_SUB_CHECK_CONFIG: &str = "checks your configuration files";
+const ABOUT_SUB_CLEAR_CACHE: &str = "clears the cache for vars 'from_command' outputs";
 const ABOUT_SUB_ALIAS: &str = "run's a provided alias";
 const ABOUT_SUB_BASHRC : &str = "output's a collection of aliases definitions into your bashrc. use 'source `ssa bashrc`' in your bashrc file";
 
@@ -36,11 +40,13 @@ fn main() {
     let matches = app_init().get_matches();
     let dry = matches.is_present("dry");
     let silent = matches.is_present("silent");
+    let no_cache = matches.is_present("no-cache");
     let result = match matches.subcommand() {
-        ("alias", Some(e)) => run_alias(e.value_of("alias").unwrap(), dry, silent),
+        ("alias", Some(e)) => run_alias(e.value_of("alias").unwrap(), dry, silent, no_cache),
         ("bashrc", Some(_)) => bashrc(),
         ("check-config", Some(_)) => check_config(),
-        (&_, _) => run(dry, silent),
+        ("clear-cache", Some(_)) => clear_cache(),
+        (&_, _) => run(dry, silent, no_cache),
     };
     match result {
         Err(Errorssam::UI(userinterface::ErrorsUI::SkimAborted)) => {}
@@ -54,6 +60,7 @@ fn main() {
         Ok(status) => std::process::exit(status),
     }
 }
+
 struct AppContext {
     ui_interface: userinterface::UserInterface,
     aliases: AliasesRepository,
@@ -64,9 +71,14 @@ struct AppContext {
 }
 
 impl AppContext {
-    fn try_load(dry: bool, silent: bool) -> Result<AppContext> {
+    fn try_load(dry: bool, silent: bool, no_cache: bool) -> Result<AppContext> {
         let config = AppSettings::load()?;
-        let ui_interface = userinterface::UserInterface::new(silent, config.variables())?;
+        let cache: Box<dyn VarsCache> = if !no_cache {
+            Box::new(RocksDBVarsCache::new(config.cache_dir(), &config.ttl())?)
+        } else {
+            Box::new(NoopVarsCache {})
+        };
+        let ui_interface = userinterface::UserInterface::new(silent, config.variables(), cache)?;
         let files = walk_dir(config.root_dir())?;
         let mut aliases_vec = vec![];
         let mut vars = VarsRepository::default();
@@ -92,8 +104,8 @@ impl AppContext {
     }
 }
 
-fn run(dry: bool, silent: bool) -> Result<i32> {
-    let mut ctx = AppContext::try_load(dry, silent)?;
+fn run(dry: bool, silent: bool, no_cache: bool) -> Result<i32> {
+    let mut ctx = AppContext::try_load(dry, silent, no_cache)?;
     let item = ctx
         .ui_interface
         .select_alias(PROMPT, &ctx.aliases.aliases())?;
@@ -101,8 +113,8 @@ fn run(dry: bool, silent: bool) -> Result<i32> {
     execute_alias(&ctx, alias)
 }
 
-fn run_alias(input: &'_ str, dry: bool, silent: bool) -> Result<i32> {
-    let ctx = AppContext::try_load(dry, silent)?;
+fn run_alias(input: &'_ str, dry: bool, silent: bool, no_cache: bool) -> Result<i32> {
+    let ctx = AppContext::try_load(dry, silent, no_cache)?;
     let mut elems: Vec<&str> = input.split("::").collect();
     let name = elems.pop().unwrap_or_default();
     let namespace = elems.pop();
@@ -134,8 +146,15 @@ fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
         Ok(0)
     }
 }
+
+fn clear_cache() -> Result<i32> {
+    let config = AppSettings::load()?;
+    let cache = RocksDBVarsCache::new(config.cache_dir(), &config.ttl())?;
+    cache.clear_cache().map(|_| 0).map_err(Errorssam::VarsCache)
+}
+
 fn check_config() -> Result<i32> {
-    let ctx = AppContext::try_load(false, true)?;
+    let ctx = AppContext::try_load(false, true, false)?;
     let missing_envvars_in_aliases = unset_env_vars(ctx.aliases.aliases().iter());
     let missing_envvars_in_vars = unset_env_vars(ctx.vars.vars_iter());
     let envvars_in_config: HashSet<&String> = ctx.variables.keys().collect();
@@ -208,10 +227,17 @@ fn app_init() -> App<'static, 'static> {
             Arg::with_name("silent")
                 .long("silent")
                 .short("s")
-                .help("avoid outputing logs to the standard output."),
+                .help("don't cache the output of `from_command` vars."),
+        )
+        .arg(
+            Arg::with_name("no-cache")
+                .long("no-cache")
+                .short("-n")
+                .help("avoid relying of the vars cache."),
         )
         .subcommand(App::new("run").about(ABOUT_SUB_RUN))
         .subcommand(App::new("check-config").about(ABOUT_SUB_CHECK_CONFIG))
+        .subcommand(App::new("clear-cache").about(ABOUT_SUB_CLEAR_CACHE))
         .subcommand(
             App::new("alias")
                 .arg(
@@ -241,6 +267,8 @@ enum Errorssam {
     VarsRepository(#[from] ErrorsVarsRepository),
     #[error("could not figure out alias substitution\n-> {0}")]
     AliasRepository(#[from] ErrorsAliasesRepository),
+    #[error("could not initialize the cache\n-> {0}")]
+    VarsCache(#[from] vars_cache::CacheError),
     #[error("could not run the terminal user interface\n-> {0}")]
     UI(#[from] userinterface::ErrorsUI),
     #[error("could not run a command\n-> {0}")]
