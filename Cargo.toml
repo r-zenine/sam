@@ -45,6 +45,9 @@ prettytable-rs = "0.8.0"
 termion = "1.0.0"
 thiserror = "1.0.22"
 toml = "0.4.2"
+rocksdb = "0.16.0"
+bincode = "1.3.3"
+rand = "0.8.4"
 
 [dev-dependencies]
 rand = "0.7.3"

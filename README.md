@@ -14,9 +14,10 @@ Run `cargo run run` on the root of this repository to see a demo.
 
 You can also take a look at my own configuration here [r-zenine/oneliners](https://github.com/r-zenine/oneliners)
 
-## Installing the tool 
+## Installing sam
 You can download binaries for `linux` and `macos` from the release page. 
 You can also use a package manager : 
+
 ### MacOS with homebrew: 
 ```bash
 brew tap r-zenine/sam
@@ -28,12 +29,11 @@ As I am still waiting for the manual validation on snap, you can only install it
 snap install --edge --devmode sam
 ```
 
-
-## How to configure the tool:
+## How to configure sam:
 Fist, you want to start by creating a repository that will hold your scripts and aliases. 
 Ideally, we recommend it's stucture to be as follow : 
 ```bash
-your_root_directory
+root_aliases_directory
 -------------------
         ├── aliases.yaml
         ├── vars.yaml
@@ -48,7 +48,14 @@ Once it's done, you can continue by editing a configuration file in `$HOME/.sam_
 that should look as follow: 
 
 ```toml
-root_dir="./examples/oneliners/"
+root_dir="./examples/oneliners/" # the location of your `root_aliases_directory`
+# the time in seconds for which sam will keep the output of
+# a from_command var in it's internal cache
+ttl=1800 
+# Arbitrary key value pairs
+# You can refer to the keys/value pairs defined below 
+# as if they were environment varialbes
+PAGER_OPT="-p -v"
 ```
 
 ### Aliases:
@@ -60,7 +67,7 @@ The `aliases.yaml` file can look like this :
 
 - name: list_stuff
   desc: list current directory. 
-  alias: [[ echo_hello ]] && cd {{directory}} && {{pager}} {{file}}
+  alias: [[ echo_hello ]] && cd {{directory}} && {{pager}} $(PAGER_OPT) {{file}} 
 ```
 You can use the `{{ variable }}` syntax to refer to variables defined in your `vars_file`
 

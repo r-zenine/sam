@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsStr;
 use std::process::Command;
@@ -29,6 +30,21 @@ where
     }
     pub fn value(&self) -> &T {
         &self.command
+    }
+}
+
+impl ShellCommand<String> {
+    pub fn replace_env_vars_in_command(
+        &self,
+        variables: &HashMap<String, String>,
+    ) -> std::io::Result<ShellCommand<String>> {
+        let s = format!("echo \"{}\"|envsubst", self.command);
+        let shell_cmd = ShellCommand::<String>::new(s);
+        let mut cmd: Command = shell_cmd.into();
+        cmd.envs(variables);
+        let out = cmd.output()?;
+        let new_cmd = String::from_utf8_lossy(out.stdout.as_slice()).replace("\n", "");
+        Ok(ShellCommand::<String>::new(new_cmd))
     }
 }
 
