@@ -24,32 +24,33 @@ impl VarsCache for NoopVarsCache {
 }
 
 pub struct RocksDBVarsCache {
-    internal_cache: DB,
+    path: PathBuf,
     ttl: Duration,
 }
 
 impl RocksDBVarsCache {
-    pub fn new(p: impl AsRef<Path>, ttl: &Duration) -> Result<Self, CacheError> {
-        let path = p.as_ref();
+    pub fn new(p: impl AsRef<Path>, ttl: &Duration) -> Self {
+        RocksDBVarsCache {
+            path: p.as_ref().to_owned(),
+            ttl: ttl.clone(),
+        }
+    }
+    pub fn open_cache(&self) -> Result<DB, CacheError> {
         let mut options = rocksdb::Options::default();
         options.create_if_missing(true);
-        DB::open_with_ttl(&options, path, ttl.clone())
-            .map_err(|e| CacheError::RocksDBOpenError(path.to_owned(), e))
-            .map(|db| RocksDBVarsCache {
-                internal_cache: db,
-                ttl: ttl.clone(),
-            })
+        DB::open_with_ttl(&options, self.path.clone(), self.ttl.clone())
+            .map_err(|e| CacheError::RocksDBOpenError(self.path.clone(), e))
     }
+
     pub fn invalidate_if_too_old(&self, c: Option<CacheEntry>) -> Option<CacheEntry> {
         c.filter(|e| e.is_valid(self.ttl))
     }
 
     pub fn clear_cache(&self) -> Result<(), CacheError> {
-        let it = self.internal_cache.iterator(rocksdb::IteratorMode::Start);
-        for (key, _) in it {
-            self.internal_cache
-                .delete(key)
-                .map_err(CacheError::RocksDBError)?;
+        let db = self.open_cache()?;
+        let keys = db.iterator(rocksdb::IteratorMode::Start);
+        for (key, _) in keys {
+            db.delete(key).map_err(CacheError::RocksDBError)?;
         }
         Ok(())
     }
@@ -65,14 +66,15 @@ impl VarsCache for RocksDBVarsCache {
         };
 
         let bytes = bincode::serialize(&v)?;
+        let db = self.open_cache()?;
 
-        self.internal_cache
-            .put(command.as_ref(), bytes)
-            .map_err(CacheError::RocksDBError)
+        db.put(command.as_ref(), bytes)
+            .map_err(CacheError::RocksDBError)?;
+        db.flush().map_err(CacheError::RocksDBError)
     }
 
     fn get(&self, command: &dyn AsRef<str>) -> Result<Option<String>, CacheError> {
-        self.internal_cache
+        self.open_cache()?
             .get(command.as_ref())?
             .as_ref()
             .map(Vec::as_slice)
@@ -114,7 +116,8 @@ pub enum CacheError {
 
 #[cfg(test)]
 mod tests {
-    use super::{RocksDBVarsCache, VarsCache};
+    use super::RocksDBVarsCache;
+    use super::VarsCache;
     use sam::utils::fsutils::TempDirectory;
     use std::time::Duration;
 
@@ -122,7 +125,7 @@ mod tests {
     pub fn test_rocksdb_cache() {
         let tmp_dir = TempDirectory::new().expect("can't create a temporary directory");
         let ttl = Duration::from_secs(90);
-        let cache = RocksDBVarsCache::new(&tmp_dir.path, &ttl).expect("can't create rocksdb cache");
+        let cache = RocksDBVarsCache::new(&tmp_dir.path, &ttl);
         cache
             .put(&String::from("command"), &String::from("output"))
             .expect("can't write in rocksdb cache");

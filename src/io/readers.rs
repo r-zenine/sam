@@ -118,7 +118,6 @@ mod tests {
     use crate::core::choices::Choice;
     use crate::core::vars::Var;
     use std::io::BufReader;
-    use std::panic;
 
     #[test]
     fn test_read_vars() {

@@ -52,12 +52,12 @@ impl TempFile {
 }
 
 pub fn walk_dir(path: &Path) -> Result<Vec<PathBuf>> {
-    let dir_content = fs::read_dir(path)?;
+    let dir_content = std::fs::read_dir(path)?;
     let paths = dir_content.flat_map(|e| e.map(|e| e.path()));
     let mut deque = vec![];
     for content in paths {
         if content.is_dir() {
-            let cur_dir = fs::read_dir(content.as_path())?;
+            let cur_dir = std::fs::read_dir(content.as_path())?;
             let paths = cur_dir.flat_map(|e| e.map(|e| e.path()));
             deque.extend(paths);
         }

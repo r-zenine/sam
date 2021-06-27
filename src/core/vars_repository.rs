@@ -14,6 +14,7 @@ pub struct ExecutionSequence<'repository> {
 #[derive(Debug, Default)]
 pub struct VarsRepository {
     vars: HashSet<Var>,
+    defaults: HashMap<Identifier, Choice>,
 }
 
 impl<'repository> AsRef<[&'repository Identifier]> for ExecutionSequence<'repository> {
@@ -28,11 +29,34 @@ impl VarsRepository {
     /// if a Var provided has a dependency that is not found in the Iterator.
     pub fn new(value: impl Iterator<Item = Var>) -> Self {
         let vars: HashSet<Var> = value.collect();
-        VarsRepository { vars }
+        VarsRepository {
+            vars,
+            defaults: HashMap::default(),
+        }
     }
 
     pub fn merge(&mut self, other: VarsRepository) {
         self.vars.extend(other.vars);
+    }
+
+    pub fn set_defaults(
+        &mut self,
+        defaults: &HashMap<Identifier, Choice>,
+    ) -> Result<(), ErrorsVarsRepository> {
+        let mut identifiers = vec![];
+        for (key, _) in defaults {
+            if !self.vars.contains(key) {
+                identifiers.push(key.clone());
+            }
+        }
+        if identifiers.is_empty() {
+            self.defaults = defaults.to_owned();
+            Ok(())
+        } else {
+            Err(ErrorsVarsRepository::UnknowVarsDefaults(Identifiers {
+                0: identifiers,
+            }))
+        }
     }
 
     pub fn ensure_no_missing_dependency(&self) -> Result<(), ErrorsVarsRepository> {
@@ -116,8 +140,12 @@ impl VarsRepository {
         let mut choices: HashMap<Identifier, Choice> = HashMap::new();
         for var_name in vars.inner {
             if let Some(var) = self.vars.get(var_name) {
-                let choice = Self::resolve(resolver, var, &choices)?;
-                choices.insert(var_name.to_owned(), choice);
+                let choice = if let Some(default) = self.defaults.get(&var.name()) {
+                    default.to_owned()
+                } else {
+                    Self::resolve(resolver, var, &choices)?
+                };
+                choices.insert(var.name(), choice);
             } else {
                 return Err(ErrorsVarsRepository::MissingDependencies(Identifiers(
                     vec![var_name.to_owned()],
@@ -172,6 +200,8 @@ impl VarsRepository {
 pub enum ErrorsVarsRepository {
     #[error("missing the following dependencies:\n{0}")]
     MissingDependencies(Identifiers),
+    #[error("the provided variables are unknown:\n{0}")]
+    UnknowVarsDefaults(Identifiers),
     #[error("no choices available for var {var_name}\n-> {error}")]
     NoChoiceForVar {
         var_name: Identifier,

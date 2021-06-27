@@ -1,4 +1,5 @@
 use crate::vars_cache::{NoopVarsCache, RocksDBVarsCache, VarsCache};
+use clap::Values;
 use sam::core::aliases::Alias;
 use sam::core::aliases_repository::{AliasesRepository, ErrorsAliasesRepository};
 use sam::core::choices::Choice;
@@ -22,7 +23,7 @@ mod userinterface;
 mod vars_cache;
 
 use crate::config::{AppSettings, ErrorsConfig};
-use clap::{App, Arg};
+use clap::{App, Arg, ArgMatches};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
@@ -37,16 +38,16 @@ const ABOUT_SUB_BASHRC : &str = "output's a collection of aliases definitions in
 const PROMPT: &str = "Choose an alias to run > ";
 
 fn main() {
-    let matches = app_init().get_matches();
-    let dry = matches.is_present("dry");
-    let silent = matches.is_present("silent");
-    let no_cache = matches.is_present("no-cache");
-    let result = match matches.subcommand() {
-        ("alias", Some(e)) => run_alias(e.value_of("alias").unwrap(), dry, silent, no_cache),
+    let command_line_args = app_init().get_matches();
+    let app_ctx = AppContext::from_command_line_args(&command_line_args)
+        .expect("Can't initialize the application");
+
+    let result = match command_line_args.subcommand() {
+        ("alias", Some(e)) => run_alias(app_ctx, e.value_of("alias").unwrap()),
         ("bashrc", Some(_)) => bashrc(),
-        ("check-config", Some(_)) => check_config(),
+        ("check-config", Some(_)) => check_config(app_ctx),
         ("clear-cache", Some(_)) => clear_cache(),
-        (&_, _) => run(dry, silent, no_cache),
+        (&_, _) => run(app_ctx),
     };
     match result {
         Err(Errorssam::UI(userinterface::ErrorsUI::SkimAborted)) => {}
@@ -62,19 +63,24 @@ fn main() {
 }
 
 struct AppContext {
+    // TODO Todo remove user interface from the context
     ui_interface: userinterface::UserInterface,
     aliases: AliasesRepository,
     vars: VarsRepository,
-    silent: bool,
-    dry: bool,
-    variables: HashMap<String, String>,
+    silent: bool, // TODO provide a custom logger implementation
+    dry: bool,    // TODO provide a custom executor
+    env_variables: HashMap<String, String>,
 }
 
 impl AppContext {
-    fn try_load(dry: bool, silent: bool, no_cache: bool) -> Result<AppContext> {
+    fn from_command_line_args(matches: &ArgMatches) -> Result<AppContext> {
+        let dry = matches.is_present("dry");
+        let silent = matches.is_present("silent");
+        let no_cache = matches.is_present("no-cache");
+        let defaults = Self::parse_defaults(matches.values_of("choices"));
         let config = AppSettings::load()?;
         let cache: Box<dyn VarsCache> = if !no_cache {
-            Box::new(RocksDBVarsCache::new(config.cache_dir(), &config.ttl())?)
+            Box::new(RocksDBVarsCache::new(config.cache_dir(), &config.ttl()))
         } else {
             Box::new(NoopVarsCache {})
         };
@@ -91,6 +97,7 @@ impl AppContext {
                 }
             }
         }
+        vars.set_defaults(&defaults)?;
         let aliases = AliasesRepository::new(aliases_vec.into_iter())?;
         vars.ensure_no_missing_dependency()?;
         Ok(AppContext {
@@ -99,13 +106,35 @@ impl AppContext {
             vars,
             dry,
             silent,
-            variables: config.variables(),
+            env_variables: config.variables(),
         })
+    }
+
+    fn parse_defaults(defaults: Option<Values>) -> HashMap<Identifier, Choice> {
+        let mut default_h = HashMap::default();
+        if let Some(values) = defaults {
+            for value in values {
+                if let Some((id, choice)) = Self::parse_default(value) {
+                    default_h.insert(id, choice);
+                }
+            }
+        }
+        default_h
+    }
+
+    fn parse_default(default: &str) -> Option<(Identifier, Choice)> {
+        let parts: Vec<&str> = default.split("=").collect();
+        if parts.len() == 2 {
+            let id = Identifier::from_str(parts[0]);
+            let choice = Choice::new(parts[1], None);
+            Some((id, choice))
+        } else {
+            None
+        }
     }
 }
 
-fn run(dry: bool, silent: bool, no_cache: bool) -> Result<i32> {
-    let mut ctx = AppContext::try_load(dry, silent, no_cache)?;
+fn run(mut ctx: AppContext) -> Result<i32> {
     let item = ctx
         .ui_interface
         .select_alias(PROMPT, &ctx.aliases.aliases())?;
@@ -113,8 +142,7 @@ fn run(dry: bool, silent: bool, no_cache: bool) -> Result<i32> {
     execute_alias(&ctx, alias)
 }
 
-fn run_alias(input: &'_ str, dry: bool, silent: bool, no_cache: bool) -> Result<i32> {
-    let ctx = AppContext::try_load(dry, silent, no_cache)?;
+fn run_alias(ctx: AppContext, input: &'_ str) -> Result<i32> {
     let mut elems: Vec<&str> = input.split("::").collect();
     let name = elems.pop().unwrap_or_default();
     let namespace = elems.pop();
@@ -139,7 +167,7 @@ fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
     }
     if !ctx.dry {
         let mut command: Command = ShellCommand::new(final_command).into();
-        command.envs(&ctx.variables);
+        command.envs(&ctx.env_variables);
         let exit_status = command.status()?;
         exit_status.code().ok_or(Errorssam::ExitCode)
     } else {
@@ -149,15 +177,14 @@ fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
 
 fn clear_cache() -> Result<i32> {
     let config = AppSettings::load()?;
-    let cache = RocksDBVarsCache::new(config.cache_dir(), &config.ttl())?;
+    let cache = RocksDBVarsCache::new(config.cache_dir(), &config.ttl());
     cache.clear_cache().map(|_| 0).map_err(Errorssam::VarsCache)
 }
 
-fn check_config() -> Result<i32> {
-    let ctx = AppContext::try_load(false, true, false)?;
+fn check_config(ctx: AppContext) -> Result<i32> {
     let missing_envvars_in_aliases = unset_env_vars(ctx.aliases.aliases().iter());
     let missing_envvars_in_vars = unset_env_vars(ctx.vars.vars_iter());
-    let envvars_in_config: HashSet<&String> = ctx.variables.keys().collect();
+    let envvars_in_config: HashSet<&String> = ctx.env_variables.keys().collect();
     let all_envvars: HashSet<&String> = missing_envvars_in_vars
         .union(&missing_envvars_in_aliases)
         .collect();
@@ -235,6 +262,14 @@ fn app_init() -> App<'static, 'static> {
                 .short("-n")
                 .help("avoid relying of the vars cache."),
         )
+        .arg(
+            Arg::with_name("choices")
+                .short("c")
+                .long("choices")
+                .takes_value(true)
+                .multiple(true)
+                .help("provide choices for vars"),
+        )
         .subcommand(App::new("run").about(ABOUT_SUB_RUN))
         .subcommand(App::new("check-config").about(ABOUT_SUB_CHECK_CONFIG))
         .subcommand(App::new("clear-cache").about(ABOUT_SUB_CLEAR_CACHE))
@@ -245,6 +280,14 @@ fn app_init() -> App<'static, 'static> {
                         .help("the alias to run.")
                         .required(true)
                         .index(1),
+                )
+                .arg(
+                    Arg::with_name("choices")
+                        .short("c")
+                        .long("choices")
+                        .takes_value(true)
+                        .multiple(true)
+                        .help("provide choices for vars"),
                 )
                 .about(ABOUT_SUB_ALIAS),
         )

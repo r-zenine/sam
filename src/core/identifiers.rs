@@ -95,6 +95,11 @@ impl Identifier {
         self.inner.as_str()
     }
 
+    pub fn from_str(id: &str) -> Identifier {
+        let (name, namespace) = Self::maybe_namespace(id);
+        Self::with_namespace(name, namespace)
+    }
+
     pub fn maybe_namespace<IntoStr>(str: IntoStr) -> (String, Option<String>)
     where
         IntoStr: Into<String>,
@@ -190,5 +195,13 @@ mod tests {
         for (case, result) in cases {
             assert_eq!(&case.inner, result);
         }
+    }
+
+    #[test]
+    fn test_identifier_from_str() {
+        assert_eq!(
+            Identifier::from_str("aws::ec2_instance_ip"),
+            Identifier::with_namespace("ec2_instance_ip", Some("aws"))
+        )
     }
 }

@@ -290,12 +290,14 @@ impl Resolver for UserInterface {
             let output = to_run
                 .output()
                 .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), e.into()))?;
-            self.cache
-                .put(
-                    cmd_key.value(),
-                    &String::from_utf8_lossy(output.stdout.as_slice()).to_owned(),
-                )
-                .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), Box::new(e)))?;
+            if let Some(0) = output.status.code() {
+                self.cache
+                    .put(
+                        cmd_key.value(),
+                        &String::from_utf8_lossy(output.stdout.as_slice()).to_owned(),
+                    )
+                    .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), Box::new(e)))?;
+            }
             (output.stdout, output.stderr)
         };
 
