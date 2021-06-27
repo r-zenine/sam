@@ -30,7 +30,8 @@ commands:
     steps: 
       - run: |
           rustup component add rustfmt clippy
-          sudo apt install clang
+          sudo apt update
+          sudo apt install -y clang-11
 
   prepare_toolchain_macos: 
     steps: 
