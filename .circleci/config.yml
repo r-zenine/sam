@@ -38,7 +38,7 @@ commands:
       # source: https://wapl.es/rust/2019/02/17/rust-cross-compile-linux-to-macos.html
       - run: |
           sudo apt update
-          sudo apt install -y clang gcc g++ zlib1g-dev libmpc-dev libmpfr-dev libgmp-dev cmake libxml2-dev libssl-dev
+          sudo apt install -y clang gcc g++ zlib1g-dev libmpc-dev libmpfr-dev libgmp-dev cmake libxml2-dev libssl-dev clang-11
           rustup target add x86_64-apple-darwin
           cd /tmp
           git clone https://github.com/tpoechtrager/osxcross
