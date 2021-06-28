@@ -1,3 +1,2 @@
-root_dir="./examples/oneliners"
+root_dir=".sam"
 ttl=1800
-variable="toto"

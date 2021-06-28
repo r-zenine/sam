@@ -164,17 +164,17 @@ workflows:
               ignore: master
 
  # We cross compile for mac os only in the presence of tags.
-      - build_macos:
-          filters:
-            tags:
-              only: /^v.*/
-            branches:
-              ignore: master
+      # - build_macos:
+      #     filters:
+      #       tags:
+      #         only: /^v.*/
+      #       branches:
+      #         ignore: master
       # We publish a release only in the presence of tags.
       - create_release:
           requires:
             - build_linux
-            - build_macos
+            # - build_macos
           filters:
             tags:
               only: /^v.*/
