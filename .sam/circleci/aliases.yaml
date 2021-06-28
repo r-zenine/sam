@@ -1,0 +1,4 @@
+- name: execute local job
+  desc: execute a local circleci job
+  alias: "circleci local execute --job {{ job }}"
+

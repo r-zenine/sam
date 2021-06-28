@@ -1,0 +1,4 @@
+- name: job
+  desc: the jobs configure in circleci
+  from_command: yq eval ".jobs|keys" .circleci/config.yml|sed "s/- //"
+
