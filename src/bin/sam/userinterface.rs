@@ -273,15 +273,15 @@ impl Resolver for UserInterface {
         CMD: Into<ShellCommand<String>>,
     {
         let sh_cmd = cmd.into();
+        let cmd_key = sh_cmd
+            .replace_env_vars_in_command(&self.variables)
+            .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), Box::new(e)))?;
 
         if !self.silent {
             logs::command(&var, &sh_cmd.value());
         }
-        let cmd_key = sh_cmd
-            .replace_env_vars_in_command(&self.variables)
-            .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), Box::new(e)))?;
-        let cache_entry = self.cache.get(cmd_key.value());
 
+        let cache_entry = self.cache.get(cmd_key.value());
         let (stdout_output, stderr) = if let Ok(Some(out)) = cache_entry {
             (out.as_bytes().to_owned(), vec![])
         } else {
