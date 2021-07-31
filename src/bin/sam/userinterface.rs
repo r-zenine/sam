@@ -277,8 +277,9 @@ impl Resolver for UserInterface {
             .replace_env_vars_in_command(&self.variables)
             .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), Box::new(e)))?;
 
+        println!("Running result in cache {:?}", &cmd_key);
         if !self.silent {
-            logs::command(&var, &sh_cmd.value());
+            logs::command(&var, &cmd_key.value());
         }
 
         let cache_entry = self.cache.get(cmd_key.value());
@@ -290,7 +291,9 @@ impl Resolver for UserInterface {
             let output = to_run
                 .output()
                 .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), e.into()))?;
-            if let Some(0) = output.status.code() {
+            println!("Considering output {:?}", output);
+            if output.status.code() == Some(0) && output.stderr.len() == 0 {
+                println!("Putting result in cache {:?}", &cmd_key);
                 self.cache
                     .put(
                         cmd_key.value(),
