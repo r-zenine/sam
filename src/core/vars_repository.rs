@@ -306,7 +306,6 @@ mod tests {
             VAR_LISTING.clone(),
             VAR_PATTERN.clone(),
         ];
-        println!("{:?}", VAR_LISTING.dependencies());
         let repo = VarsRepository::new(full.into_iter());
         let seq = repo.execution_sequence(VAR_USE_LISTING.clone()).unwrap();
         let res = repo.choices(&resolver, seq);
