@@ -38,7 +38,8 @@ impl ShellCommand<String> {
         &self,
         variables: &HashMap<String, String>,
     ) -> std::io::Result<ShellCommand<String>> {
-        let s = format!("echo \"{}\"|envsubst", self.command);
+        let command_escaped = shellwords::escape(self.command.as_str());
+        let s = format!("echo \"{}\"|envsubst", command_escaped);
         let shell_cmd = ShellCommand::<String>::new(s);
         let mut cmd: Command = shell_cmd.into();
         cmd.envs(variables);
