@@ -36,7 +36,8 @@ const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const ABOUT: &str = "sam lets you difine custom aliases and search them using fuzzy search.";
 const ABOUT_SUB_RUN: &str = "show your aliases";
 const ABOUT_SUB_CHECK_CONFIG: &str = "checks your configuration files";
-const ABOUT_SUB_CLEAR_CACHE: &str = "clears the cache for vars 'from_command' outputs";
+const ABOUT_SUB_CACHE_CLEAR: &str = "clears the cache for vars 'from_command' outputs";
+const ABOUT_SUB_CACHE_KEYS: &str = "lists all the cache keys";
 const ABOUT_SUB_ALIAS: &str = "run's a provided alias";
 const ABOUT_SUB_BASHRC : &str = "output's a collection of aliases definitions into your bashrc. use 'source `ssa bashrc`' in your bashrc file";
 
@@ -51,7 +52,8 @@ fn main() {
         ("alias", Some(e)) => run_alias(app_ctx, e.value_of("alias").unwrap()),
         ("bashrc", Some(_)) => bashrc(),
         ("check-config", Some(_)) => check_config(app_ctx),
-        ("clear-cache", Some(_)) => clear_cache(),
+        ("cache-clear", Some(_)) => cache_clear(),
+        ("cache-keys", Some(_)) => cache_keys(),
         (&_, _) => run(app_ctx),
     };
     match result {
@@ -194,7 +196,29 @@ fn execute_alias(ctx: &AppEnvironment, alias: &Alias) -> Result<i32> {
     }
 }
 
-fn clear_cache() -> Result<i32> {
+fn cache_keys() -> Result<i32> {
+    let config = AppSettings::load()?;
+    let cache = RocksDBVarsCache::new(config.cache_dir(), &config.ttl());
+    println!(
+        "{}{}{}{}\n",
+        termion::style::Bold,
+        termion::color::Fg(termion::color::Green),
+        "Keys present in cache:",
+        termion::style::Reset,
+    );
+    for key in cache.keys()? {
+        println!(
+            "- {}{}{}{}",
+            termion::style::Bold,
+            termion::color::Fg(termion::color::Green),
+            key,
+            termion::style::Reset,
+        );
+    }
+    Ok(0)
+}
+
+fn cache_clear() -> Result<i32> {
     let config = AppSettings::load()?;
     let cache = RocksDBVarsCache::new(config.cache_dir(), &config.ttl());
     cache.clear_cache().map(|_| 0).map_err(Errorssam::VarsCache)
@@ -291,7 +315,8 @@ fn app_init() -> App<'static, 'static> {
         )
         .subcommand(App::new("run").about(ABOUT_SUB_RUN))
         .subcommand(App::new("check-config").about(ABOUT_SUB_CHECK_CONFIG))
-        .subcommand(App::new("clear-cache").about(ABOUT_SUB_CLEAR_CACHE))
+        .subcommand(App::new("cache-clear").about(ABOUT_SUB_CACHE_CLEAR))
+        .subcommand(App::new("cache-keys").about(ABOUT_SUB_CACHE_KEYS))
         .subcommand(
             App::new("alias")
                 .arg(

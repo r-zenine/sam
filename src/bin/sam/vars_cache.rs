@@ -54,6 +54,15 @@ impl RocksDBVarsCache {
         }
         Ok(())
     }
+
+    pub fn keys(&self) -> Result<Vec<String>, CacheError> {
+        let db = self.open_cache()?;
+        let keys = db.iterator(rocksdb::IteratorMode::Start);
+        Ok(keys
+            .into_iter()
+            .map(|(key, _)| String::from_utf8_lossy(key.as_ref()).to_string())
+            .collect())
+    }
 }
 
 impl VarsCache for RocksDBVarsCache {
@@ -116,6 +125,7 @@ pub enum CacheError {
 #[cfg(test)]
 mod tests {
     use super::RocksDBVarsCache;
+    use crate::vars_cache::VarsCache;
     use sam::utils::fsutils::TempDirectory;
     use std::time::Duration;
 
