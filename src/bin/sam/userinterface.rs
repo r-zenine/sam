@@ -12,27 +12,30 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::process::Command;
+use std::rc::Rc;
 
 use thiserror::Error;
 
+use crate::logger::Logger;
 use crate::vars_cache::VarsCache;
 
 type UISelector = Arc<dyn SkimItem>;
+
 pub struct UserInterface {
     preview_file: TempFile,
     preview_command: String,
     chosen_alias: Option<Alias>,
     choices: RefCell<HashMap<Identifier, Choice>>,
-    silent: bool,
+    logger: Rc<dyn Logger>,
     variables: HashMap<String, String>,
     cache: Box<dyn VarsCache>,
 }
 
 impl UserInterface {
     pub fn new(
-        silent: bool,
         variables: HashMap<String, String>,
         cache: Box<dyn VarsCache>,
+        logger: Rc<dyn Logger>,
     ) -> Result<UserInterface, ErrorsUI> {
         let preview_file = TempFile::new()?;
         let preview_command = format!("cat {}", &preview_file.path.as_path().display());
@@ -41,7 +44,7 @@ impl UserInterface {
             preview_command,
             chosen_alias: None,
             choices: RefCell::new(HashMap::new()),
-            silent,
+            logger,
             variables,
             cache,
         })
@@ -74,9 +77,7 @@ impl UserInterface {
             .map(AliasItem::from)
             .ok_or(ErrorsUI::SkimNoSelection)?;
         self.chosen_alias = Some(selected_alias.clone().alias);
-        if !self.silent {
-            logs::alias(&selected_alias.alias);
-        }
+        self.logger.alias(&selected_alias.alias);
         Ok(selected_alias)
     }
     pub fn choose(&self, choices: Vec<UISelector>, prompt: &str) -> Result<usize, ErrorsUI> {
@@ -277,9 +278,7 @@ impl Resolver for UserInterface {
             .replace_env_vars_in_command(&self.variables)
             .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), Box::new(e)))?;
 
-        if !self.silent {
-            logs::command(&var, &cmd_key.value());
-        }
+        self.logger.command(&var, &cmd_key.value());
 
         let cache_entry = self.cache.get(cmd_key.value());
         let (stdout_output, stderr) = if let Ok(Some(out)) = cache_entry {
@@ -341,9 +340,7 @@ impl Resolver for UserInterface {
                     .ok_or_else(|| ErrorsResolver::NoChoiceWasSelected(var.clone()))
             })?;
         let mut mp = self.choices.borrow_mut();
-        if !self.silent {
-            logs::choice(&var, &choice);
-        }
+        self.logger.choice(&var, &choice);
         (*mp).insert(var, choice.clone());
         Ok(choice)
     }
@@ -358,39 +355,4 @@ where
         acc.and_then(|_| s.send(e).map_err(|op| ErrorsUI::SkimSend(op.to_string())))
     })?;
     Ok(())
-}
-
-mod logs {
-    use sam::core::aliases::Alias;
-    use std::fmt::Display;
-    pub fn command(var: impl Display, cmd: impl AsRef<str>) {
-        eprintln!(
-            "{}{}[SAM][ var = '{}' ]{} Running: '{}'",
-            termion::color::Fg(termion::color::Green),
-            termion::style::Bold,
-            var,
-            termion::style::Reset,
-            cmd.as_ref(),
-        );
-    }
-    pub fn choice(var: impl Display, choice: impl Display) {
-        eprintln!(
-            "{}{}[SAM][ var = '{}' ]{} Choice was: '{}'",
-            termion::color::Fg(termion::color::Green),
-            termion::style::Bold,
-            var,
-            termion::style::Reset,
-            choice,
-        );
-    }
-    pub fn alias(alias: &Alias) {
-        eprintln!(
-            "{}{}[SAM][ alias = '{}::{}' ]{}",
-            termion::color::Fg(termion::color::Green),
-            termion::style::Bold,
-            alias.namespace().unwrap_or_default(),
-            alias.name(),
-            termion::style::Reset,
-        );
-    }
 }
