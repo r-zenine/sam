@@ -158,10 +158,11 @@ workflows:
     jobs:
       - build_linux:
           filters:
+           # ignore any commit on any branch by default
+            branches:
+              ignore: /.*/
             tags:
               only: /^v.*/
-            branches:
-              ignore: .*
 
  # We cross compile for mac os only in the presence of tags.
       # - build_macos:
@@ -176,16 +177,18 @@ workflows:
             - build_linux
             # - build_macos
           filters:
+            # ignore any commit on any branch by default
+            branches:
+              ignore: /.*/
             tags:
               only: /^v.*/
-            branches:
-              ignore: .*
       # publish to snap and homebrew
       - publish_packages:
           requires:
             - create_release
           filters:
+            # ignore any commit on any branch by default
+            branches:
+              ignore: /.*/
             tags:
               only: /^v.*/
-            branches:
-              ignore: .*
