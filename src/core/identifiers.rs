@@ -95,6 +95,7 @@ impl Identifier {
         self.inner.as_str()
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(id: &str) -> Identifier {
         let (name, namespace) = Self::maybe_namespace(id);
         Self::with_namespace(name, namespace)

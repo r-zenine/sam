@@ -144,7 +144,7 @@ impl AppEnvironment {
     }
 
     fn parse_default(default: &str) -> Option<(Identifier, Choice)> {
-        let parts: Vec<&str> = default.split("=").collect();
+        let parts: Vec<&str> = default.split('=').collect();
         if parts.len() == 2 {
             let id = Identifier::from_str(parts[0]);
             let choice = Choice::new(parts[1], None);
@@ -209,7 +209,7 @@ fn check_config(ctx: AppEnvironment) -> Result<i32> {
         .collect();
 
     let missing_envvars: Vec<_> = all_envvars.difference(&envvars_in_config).collect();
-    if missing_envvars.len() == 0 {
+    if missing_envvars.is_empty() {
         return Ok(0);
     }
     println!("Undifined environement variables:");

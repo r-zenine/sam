@@ -49,6 +49,7 @@ impl ShellCommand<String> {
     }
 }
 
+#[allow(clippy::clippy::from_over_into)]
 impl<T> Into<Command> for ShellCommand<T>
 where
     T: AsRef<OsStr> + Clone,

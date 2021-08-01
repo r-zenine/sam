@@ -8,9 +8,9 @@ use std::error;
 use thiserror::Error;
 
 pub trait Dependencies: Command {
-    fn substitute_for_choices<'var>(
+    fn substitute_for_choices(
         &self,
-        choices: &'var HashMap<Identifier, Choice>,
+        choices: &HashMap<Identifier, Choice>,
     ) -> Result<String, ErrorsResolver> {
         let mut command = self.command().to_string();
         for dep in self.dependencies() {
@@ -23,10 +23,7 @@ pub trait Dependencies: Command {
         Ok(command)
     }
 
-    fn substitute_for_choices_partial<'var>(
-        &self,
-        choices: &'var HashMap<Identifier, Choice>,
-    ) -> String {
+    fn substitute_for_choices_partial(&self, choices: &HashMap<Identifier, Choice>) -> String {
         let mut command = self.command().to_string();
         for dep in self.dependencies() {
             if let Some(chce) = choices.get(&dep) {

@@ -219,6 +219,7 @@ impl From<&Alias> for AliasItem {
     }
 }
 
+#[allow(clippy::clippy::from_over_into)]
 impl Into<UISelector> for AliasItem {
     fn into(self) -> UISelector {
         Arc::new(self)
@@ -231,6 +232,7 @@ impl SkimItem for AliasItem {
     }
 }
 
+#[allow(clippy::clippy::from_over_into)]
 impl Into<Command> for AliasItem {
     fn into(self) -> Command {
         ShellCommand::make_command(self.alias)
@@ -289,7 +291,7 @@ impl Resolver for UserInterface {
             let output = to_run
                 .output()
                 .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), e.into()))?;
-            if output.status.code() == Some(0) && output.stderr.len() == 0 {
+            if output.status.code() == Some(0) && output.stderr.is_empty() {
                 self.cache
                     .put(
                         cmd_key.value(),
