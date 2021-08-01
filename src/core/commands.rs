@@ -21,12 +21,12 @@ pub trait Command: Namespace {
     fn dependencies(&self) -> Vec<Identifier> {
         Identifier::parse(self.command(), self.namespace())
     }
-    fn env_vars<'a>(&'a self) -> Vec<&'a str> {
+    fn env_vars(&self) -> Vec<&str> {
         extract_env_vars(self.command())
     }
 }
 
-fn extract_env_vars<'a>(input: &'a str) -> Vec<&'a str> {
+fn extract_env_vars(input: &str) -> Vec<&str> {
     ENVVARRE
         .captures_iter(input)
         .flat_map(|e| e.name("env_var"))

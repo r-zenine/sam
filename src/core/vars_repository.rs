@@ -44,7 +44,7 @@ impl VarsRepository {
         defaults: &HashMap<Identifier, Choice>,
     ) -> Result<(), ErrorsVarsRepository> {
         let mut identifiers = vec![];
-        for (key, _) in defaults {
+        for key in defaults.keys() {
             if !self.vars.contains(key) {
                 identifiers.push(key.clone());
             }

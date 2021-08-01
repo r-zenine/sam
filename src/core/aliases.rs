@@ -109,12 +109,14 @@ impl Command for Alias {
 impl Dependencies for &Alias {}
 impl Dependencies for Alias {}
 
+#[allow(clippy::clippy::from_over_into)]
 impl<'a> Into<String> for &'a Alias {
     fn into(self) -> String {
         format!("{}\t{}", &self.name, &self.desc)
     }
 }
 
+#[allow(clippy::clippy::from_over_into)]
 impl Into<ShellCommand<String>> for Alias {
     // todo: implement command parsing logic to support pipes and logical symbols etc....
     fn into(self) -> ShellCommand<String> {

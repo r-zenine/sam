@@ -32,13 +32,13 @@ impl RocksDBVarsCache {
     pub fn new(p: impl AsRef<Path>, ttl: &Duration) -> Self {
         RocksDBVarsCache {
             path: p.as_ref().to_owned(),
-            ttl: ttl.clone(),
+            ttl: *ttl,
         }
     }
     pub fn open_cache(&self) -> Result<DB, CacheError> {
         let mut options = rocksdb::Options::default();
         options.create_if_missing(true);
-        DB::open_with_ttl(&options, self.path.clone(), self.ttl.clone())
+        DB::open_with_ttl(&options, self.path.clone(), self.ttl)
             .map_err(|e| CacheError::RocksDBOpenError(self.path.clone(), e))
     }
 
@@ -76,8 +76,7 @@ impl VarsCache for RocksDBVarsCache {
     fn get(&self, command: &dyn AsRef<str>) -> Result<Option<String>, CacheError> {
         self.open_cache()?
             .get(command.as_ref())?
-            .as_ref()
-            .map(Vec::as_slice)
+            .as_deref()
             .map(bincode::deserialize::<CacheEntry>)
             .transpose()
             .map_err(CacheError::CacheEntryDeserializationErr)
@@ -117,7 +116,6 @@ pub enum CacheError {
 #[cfg(test)]
 mod tests {
     use super::RocksDBVarsCache;
-    use super::VarsCache;
     use sam::utils::fsutils::TempDirectory;
     use std::time::Duration;
 
