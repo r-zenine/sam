@@ -54,6 +54,13 @@ commands:
           command: |
             make package_linux
 
+  test_linux:
+    steps:
+      - run:
+          name: compile and test for linux x64
+          command: |
+            make test
+
   package_debian:
     steps:
       - run:
@@ -94,7 +101,7 @@ jobs:
       - checkout
       - restore_cache_cmd
       - prepare_toolchain_linux
-      - package_linux
+      - test_linux
       - save_cache_cmd
 
   build_linux:
