@@ -1,5 +1,8 @@
+use crate::logger::SilentLogger;
+use crate::logger::StdErrLogger;
 use crate::vars_cache::{NoopVarsCache, RocksDBVarsCache, VarsCache};
 use clap::Values;
+use logger::Logger;
 use sam::core::aliases::Alias;
 use sam::core::aliases_repository::{AliasesRepository, ErrorsAliasesRepository};
 use sam::core::choices::Choice;
@@ -16,9 +19,11 @@ use sam::utils::processes::ShellCommand;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::process::Command;
+use std::rc::Rc;
 use thiserror::Error;
 
 mod config;
+mod logger;
 mod userinterface;
 mod vars_cache;
 
@@ -39,7 +44,7 @@ const PROMPT: &str = "Choose an alias to run > ";
 
 fn main() {
     let command_line_args = app_init().get_matches();
-    let app_ctx = AppContext::from_command_line_args(&command_line_args)
+    let app_ctx = AppEnvironment::from_command_line_args(&command_line_args)
         .expect("Can't initialize the application");
 
     let result = match command_line_args.subcommand() {
@@ -62,18 +67,18 @@ fn main() {
     }
 }
 
-struct AppContext {
+struct AppEnvironment {
     // TODO Todo remove user interface from the context
     ui_interface: userinterface::UserInterface,
     aliases: AliasesRepository,
     vars: VarsRepository,
-    silent: bool, // TODO provide a custom logger implementation
-    dry: bool,    // TODO provide a custom executor
+    logger: Rc<dyn Logger>,
+    dry: bool, // TODO provide a custom executor
     env_variables: HashMap<String, String>,
 }
 
-impl AppContext {
-    fn from_command_line_args(matches: &ArgMatches) -> Result<AppContext> {
+impl AppEnvironment {
+    fn from_command_line_args(matches: &ArgMatches) -> Result<AppEnvironment> {
         let dry = matches.is_present("dry");
         let silent = matches.is_present("silent");
         let no_cache = matches.is_present("no-cache");
@@ -87,7 +92,9 @@ impl AppContext {
         } else {
             Box::new(NoopVarsCache {})
         };
-        let ui_interface = userinterface::UserInterface::new(silent, config.variables(), cache)?;
+        let logger = Self::logger_instance(silent);
+        let ui_interface =
+            userinterface::UserInterface::new(config.variables(), cache, logger.clone())?;
         let files = walk_dir(config.root_dir())?;
         let mut aliases_vec = vec![];
         let mut vars = VarsRepository::default();
@@ -104,12 +111,12 @@ impl AppContext {
         vars.set_defaults(&defaults)?;
         let aliases = AliasesRepository::new(aliases_vec.into_iter())?;
         vars.ensure_no_missing_dependency()?;
-        Ok(AppContext {
+        Ok(AppEnvironment {
             ui_interface,
             aliases,
             vars,
             dry,
-            silent,
+            logger,
             env_variables: config.variables(),
         })
     }
@@ -128,6 +135,14 @@ impl AppContext {
         default_h
     }
 
+    fn logger_instance(silent: bool) -> Rc<dyn Logger> {
+        if !silent {
+            Rc::new(StdErrLogger)
+        } else {
+            Rc::new(SilentLogger)
+        }
+    }
+
     fn parse_default(default: &str) -> Option<(Identifier, Choice)> {
         let parts: Vec<&str> = default.split("=").collect();
         if parts.len() == 2 {
@@ -140,7 +155,7 @@ impl AppContext {
     }
 }
 
-fn run(mut ctx: AppContext) -> Result<i32> {
+fn run(mut ctx: AppEnvironment) -> Result<i32> {
     let item = ctx
         .ui_interface
         .select_alias(PROMPT, &ctx.aliases.aliases())?;
@@ -148,7 +163,7 @@ fn run(mut ctx: AppContext) -> Result<i32> {
     execute_alias(&ctx, alias)
 }
 
-fn run_alias(ctx: AppContext, input: &'_ str) -> Result<i32> {
+fn run_alias(ctx: AppEnvironment, input: &'_ str) -> Result<i32> {
     let mut elems: Vec<&str> = input.split("::").collect();
     let name = elems.pop().unwrap_or_default();
     let namespace = elems.pop();
@@ -160,7 +175,7 @@ fn run_alias(ctx: AppContext, input: &'_ str) -> Result<i32> {
     execute_alias(&ctx, alias)
 }
 
-fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
+fn execute_alias(ctx: &AppEnvironment, alias: &Alias) -> Result<i32> {
     let exec_seq = ctx.vars.execution_sequence(alias)?;
     let choices: HashMap<Identifier, Choice> = ctx
         .vars
@@ -168,9 +183,7 @@ fn execute_alias(ctx: &AppContext, alias: &Alias) -> Result<i32> {
         .into_iter()
         .collect();
     let final_command = alias.substitute_for_choices(&choices).unwrap();
-    if !ctx.silent {
-        logs::final_command(alias, &final_command);
-    }
+    ctx.logger.final_command(alias, &final_command);
     if !ctx.dry {
         let mut command: Command = ShellCommand::new(final_command).into();
         command.envs(&ctx.env_variables);
@@ -187,7 +200,7 @@ fn clear_cache() -> Result<i32> {
     cache.clear_cache().map(|_| 0).map_err(Errorssam::VarsCache)
 }
 
-fn check_config(ctx: AppContext) -> Result<i32> {
+fn check_config(ctx: AppEnvironment) -> Result<i32> {
     let missing_envvars_in_aliases = unset_env_vars(ctx.aliases.aliases().iter());
     let missing_envvars_in_vars = unset_env_vars(ctx.vars.vars_iter());
     let envvars_in_config: HashSet<&String> = ctx.env_variables.keys().collect();
@@ -328,23 +341,4 @@ enum Errorssam {
     InvalidAliasSelection,
     #[error("filesystem related error\n-> {0}")]
     FilesLookup(#[from] fsutils::ErrorsFS),
-}
-
-mod logs {
-    use sam::core::aliases::Alias;
-    use std::fmt::Display;
-    pub fn final_command(alias: &Alias, fc: impl Display) {
-        println!(
-            "{}{}[SAM][ alias='{}::{}']{} Running final command: {}{}'{}'{}",
-            termion::color::Fg(termion::color::Green),
-            termion::style::Bold,
-            alias.namespace().unwrap_or_default(),
-            alias.name(),
-            termion::style::Reset,
-            termion::color::Fg(termion::color::Green),
-            termion::style::Bold,
-            fc,
-            termion::style::Reset,
-        );
-    }
 }
