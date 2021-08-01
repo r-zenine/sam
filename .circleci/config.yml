@@ -89,7 +89,7 @@ commands:
 jobs:
   build:
     docker:
-      - image: 'cimg/rust:1.47.0'
+      - image: 'cimg/rust:1.52.1'
     steps:
       - checkout
       - restore_cache_cmd
@@ -99,7 +99,7 @@ jobs:
 
   build_linux:
     docker:
-      - image: 'cimg/rust:1.47.0'
+      - image: 'cimg/rust:1.52.1'
     steps:
       - checkout
       - restore_cache_cmd
@@ -115,7 +115,7 @@ jobs:
 
   build_macos:
     docker:
-      - image: 'cimg/rust:1.47.0'
+      - image: 'cimg/rust:1.52.1'
     steps:
       - checkout
       - restore_cache_cmd
@@ -128,7 +128,7 @@ jobs:
 
   create_release: 
     docker: 
-      - image: 'cimg/rust:1.47.0'
+      - image: 'cimg/rust:1.52.1'
     steps:
       - checkout
       - setup_github_cli
