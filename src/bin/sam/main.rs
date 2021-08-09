@@ -77,7 +77,10 @@ impl AppContext {
         let dry = matches.is_present("dry");
         let silent = matches.is_present("silent");
         let no_cache = matches.is_present("no-cache");
-        let defaults = Self::parse_defaults(matches.values_of("choices"));
+        let choices = matches.values_of("choices").or(matches
+            .subcommand_matches("alias")
+            .and_then(|e| e.values_of("choices")));
+        let defaults = Self::parse_defaults(choices);
         let config = AppSettings::load()?;
         let cache: Box<dyn VarsCache> = if !no_cache {
             Box::new(RocksDBVarsCache::new(config.cache_dir(), &config.ttl()))
@@ -97,6 +100,7 @@ impl AppContext {
                 }
             }
         }
+        println!("{:?}", &defaults);
         vars.set_defaults(&defaults)?;
         let aliases = AliasesRepository::new(aliases_vec.into_iter())?;
         vars.ensure_no_missing_dependency()?;
@@ -112,8 +116,10 @@ impl AppContext {
 
     fn parse_defaults(defaults: Option<Values>) -> HashMap<Identifier, Choice> {
         let mut default_h = HashMap::default();
+        println!("{:?}", defaults);
         if let Some(values) = defaults {
             for value in values {
+                println!("{:?}", value);
                 if let Some((id, choice)) = Self::parse_default(value) {
                     default_h.insert(id, choice);
                 }
