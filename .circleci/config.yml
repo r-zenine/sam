@@ -39,7 +39,7 @@ commands:
       - run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /tmp/rustup-init.sh
           /bin/sh /tmp/rustup-init.sh -y -q
-          rustup component add rustfmt clippy
+          source $HOME/cargo/env && rustup component add rustfmt clippy
 
   package_linux:
     steps:
