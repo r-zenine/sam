@@ -1,3 +1,7 @@
+use crate::cli::CLISettings;
+use crate::vars_cache;
+use sam::core::choices::Choice;
+use sam::core::identifiers::Identifier;
 use sam::utils::fsutils;
 use sam::utils::fsutils::ErrorsFS;
 use serde::{Deserialize, Serialize};
@@ -13,14 +17,22 @@ const CONFIG_FILE_NAME: &str = ".sam_rc.toml";
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct AppSettings {
     root_dir: PathBuf,
-    #[serde(skip)]
-    cache_dir: PathBuf,
     ttl: u64,
     #[serde(flatten)]
-    variables: HashMap<String, String>,
+    pub env_variables: HashMap<String, String>,
+    #[serde(skip)]
+    cache_dir: PathBuf,
+    #[serde(skip)]
+    pub dry: bool,
+    #[serde(skip)]
+    pub silent: bool,
+    #[serde(skip)]
+    pub no_cache: bool,
+    #[serde(skip)]
+    pub defaults: HashMap<Identifier, Choice>,
 }
 
-type Result<T> = std::result::Result<T, ErrorsConfig>;
+type Result<T> = std::result::Result<T, ErrorsSettings>;
 
 impl AppSettings {
     fn read_config(path: PathBuf) -> Result<AppSettings> {
@@ -32,7 +44,7 @@ impl AppSettings {
         Ok(conf)
     }
 
-    pub fn load() -> Result<Self> {
+    pub fn load(cli_settings: Option<CLISettings>) -> Result<Self> {
         let home_dir_o = Self::home_dir_config_path()?;
         let current_dir_o = Self::current_dir_config_path()?;
 
@@ -41,13 +53,26 @@ impl AppSettings {
 
         let cache_dir = Self::cache_dir_path()?;
 
-        config_current_dir
+        let mut settings = config_current_dir
             .or(config_home_dir)
             .and_then(AppSettings::validate)
             .map(|mut e| {
                 e.cache_dir = cache_dir;
                 e
-            })
+            })?;
+
+        if let Some(m) = cli_settings {
+            settings.merge_command_line_args(m);
+        }
+
+        Ok(settings)
+    }
+
+    fn merge_command_line_args(&mut self, cmd_args: CLISettings) {
+        self.dry = cmd_args.dry;
+        self.silent = cmd_args.silent;
+        self.no_cache = cmd_args.no_cache;
+        self.defaults = cmd_args.default_choices.0;
     }
 
     pub fn root_dir(&self) -> &'_ Path {
@@ -73,32 +98,34 @@ impl AppSettings {
     fn home_dir_config_path() -> Result<PathBuf> {
         dirs::home_dir()
             .map(|e| e.join(CONFIG_FILE_NAME))
-            .ok_or(ErrorsConfig::CantFindHomeDirectory)
+            .ok_or(ErrorsSettings::CantFindHomeDirectory)
     }
     fn cache_dir_path() -> Result<PathBuf> {
         dirs::home_dir()
             .map(|e| e.join(".cache").join("sam"))
-            .ok_or(ErrorsConfig::CantFindCacheDirectory)
+            .ok_or(ErrorsSettings::CantFindCacheDirectory)
     }
 
     fn current_dir_config_path() -> Result<PathBuf> {
         std::env::current_dir()
-            .map_err(|_| ErrorsConfig::CantFindCurrentDirectory)
+            .map_err(|_| ErrorsSettings::CantFindCurrentDirectory)
             .map(|e| e.join(CONFIG_FILE_NAME))
     }
     pub fn variables(&self) -> HashMap<String, String> {
-        self.variables.clone()
+        self.env_variables.clone()
     }
 }
 
 #[derive(Debug, Error)]
-pub enum ErrorsConfig {
+pub enum ErrorsSettings {
     #[error("got the following error\n-> {0}")]
     CantDeserialize(#[from] toml::de::Error),
     #[error("got the following error\n-> {0}")]
     CantReadConfigFile(#[from] io::Error),
     #[error("got the following error\n-> {0}")]
     FileSystem(#[from] ErrorsFS),
+    #[error("could not initialize the cache\n-> {0}")]
+    VarsCache(#[from] vars_cache::CacheError),
     #[error("we were unable to locate the home directory for the current user")]
     CantFindHomeDirectory,
     #[error("we were unable to locate the cache directory for the current user")]

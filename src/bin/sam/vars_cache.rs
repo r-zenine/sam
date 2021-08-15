@@ -23,12 +23,14 @@ impl VarsCache for NoopVarsCache {
     }
 }
 
+#[derive(Debug)]
 pub struct RocksDBVarsCache {
     path: PathBuf,
     ttl: Duration,
 }
 
 impl RocksDBVarsCache {
+    // TODO expose a version without the TTL
     pub fn new(p: impl AsRef<Path>, ttl: &Duration) -> Self {
         RocksDBVarsCache {
             path: p.as_ref().to_owned(),
