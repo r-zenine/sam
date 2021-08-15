@@ -13,7 +13,7 @@ use thiserror::Error;
 
 const PROMPT: &str = "Choose an alias to run > ";
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum SamCommand {
     ChooseAndExecuteAlias,
     ExecuteAlias { alias: Identifier },

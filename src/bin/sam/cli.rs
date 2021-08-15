@@ -6,6 +6,7 @@ use crate::HashMap;
 use crate::Identifier;
 use clap::{App, Arg, ArgMatches, Values};
 use sam::core::identifiers;
+use std::convert::TryFrom;
 use std::env;
 use std::ffi::OsString;
 use thiserror::Error;
@@ -20,22 +21,19 @@ const ABOUT_SUB_CACHE_CLEAR: &str = "clears the cache for vars 'from_command' ou
 const ABOUT_SUB_CACHE_KEYS: &str = "lists all the cache keys";
 const ABOUT_SUB_ALIAS: &str = "run's a provided alias";
 
-#[derive(Clone, Debug)]
-pub struct DefaultChoices(pub HashMap<Identifier, Choice>);
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum SubCommand {
     SamCommand(SamCommand),
     CacheCommand(CacheCommand),
     ConfigCheck(ConfigCommand),
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CLIRequest {
     pub command: SubCommand,
     pub settings: CLISettings,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CLISettings {
     pub dry: bool,
     pub silent: bool,
@@ -43,25 +41,32 @@ pub struct CLISettings {
     pub default_choices: DefaultChoices,
 }
 
-impl From<ArgMatches<'_>> for CLISettings {
-    fn from(matches: ArgMatches) -> Self {
+impl TryFrom<ArgMatches<'_>> for CLISettings {
+    type Error = CLIError;
+    fn try_from(matches: ArgMatches) -> Result<Self, Self::Error> {
         let dry = matches.is_present("dry");
         let silent = matches.is_present("silent");
         let no_cache = matches.is_present("no-cache");
-        let defaults: DefaultChoices = matches
+
+        let defaults_extractor = |subcommand: &str| {
+            matches
+                .subcommand_matches(subcommand)
+                .and_then(|e| e.values_of("choices"))
+        };
+
+        let defaults_values = matches
             .values_of("choices")
-            .or_else(|| {
-                matches
-                    .subcommand_matches("alias")
-                    .and_then(|e| e.values_of("choice"))
-            })
-            .into();
-        CLISettings {
+            .or_else(|| defaults_extractor("alias"))
+            .or_else(|| defaults_extractor("run"));
+
+        let default_choices = DefaultChoices::try_from(defaults_values)?;
+
+        Ok(CLISettings {
             dry,
             silent,
             no_cache,
-            default_choices: defaults,
-        }
+            default_choices,
+        })
     }
 }
 
@@ -109,6 +114,7 @@ fn app_init() -> App<'static, 'static> {
         .arg(arg_dry)
         .arg(arg_silent)
         .arg(arg_no_cache)
+        .arg(arg_choices.clone())
         .subcommand(subc_run)
         .subcommand(subc_alias)
         .subcommand(App::new("check-config").about(ABOUT_SUB_CHECK_CONFIG))
@@ -122,7 +128,7 @@ where
     T: Into<OsString> + Clone,
 {
     let matches = app.get_matches_from(args);
-    let settings: CLISettings = matches.clone().into();
+    let settings = CLISettings::try_from(matches.clone())?;
 
     let command: SubCommand = match matches.subcommand() {
         ("alias", Some(e)) => {
@@ -142,17 +148,20 @@ pub fn read_cli_request() -> Result<CLIRequest, CLIError> {
     make_cli_request(app, &mut env::args_os())
 }
 
-impl From<Option<Values<'_>>> for DefaultChoices {
-    fn from(values_o: Option<Values<'_>>) -> Self {
+#[derive(Clone, Debug, PartialEq)]
+pub struct DefaultChoices(pub HashMap<Identifier, Choice>);
+
+impl TryFrom<Option<Values<'_>>> for DefaultChoices {
+    type Error = CLIError;
+    fn try_from(values_o: Option<Values<'_>>) -> Result<Self, Self::Error> {
         let mut default_h = HashMap::default();
         if let Some(values) = values_o {
             for value in values {
-                if let Some((id, choice)) = parse_choice(value) {
-                    default_h.insert(id, choice);
-                }
+                let (id, choice) = parse_choice(value)?;
+                default_h.insert(id, choice);
             }
         }
-        DefaultChoices(default_h)
+        Ok(DefaultChoices(default_h))
     }
 }
 
@@ -164,14 +173,21 @@ fn parse_alias(alias: Option<&str>) -> Result<Identifier, CLIError> {
     }
 }
 
-fn parse_choice(default: &str) -> Option<(Identifier, Choice)> {
+fn parse_choice(default: &str) -> Result<(Identifier, Choice), CLIError> {
     let parts: Vec<&str> = default.split('=').collect();
     if parts.len() == 2 {
         let id = Identifier::from_str(parts[0]);
-        let choice = Choice::new(parts[1], None);
-        Some((id, choice))
+        if id.namespace.is_none() {
+            Err(CLIError::MissingNamespaceForChoice(
+                id.clone(),
+                default.to_string(),
+            ))
+        } else {
+            let choice = Choice::new(parts[1], None);
+            Ok((id, choice))
+        }
     } else {
-        None
+        Err(CLIError::MalformedChoice(default.to_string()))
     }
 }
 
@@ -179,4 +195,98 @@ fn parse_choice(default: &str) -> Option<(Identifier, Choice)> {
 pub enum CLIError {
     #[error("the alias identifier that was provided does not exist")]
     MissingAliasIdentifier,
+    #[error("The variable name '{0}' does not have a namespace in this section of the command line '{1}'")]
+    MissingNamespaceForChoice(Identifier, String),
+    #[error("malformed choice {0}, it should be -c namespace::var_name=choice")]
+    MalformedChoice(String),
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::cli::DefaultChoices;
+    use maplit::hashmap;
+    use sam::core::{choices::Choice, identifiers::Identifier};
+
+    use super::{app_init, make_cli_request, CLIRequest, SubCommand};
+    use crate::{cli::CLISettings, sam_engine::SamCommand};
+
+    #[test]
+    fn alias_subcommand() {
+        let app = app_init();
+        let test_string = &[
+            "sam",
+            "alias",
+            "some_namespace::some_alias",
+            "-csome_ns::some_choice=value",
+            "-csome_ns::some_other_choice=value2",
+        ];
+        let request = make_cli_request(app, test_string);
+        let expected_cli_request = CLIRequest {
+            command: SubCommand::SamCommand(SamCommand::ExecuteAlias {
+                alias: Identifier::with_namespace("some_alias", Some("some_namespace")),
+            }),
+            settings: CLISettings {
+                dry: false,
+                silent: false,
+                no_cache: false,
+                default_choices: DefaultChoices(hashmap! {
+                Identifier::with_namespace("some_choice", Some("some_ns")) => Choice::from_value("value"),
+                Identifier::with_namespace("some_other_choice", Some("some_ns")) => Choice::from_value("value2"),
+                                }),
+            },
+        };
+
+        assert_eq!(request.unwrap(), expected_cli_request);
+    }
+
+    #[test]
+    fn no_subcommand() {
+        let app = app_init();
+        let test_string = &[
+            "sam",
+            "-csome_ns::some_choice=value",
+            "-csome_ns::some_other_choice=value2",
+        ];
+        let request = make_cli_request(app, test_string);
+        let expected_cli_request = CLIRequest {
+            command: SubCommand::SamCommand(SamCommand::ChooseAndExecuteAlias {}),
+            settings: CLISettings {
+                dry: false,
+                silent: false,
+                no_cache: false,
+                default_choices: DefaultChoices(hashmap! {
+                Identifier::with_namespace("some_choice", Some("some_ns")) => Choice::from_value("value"),
+                Identifier::with_namespace("some_other_choice", Some("some_ns")) => Choice::from_value("value2"),
+                                }),
+            },
+        };
+
+        assert_eq!(request.unwrap(), expected_cli_request);
+    }
+    #[test]
+    fn run_subcommand() {
+        let app = app_init();
+        let test_string = &[
+            "sam",
+            "run",
+            "-csome_ns::some_choice=value",
+            "-csome_ns::some_other_choice=value2",
+        ];
+        let request = make_cli_request(app, test_string);
+        let expected_cli_request = CLIRequest {
+            command: SubCommand::SamCommand(SamCommand::ChooseAndExecuteAlias {}),
+            settings: CLISettings {
+                dry: false,
+                silent: false,
+                no_cache: false,
+                default_choices: DefaultChoices(hashmap! {
+                Identifier::with_namespace("some_choice", Some("some_ns")) => Choice::from_value("value"),
+                Identifier::with_namespace("some_other_choice", Some("some_ns")) => Choice::from_value("value2"),
+                                }),
+            },
+        };
+
+        assert_eq!(request.unwrap(), expected_cli_request);
+    }
 }

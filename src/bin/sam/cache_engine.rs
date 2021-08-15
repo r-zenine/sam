@@ -8,7 +8,7 @@ pub struct CacheEngine {
     pub ttl: Duration,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CacheCommand {
     PrintKeys,
     Clear,

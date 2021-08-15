@@ -24,7 +24,13 @@ fn main() {
     match run() {
         Ok(i) => std::process::exit(i),
         Err(err) => {
-            eprintln!("The application failed to run because {}", err)
+            eprintln!(
+                "{}{}The application failed to run{} \n->\t{}",
+                termion::color::Fg(termion::color::Red),
+                termion::style::Bold,
+                termion::style::Reset,
+                err,
+            )
         }
     }
 }
@@ -48,11 +54,11 @@ type Result<T> = std::result::Result<T, ErrorMain>;
 
 #[derive(Debug, Error)]
 pub enum ErrorMain {
-    #[error("configuration file contains invalid settings ->\t{0}")]
+    #[error("Configuration file contains invalid settings \n->\t{0}")]
     Settings(#[from] ErrorsSettings),
-    #[error("invalid command line arguments ->\t{0}")]
+    #[error("Invalid command line arguments\n->\t{0}")]
     Cli(#[from] cli::CLIError),
-    #[error("the initialization of the application failed because ->\t{0}")]
+    #[error("the initialization of the application failed because \n->\t{0}")]
     Environment(#[from] ErrorEnvironment),
     #[error("{0}")]
     SamEngine(#[from] ErrorSamEngine),
