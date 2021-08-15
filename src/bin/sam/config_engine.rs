@@ -4,7 +4,7 @@ use sam::core::vars_repository::VarsRepository;
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ConfigCommand {
     CheckUnsetEnvVars,
 }

@@ -138,12 +138,16 @@ impl PartialEq<&Identifier> for Identifier {
 
 impl Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}::{}",
-            self.namespace.as_deref().unwrap_or(""),
-            self.inner
-        )
+        if self.namespace().is_some() {
+            write!(
+                f,
+                "{}::{}",
+                self.namespace.as_deref().unwrap_or(""),
+                self.inner
+            )
+        } else {
+            write!(f, "{}", self.inner)
+        }
     }
 }
 
