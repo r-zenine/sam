@@ -116,7 +116,7 @@ jobs:
       xcode: 11.3.0 # indicate our selected version of Xcode
     steps:
       - checkout
-      - restore_cache_cmd
+      # - restore_cache_cmd
       - prepare_toolchain_macos
       - package_macos
       - persist_to_workspace:
