@@ -39,7 +39,7 @@ commands:
       - run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /tmp/rustup-init.sh
           /bin/sh /tmp/rustup-init.sh -y -q
-          source $HOME/cargo/env && rustup component add rustfmt clippy
+          source $HOME/.cargo/env && rustup component add rustfmt clippy
 
   package_linux:
     steps:
@@ -67,7 +67,7 @@ commands:
     steps:
       - run:
           name: packaging for macos x64
-          command: make package_macos
+          command: PATH="$HOME/.cargo/bin:$PATH" make package_macos
 
   create_release:
     steps:
