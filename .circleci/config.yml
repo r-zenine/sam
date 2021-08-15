@@ -37,15 +37,9 @@ commands:
     steps: 
       # source: https://wapl.es/rust/2019/02/17/rust-cross-compile-linux-to-macos.html
       - run: |
-          sudo apt update
-          sudo apt install -y clang gcc g++ zlib1g-dev libmpc-dev libmpfr-dev libgmp-dev cmake libxml2-dev libssl-dev clang-11
-          rustup target add x86_64-apple-darwin
-          cd /tmp
-          git clone https://github.com/tpoechtrager/osxcross
-          cd osxcross
-          wget -nc https://s3.dockerproject.org/darwin/v2/MacOSX10.10.sdk.tar.xz
-          mv MacOSX10.10.sdk.tar.xz tarballs/
-          UNATTENDED=yes OSX_VERSION_MIN=10.10 ./build.sh
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /tmp/rustup-init.sh
+          /bin/sh /tmp/rustup-init.sh -y -q
+          rustup component add rustfmt clippy
 
   package_linux:
     steps:
@@ -72,11 +66,8 @@ commands:
   package_macos:
     steps:
       - run:
-          name: packaging for linux x64
-          command: |
-            export PATH="/tmp/osxcross/target/bin:$PATH"
-            make package_macos_cross
-
+          name: packaging for macos x64
+          command: make package_macos
 
   create_release:
     steps:
@@ -121,8 +112,8 @@ jobs:
             - ./target/debian
 
   build_macos:
-    docker:
-      - image: 'cimg/rust:1.52.1'
+    macos:
+      xcode: 11.3.0 # indicate our selected version of Xcode
     steps:
       - checkout
       - restore_cache_cmd
@@ -131,7 +122,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - ./target/x86_64-apple-darwin
+            - ./target/release
 
   create_release: 
     docker: 
@@ -159,6 +150,11 @@ workflows:
           filters:
             tags:
               ignore: /^v.*/
+      - build_macos:
+          filters:
+            tags:
+              ignore: /^v.*/
+
 
   # Release related jobs.
   release:
