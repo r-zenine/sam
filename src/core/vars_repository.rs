@@ -35,6 +35,14 @@ impl VarsRepository {
         }
     }
 
+    pub fn with_defaults(
+        value: impl Iterator<Item = Var>,
+        defaults: HashMap<Identifier, Choice>,
+    ) -> Self {
+        let vars: HashSet<Var> = value.collect();
+        VarsRepository { vars, defaults }
+    }
+
     pub fn merge(&mut self, other: VarsRepository) {
         self.vars.extend(other.vars);
     }

@@ -7,6 +7,8 @@ use std::collections::HashMap;
 use std::error;
 use thiserror::Error;
 
+use super::identifiers::IdentifierWithDesc;
+
 pub trait Dependencies: Command {
     fn substitute_for_choices(
         &self,
@@ -55,9 +57,15 @@ pub trait Resolver {
     fn resolve_static(
         &self,
         var: Identifier,
-        cmd: impl Iterator<Item = Choice>,
+        choices: impl Iterator<Item = Choice>,
     ) -> Result<Choice, ErrorsResolver>;
+    fn select_identifier(
+        &self,
+        identifiers: &[IdentifierWithDesc],
+        prompt: &str,
+    ) -> Result<Identifier, ErrorsResolver>;
 }
+
 #[derive(Debug, Error)]
 pub enum ErrorsResolver {
     #[error("no choice is available for var {0}")]
@@ -72,12 +80,16 @@ pub enum ErrorsResolver {
     NoChoiceWasSelected(Identifier),
     #[error("no input for for var {0} because {1}")]
     NoInputWasProvided(Identifier, String),
+    #[error("selection empty")]
+    IdentifierSelectionEmpty(),
+    #[error("selection invalid.")]
+    IdentifierSelectionInvalid(Box<dyn error::Error>),
 }
 
 pub mod mocks {
     use super::{ErrorsResolver, Resolver};
     use crate::core::choices::Choice;
-    use crate::core::identifiers::Identifier;
+    use crate::core::identifiers::{Identifier, IdentifierWithDesc};
     use crate::utils::processes::ShellCommand;
     use std::collections::HashMap;
 
@@ -104,6 +116,7 @@ pub mod mocks {
                 .map(|e| e.to_owned())
                 .ok_or(ErrorsResolver::NoChoiceWasAvailable(var))
         }
+
         fn resolve_dynamic<CMD>(&self, var: Identifier, cmd: CMD) -> Result<Choice, ErrorsResolver>
         where
             CMD: Into<ShellCommand<String>>,
@@ -124,6 +137,13 @@ pub mod mocks {
                 .get(&var)
                 .map(|c| c.to_owned())
                 .ok_or(ErrorsResolver::NoChoiceWasSelected(var))
+        }
+        fn select_identifier(
+            &self,
+            _: &[IdentifierWithDesc],
+            _: &str,
+        ) -> Result<Identifier, ErrorsResolver> {
+            todo!()
         }
     }
 }

@@ -1,10 +1,14 @@
 use crate::core::aliases::Alias;
+use crate::core::dependencies::ErrorsResolver;
 use crate::core::identifiers::Identifier;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
 use std::ops::Range;
 use thiserror::Error;
+
+use super::dependencies::Resolver;
+use super::identifiers::IdentifierWithDesc;
 
 lazy_static! {
     // matches the following patters :
@@ -34,8 +38,31 @@ impl AliasesRepository {
         Ok(AliasesRepository { aliases: mpf })
     }
 
+    pub fn get(&self, id: &Identifier) -> Result<&Alias, ErrorsAliasesRepository> {
+        self.aliases
+            .get(&id)
+            .ok_or_else(|| ErrorsAliasesRepository::AliasInvalidSelection(id.clone()))
+    }
+
     pub fn aliases(&self) -> Vec<Alias> {
         self.aliases.values().map(Alias::clone).collect()
+    }
+
+    fn identifiers(&self) -> Vec<IdentifierWithDesc> {
+        self.aliases
+            .values()
+            .map(Alias::indentifier_with_desc)
+            .collect()
+    }
+
+    pub fn select_alias(
+        &self,
+        r: &impl Resolver,
+        prompt: &str,
+    ) -> Result<&Alias, ErrorsAliasesRepository> {
+        let identifiers = self.identifiers();
+        let selection = r.select_identifier(&identifiers, prompt)?;
+        self.get(&selection)
     }
 
     fn substitute_alias_defs(
@@ -86,6 +113,10 @@ impl AliasesRepository {
 pub enum ErrorsAliasesRepository {
     #[error("Alias '{0}' has a missing dependency: '{1}'")]
     MissingDependencies(Identifier, Identifier),
+    #[error("Alias selection failed because \n -> {0}")]
+    AliasSelectionFailure(#[from] ErrorsResolver),
+    #[error("Invalid alias selected {0}")]
+    AliasInvalidSelection(Identifier),
 }
 
 #[cfg(test)]

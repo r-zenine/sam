@@ -1,15 +1,10 @@
 use sam::core::aliases::Alias;
 use std::fmt::Display;
 
-pub trait Logger {
-    fn final_command(&self, alias: &Alias, fc: &dyn Display);
-    fn command(&self, var: &dyn Display, cmd: &dyn AsRef<str>);
-    fn choice(&self, var: &dyn Display, choice: &dyn Display);
-    fn alias(&self, alias: &Alias);
-}
+use crate::sam_engine::SamLogger;
 
 pub struct StdErrLogger;
-impl Logger for StdErrLogger {
+impl SamLogger for StdErrLogger {
     fn final_command(&self, alias: &Alias, fc: &dyn Display) {
         println!(
             "{}{}[SAM][ alias='{}::{}']{} Running final command: {}{}'{}'{}",
@@ -57,7 +52,7 @@ impl Logger for StdErrLogger {
 }
 
 pub struct SilentLogger;
-impl Logger for SilentLogger {
+impl SamLogger for SilentLogger {
     fn final_command(&self, _: &Alias, _: &dyn Display) {}
     fn command(&self, _: &dyn Display, _: &dyn AsRef<str>) {}
     fn choice(&self, _: &dyn Display, _: &dyn Display) {}

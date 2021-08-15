@@ -2,7 +2,7 @@ use prettytable::{cell, format, row, Table};
 use sam::core::aliases::Alias;
 use sam::core::choices::Choice;
 use sam::core::dependencies::{Dependencies, ErrorsResolver, Resolver};
-use sam::core::identifiers::Identifier;
+use sam::core::identifiers::{Identifier, IdentifierWithDesc};
 use sam::io::readers::read_choices;
 use sam::utils::fsutils::{ErrorsFS, TempFile};
 use sam::utils::processes::ShellCommand;
@@ -12,11 +12,9 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::process::Command;
-use std::rc::Rc;
 
 use thiserror::Error;
 
-use crate::logger::Logger;
 use crate::vars_cache::VarsCache;
 
 type UISelector = Arc<dyn SkimItem>;
@@ -26,7 +24,6 @@ pub struct UserInterface {
     preview_command: String,
     chosen_alias: Option<Alias>,
     choices: RefCell<HashMap<Identifier, Choice>>,
-    logger: Rc<dyn Logger>,
     variables: HashMap<String, String>,
     cache: Box<dyn VarsCache>,
 }
@@ -35,7 +32,6 @@ impl UserInterface {
     pub fn new(
         variables: HashMap<String, String>,
         cache: Box<dyn VarsCache>,
-        logger: Rc<dyn Logger>,
     ) -> Result<UserInterface, ErrorsUI> {
         let preview_file = TempFile::new()?;
         let preview_command = format!("cat {}", &preview_file.path.as_path().display());
@@ -44,7 +40,6 @@ impl UserInterface {
             preview_command,
             chosen_alias: None,
             choices: RefCell::new(HashMap::new()),
-            logger,
             variables,
             cache,
         })
@@ -65,21 +60,7 @@ impl UserInterface {
             .build()
             .map_err(ErrorsUI::SkimConfig)
     }
-    pub fn select_alias(
-        &mut self,
-        prompt: &'_ str,
-        aliases: &[Alias],
-    ) -> Result<AliasItem, ErrorsUI> {
-        let choices = aliases.iter().map(AliasItem::from).map(AliasItem::into);
-        let idx = self.choose(choices.collect(), prompt)?;
-        let selected_alias = aliases
-            .get(idx)
-            .map(AliasItem::from)
-            .ok_or(ErrorsUI::SkimNoSelection)?;
-        self.chosen_alias = Some(selected_alias.clone().alias);
-        self.logger.alias(&selected_alias.alias);
-        Ok(selected_alias)
-    }
+
     pub fn choose(&self, choices: Vec<UISelector>, prompt: &str) -> Result<usize, ErrorsUI> {
         let (s, r) = bounded(choices.len());
         let source = choices.clone();
@@ -195,14 +176,43 @@ pub enum ErrorsUI {
 }
 
 #[derive(Clone, Debug)]
-pub struct AliasItem {
-    alias: Alias,
+pub struct IdentifierWithDescItem {
+    identifier: IdentifierWithDesc,
 }
 
-impl AliasItem {
-    pub fn alias(&self) -> &Alias {
-        &self.alias
+impl From<IdentifierWithDesc> for IdentifierWithDescItem {
+    fn from(identifier: IdentifierWithDesc) -> Self {
+        IdentifierWithDescItem { identifier }
     }
+}
+
+impl From<&IdentifierWithDesc> for IdentifierWithDescItem {
+    fn from(identifier: &IdentifierWithDesc) -> Self {
+        IdentifierWithDescItem {
+            identifier: identifier.clone(),
+        }
+    }
+}
+
+#[allow(clippy::clippy::from_over_into)]
+impl Into<UISelector> for IdentifierWithDescItem {
+    fn into(self) -> UISelector {
+        Arc::new(self)
+    }
+}
+
+impl SkimItem for IdentifierWithDescItem {
+    fn text(&self) -> Cow<str> {
+        Cow::Owned(format!(
+            "{}\t{}",
+            self.identifier.name, self.identifier.desc
+        ))
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct AliasItem {
+    alias: Alias,
 }
 
 impl From<Alias> for AliasItem {
@@ -280,8 +290,6 @@ impl Resolver for UserInterface {
             .replace_env_vars_in_command(&self.variables)
             .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), Box::new(e)))?;
 
-        self.logger.command(&var, &cmd_key.value());
-
         let cache_entry = self.cache.get(cmd_key.value());
         let (stdout_output, stderr) = if let Ok(Some(out)) = cache_entry {
             (out.as_bytes().to_owned(), vec![])
@@ -342,9 +350,31 @@ impl Resolver for UserInterface {
                     .ok_or_else(|| ErrorsResolver::NoChoiceWasSelected(var.clone()))
             })?;
         let mut mp = self.choices.borrow_mut();
-        self.logger.choice(&var, &choice);
         (*mp).insert(var, choice.clone());
         Ok(choice)
+    }
+
+    fn select_identifier(
+        &self,
+        identifiers: &[IdentifierWithDesc],
+        prompt: &str,
+    ) -> Result<Identifier, ErrorsResolver> {
+        let items: Vec<UISelector> = identifiers
+            .iter()
+            .map(|identifier| {
+                IdentifierWithDescItem {
+                    identifier: identifier.clone(),
+                }
+                .into()
+            })
+            .collect();
+        let idx = self
+            .choose(items, prompt)
+            .map_err(|e| ErrorsResolver::IdentifierSelectionInvalid(Box::new(e)))?;
+        identifiers
+            .get(idx)
+            .map(|id| id.name.clone())
+            .ok_or(ErrorsResolver::IdentifierSelectionEmpty())
     }
 }
 

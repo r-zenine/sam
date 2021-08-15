@@ -1,5 +1,7 @@
+use crate::core::choices::Choice;
 use crate::core::commands::Command;
 use crate::core::dependencies::Dependencies;
+use crate::core::dependencies::ErrorsResolver;
 use crate::core::identifiers::Identifier;
 use crate::core::namespaces::{Namespace, NamespaceUpdater};
 use crate::utils::processes::ShellCommand;
@@ -7,7 +9,10 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fmt::Display;
+
+use super::identifiers::IdentifierWithDesc;
 
 lazy_static! {
     // matches the following patters :
@@ -52,11 +57,30 @@ impl Alias {
     pub fn alias(&self) -> &'_ str {
         self.alias.as_str()
     }
+    pub fn with_choices(
+        &self,
+        choices: &HashMap<Identifier, Choice>,
+    ) -> Result<ResolvedAlias, ErrorsResolver> {
+        let res = self.substitute_for_choices(choices)?;
+        Ok(ResolvedAlias {
+            name: self.name.clone(),
+            desc: self.desc.clone(),
+            alias: res,
+        })
+    }
+
     pub fn sanitized_alias(&self) -> String {
         Self::sanitize(self.alias(), self.namespace().unwrap_or(""))
     }
     pub fn identifier(&self) -> Identifier {
         self.name.clone()
+    }
+
+    pub fn indentifier_with_desc(&self) -> IdentifierWithDesc {
+        IdentifierWithDesc {
+            name: self.name.clone(),
+            desc: self.desc.clone(),
+        }
     }
     pub fn full_name(&self) -> Cow<'_, str> {
         let n = self.name();
@@ -108,6 +132,37 @@ impl Command for Alias {
 
 impl Dependencies for &Alias {}
 impl Dependencies for Alias {}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedAlias {
+    name: Identifier,
+    desc: String,
+    alias: String,
+}
+
+impl Namespace for &ResolvedAlias {
+    fn namespace(&self) -> Option<&str> {
+        self.name.namespace()
+    }
+}
+
+impl Namespace for ResolvedAlias {
+    fn namespace(&self) -> Option<&str> {
+        self.name.namespace()
+    }
+}
+
+impl Command for &ResolvedAlias {
+    fn command(&self) -> &str {
+        self.alias.as_str()
+    }
+}
+
+impl Command for ResolvedAlias {
+    fn command(&self) -> &str {
+        self.alias.as_str()
+    }
+}
 
 #[allow(clippy::clippy::from_over_into)]
 impl<'a> Into<String> for &'a Alias {
