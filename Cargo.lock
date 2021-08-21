@@ -206,6 +206,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "comma"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96677551532ffe910f470bd767a9a7daf9ba53b1f5532e0891dba6c735f692e5"
+
+[[package]]
 name = "const_fn"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -997,6 +1003,7 @@ version = "0.10.0"
 dependencies = [
  "bincode",
  "clap",
+ "comma",
  "crossbeam",
  "crossbeam-channel 0.5.1",
  "dirs 3.0.2",

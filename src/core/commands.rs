@@ -2,16 +2,19 @@ use std::collections::HashSet;
 
 use crate::core::identifiers::Identifier;
 use crate::core::namespaces::Namespace;
+use comma::Command as CmdParser;
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::str::FromStr;
 
 lazy_static! {
     // matches the following patters :
     // - $ENV_VAR39
     // - $(ENV_VAR39)
     // - ${ENV_VAR39}
-    //static ref ENVVARRE: Regex = Regex::new("(?P<env_var>\\$[\\{\\(]?[a-zA-Z0-9_]+[\\}\\)]?)").unwrap();
     static ref ENVVARRE: Regex = Regex::new("\\$[\\{\\(]?(?P<env_var>[a-zA-Z0-9_]+)[\\}\\)]?").unwrap();
+    static ref SUBCMD_RE: Regex = Regex::new("`+(?P<sub_cmd>[a-zA-Z0-9_]+)`+").unwrap();
+    static ref SUBCMD_NESTED_RE: Regex = Regex::new("[\"']+(?P<sub_nest>[^'\"]+)[\"']+").unwrap();
 }
 
 pub trait Command: Namespace {
@@ -47,8 +50,40 @@ where
     set.difference(&env_vars).map(|e| e.to_string()).collect()
 }
 
+pub fn programs_used<'a, T>(commands: impl Iterator<Item = &'a T>) -> HashSet<String>
+where
+    T: Command + 'a,
+{
+    commands
+        .flat_map(|e| extract_programs_from_command(e.command()))
+        .collect()
+}
+
+fn extract_programs_from_command(cmd: &str) -> Vec<String> {
+    let cmd = SUBCMD_NESTED_RE.replace_all(cmd, "").to_string();
+
+    cmd.split("&&")
+        .flat_map(|s| s.split("||"))
+        .flat_map(|s| s.split("|"))
+        .chain(
+            SUBCMD_RE
+                .captures_iter(cmd.as_str())
+                .flat_map(|c| c.name("sub_cmd"))
+                .map(|c| c.as_str()),
+        )
+        .flat_map(|s| {
+            if let Ok(parsed_cmd) = CmdParser::from_str(s) {
+                Some(parsed_cmd.name)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
+
     use crate::core::commands::Command;
     use crate::core::commands::{extract_env_vars, unset_env_vars};
     use crate::core::namespaces::Namespace;
@@ -72,6 +107,17 @@ mod tests {
         let unsets = unset_env_vars(commands.iter());
         assert_eq!(unsets.len(), 1);
         assert!(unsets.contains("SOME_CRAZY_ENV_VAR"));
+    }
+
+    #[test]
+    fn extract_programs_from_command() {
+        let rslt = super::extract_programs_from_command(
+            "some_program arg1 ar2|grep toto `sub_cmd` |yq \"toto|tata\" 'titi ouou' || some_text and && grep -l ",
+        );
+        assert_eq!(
+            vec! {"some_program", "grep", "yq", "some_text", "grep", "sub_cmd",},
+            rslt
+        )
     }
 
     struct StringCommand {

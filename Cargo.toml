@@ -49,6 +49,7 @@ rocksdb = "0.16.0"
 bincode = "1.3.3"
 rand = "0.8.4"
 shellwords = "1.1.0"
+comma = "0.1.2"
 
 [dev-dependencies]
 tempdir = "0.3"
