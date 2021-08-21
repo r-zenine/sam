@@ -135,7 +135,7 @@ where
             let alias = parse_alias(e.value_of("alias"))?;
             SubCommand::SamCommand(SamCommand::ExecuteAlias { alias })
         }
-        ("check-config", Some(_)) => SubCommand::ConfigCheck(ConfigCommand::CheckUnsetEnvVars),
+        ("check-config", Some(_)) => SubCommand::ConfigCheck(ConfigCommand::All),
         ("cache-clear", Some(_)) => SubCommand::CacheCommand(CacheCommand::PrintKeys),
         ("cache-keys", Some(_)) => SubCommand::CacheCommand(CacheCommand::Clear),
         (&_, _) => SubCommand::SamCommand(SamCommand::ChooseAndExecuteAlias),
