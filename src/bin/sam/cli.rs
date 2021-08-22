@@ -97,6 +97,10 @@ fn app_init() -> App<'static, 'static> {
         .arg(arg_choices.clone())
         .about(ABOUT_SUB_RUN);
 
+    let subc_display_history = App::new("history").about(ABOUT_SUB_RUN);
+    let subc_display_last = App::new("!").about(ABOUT_SUB_RUN);
+    let subc_rerun_last = App::new("!!").about(ABOUT_SUB_RUN);
+
     let subc_alias = App::new("alias")
         .arg(
             Arg::with_name("alias")
@@ -117,6 +121,9 @@ fn app_init() -> App<'static, 'static> {
         .arg(arg_choices.clone())
         .subcommand(subc_run)
         .subcommand(subc_alias)
+        .subcommand(subc_display_last)
+        .subcommand(subc_rerun_last)
+        .subcommand(subc_display_history)
         .subcommand(App::new("check-config").about(ABOUT_SUB_CHECK_CONFIG))
         .subcommand(App::new("cache-clear").about(ABOUT_SUB_CACHE_CLEAR))
         .subcommand(App::new("cache-keys").about(ABOUT_SUB_CACHE_KEYS))
@@ -135,6 +142,9 @@ where
             let alias = parse_alias(e.value_of("alias"))?;
             SubCommand::SamCommand(SamCommand::ExecuteAlias { alias })
         }
+        ("!", Some(_)) => SubCommand::SamCommand(SamCommand::DisplayLastExecutedAlias),
+        ("!!", Some(_)) => SubCommand::SamCommand(SamCommand::ExecuteLastExecutedAlias),
+        ("history", Some(_)) => SubCommand::SamCommand(SamCommand::DisplayHistory),
         ("check-config", Some(_)) => SubCommand::ConfigCheck(ConfigCommand::All),
         ("cache-clear", Some(_)) => SubCommand::CacheCommand(CacheCommand::PrintKeys),
         ("cache-keys", Some(_)) => SubCommand::CacheCommand(CacheCommand::Clear),

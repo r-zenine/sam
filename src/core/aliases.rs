@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::fmt::Formatter;
 
 use super::identifiers::IdentifierWithDesc;
 
@@ -65,7 +66,9 @@ impl Alias {
         Ok(ResolvedAlias {
             name: self.name.clone(),
             desc: self.desc.clone(),
-            alias: res,
+            orignal_alias: self.alias.clone(),
+            resolved_alias: res,
+            choices: choices.clone(),
         })
     }
 
@@ -133,11 +136,13 @@ impl Command for Alias {
 impl Dependencies for &Alias {}
 impl Dependencies for Alias {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResolvedAlias {
     name: Identifier,
     desc: String,
-    alias: String,
+    orignal_alias: String,
+    resolved_alias: String,
+    choices: HashMap<Identifier, Choice>,
 }
 
 impl Namespace for &ResolvedAlias {
@@ -154,13 +159,52 @@ impl Namespace for ResolvedAlias {
 
 impl Command for &ResolvedAlias {
     fn command(&self) -> &str {
-        self.alias.as_str()
+        self.resolved_alias.as_str()
     }
 }
 
 impl Command for ResolvedAlias {
     fn command(&self) -> &str {
-        self.alias.as_str()
+        self.resolved_alias.as_str()
+    }
+}
+
+impl Display for ResolvedAlias {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        writeln!(
+            f,
+            "{}{}Alias:{} {}",
+            termion::color::Fg(termion::color::LightCyan),
+            termion::style::Bold,
+            termion::style::Reset,
+            self.name,
+        )?;
+        writeln!(
+            f,
+            "{}{}Choices:{}\n",
+            termion::color::Fg(termion::color::LightCyan),
+            termion::style::Bold,
+            termion::style::Reset,
+        )?;
+        for (choice, value) in &self.choices {
+            writeln!(
+                f,
+                "\t{}{}{} =\t{}",
+                termion::style::Bold,
+                choice,
+                termion::style::Reset,
+                value,
+            )?;
+        }
+        writeln!(
+            f,
+            "\n{}{}{}Executed command:{} {}",
+            termion::color::Fg(termion::color::LightCyan),
+            termion::style::Bold,
+            termion::style::Italic,
+            termion::style::Reset,
+            self.resolved_alias
+        )
     }
 }
 

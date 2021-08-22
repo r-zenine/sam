@@ -1,4 +1,6 @@
+use crate::ErrorSamEngine;
 use rocksdb::DB;
+use sam::core::aliases::ResolvedAlias;
 use serde::Deserialize;
 use serde::Serialize;
 use std::path::Path;
@@ -6,6 +8,8 @@ use std::path::PathBuf;
 use std::time::SystemTimeError;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use thiserror::Error;
+
+use crate::sam_engine::SamHistory;
 
 pub trait VarsCache {
     fn put(&self, command: &dyn AsRef<str>, output: &dyn AsRef<str>) -> Result<(), CacheError>;
@@ -24,24 +28,37 @@ impl VarsCache for NoopVarsCache {
 }
 
 #[derive(Debug)]
-pub struct RocksDBVarsCache {
+pub struct RocksDBCache {
     path: PathBuf,
-    ttl: Duration,
+    ttl: Option<Duration>,
 }
 
-impl RocksDBVarsCache {
+impl RocksDBCache {
     // TODO expose a version without the TTL
-    pub fn new(p: impl AsRef<Path>, ttl: &Duration) -> Self {
-        RocksDBVarsCache {
+    pub fn with_ttl(p: impl AsRef<Path>, ttl: &Duration) -> Self {
+        RocksDBCache {
             path: p.as_ref().to_owned(),
-            ttl: *ttl,
+            ttl: Some(*ttl),
         }
     }
+
+    pub fn new(p: impl AsRef<Path>) -> Self {
+        RocksDBCache {
+            path: p.as_ref().to_owned(),
+            ttl: None,
+        }
+    }
+
     pub fn open_cache(&self) -> Result<DB, CacheError> {
         let mut options = rocksdb::Options::default();
         options.create_if_missing(true);
-        DB::open_with_ttl(&options, self.path.clone(), self.ttl)
-            .map_err(|e| CacheError::RocksDBOpenError(self.path.clone(), e))
+        if let Some(ttl) = self.ttl {
+            DB::open_with_ttl(&options, self.path.clone(), ttl)
+                .map_err(|e| CacheError::RocksDBOpenError(self.path.clone(), e))
+        } else {
+            DB::open(&options, self.path.clone())
+                .map_err(|e| CacheError::RocksDBOpenError(self.path.clone(), e))
+        }
     }
 
     pub fn invalidate_if_too_old(&self, c: Option<CacheEntry>) -> Option<CacheEntry> {
@@ -67,7 +84,7 @@ impl RocksDBVarsCache {
     }
 }
 
-impl VarsCache for RocksDBVarsCache {
+impl VarsCache for RocksDBCache {
     fn put(&self, command: &dyn AsRef<str>, output: &dyn AsRef<str>) -> Result<(), CacheError> {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?;
 
@@ -95,6 +112,36 @@ impl VarsCache for RocksDBVarsCache {
     }
 }
 
+impl SamHistory for RocksDBCache {
+    fn get_last_n(&self, n: usize) -> std::result::Result<Vec<ResolvedAlias>, ErrorSamEngine> {
+        let db = self
+            .open_cache()
+            .map_err(|err| ErrorSamEngine::HistoryNotAvailable(Box::new(err)))?;
+        let keys = db.iterator(rocksdb::IteratorMode::End);
+        Ok(keys
+            .into_iter()
+            .take(n)
+            .flat_map(|(_, value)| serde_yaml::from_slice(&value))
+            .collect())
+    }
+
+    fn put(&self, alias: ResolvedAlias) -> std::result::Result<(), ErrorSamEngine> {
+        let db = self
+            .open_cache()
+            .map_err(|err| ErrorSamEngine::HistoryNotAvailable(Box::new(err)))?;
+        let key = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|err| ErrorSamEngine::HistoryNotAvailable(Box::new(err)))?
+            .as_secs();
+        let bin_ts = bincode::serialize(&key)
+            .map_err(|err| ErrorSamEngine::HistoryNotAvailable(Box::new(err)))?;
+        let alias_bytes = serde_yaml::to_vec(&alias)
+            .map_err(|err| ErrorSamEngine::HistoryNotAvailable(Box::new(err)))?;
+        db.put(bin_ts, alias_bytes)
+            .map_err(|err| ErrorSamEngine::HistoryNotAvailable(Box::new(err)))
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CacheEntry {
     creation_date: u64,
@@ -102,12 +149,16 @@ pub struct CacheEntry {
 }
 
 impl CacheEntry {
-    pub fn is_valid(&self, ttl: Duration) -> bool {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("can't get timestamp from OS")
-            .as_secs();
-        (now - ttl.as_secs()) < self.creation_date
+    pub fn is_valid(&self, ttl: Option<Duration>) -> bool {
+        if let Some(t) = ttl {
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("can't get timestamp from OS")
+                .as_secs();
+            (now - t.as_secs()) < self.creation_date
+        } else {
+            true
+        }
     }
 }
 #[derive(Debug, Error)]
@@ -126,7 +177,7 @@ pub enum CacheError {
 
 #[cfg(test)]
 mod tests {
-    use super::RocksDBVarsCache;
+    use super::RocksDBCache;
     use crate::vars_cache::VarsCache;
     use sam::utils::fsutils::TempDirectory;
     use std::time::Duration;
@@ -135,7 +186,7 @@ mod tests {
     pub fn test_rocksdb_cache() {
         let tmp_dir = TempDirectory::new().expect("can't create a temporary directory");
         let ttl = Duration::from_secs(90);
-        let cache = RocksDBVarsCache::new(&tmp_dir.path, &ttl);
+        let cache = RocksDBCache::with_ttl(&tmp_dir.path, &ttl);
         cache
             .put(&String::from("command"), &String::from("output"))
             .expect("can't write in rocksdb cache");

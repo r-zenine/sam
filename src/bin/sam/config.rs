@@ -23,6 +23,8 @@ pub struct AppSettings {
     #[serde(skip)]
     cache_dir: PathBuf,
     #[serde(skip)]
+    history_dir: PathBuf,
+    #[serde(skip)]
     pub dry: bool,
     #[serde(skip)]
     pub silent: bool,
@@ -52,12 +54,14 @@ impl AppSettings {
         let config_current_dir = Self::read_config(current_dir_o);
 
         let cache_dir = Self::cache_dir_path()?;
+        let history_dir = Self::history_dir_path()?;
 
         let mut settings = config_current_dir
             .or(config_home_dir)
             .and_then(AppSettings::validate)
             .map(|mut e| {
                 e.cache_dir = cache_dir;
+                e.history_dir = history_dir;
                 e
             })?;
 
@@ -87,6 +91,10 @@ impl AppSettings {
         self.cache_dir.as_ref()
     }
 
+    pub fn history_dir(&self) -> &'_ Path {
+        self.history_dir.as_ref()
+    }
+
     fn validate(orig: AppSettings) -> Result<AppSettings> {
         let files = fsutils::walk_dir(orig.root_dir.as_path())?;
         for f in files {
@@ -100,9 +108,16 @@ impl AppSettings {
             .map(|e| e.join(CONFIG_FILE_NAME))
             .ok_or(ErrorsSettings::CantFindHomeDirectory)
     }
+
     fn cache_dir_path() -> Result<PathBuf> {
         dirs::home_dir()
             .map(|e| e.join(".cache").join("sam"))
+            .ok_or(ErrorsSettings::CantFindCacheDirectory)
+    }
+
+    fn history_dir_path() -> Result<PathBuf> {
+        dirs::home_dir()
+            .map(|e| e.join(".local").join("share").join("sam"))
             .ok_or(ErrorsSettings::CantFindCacheDirectory)
     }
 

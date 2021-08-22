@@ -25,7 +25,7 @@ fn main() {
         Ok(i) => std::process::exit(i),
         Err(err) => {
             eprintln!(
-                "{}{}The application failed to run{} \n->\t{}",
+                "{}{}The application failed to run{} \n-> {}",
                 termion::color::Fg(termion::color::Red),
                 termion::style::Bold,
                 termion::style::Reset,

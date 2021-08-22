@@ -1,9 +1,9 @@
-use sam::core::aliases::Alias;
+use sam::core::aliases::{Alias, ResolvedAlias};
 use sam::core::aliases_repository::{AliasesRepository, ErrorsAliasesRepository};
 use sam::core::choices::Choice;
 use sam::core::commands::Command;
 use sam::core::dependencies::{ErrorsResolver, Resolver};
-use sam::core::identifiers::Identifier;
+use sam::core::identifiers::{Identifier, IdentifierWithDesc};
 use sam::core::vars_repository::{ErrorsVarsRepository, VarsRepository};
 use sam::utils::processes::ShellCommand;
 use std::collections::HashMap;
@@ -17,6 +17,9 @@ const PROMPT: &str = "Choose an alias to run > ";
 pub enum SamCommand {
     ChooseAndExecuteAlias,
     ExecuteAlias { alias: Identifier },
+    DisplayLastExecutedAlias,
+    ExecuteLastExecutedAlias,
+    DisplayHistory,
 }
 
 pub struct SamEngine<R: Resolver> {
@@ -24,15 +27,20 @@ pub struct SamEngine<R: Resolver> {
     pub aliases: AliasesRepository,
     pub vars: VarsRepository,
     pub logger: Rc<dyn SamLogger>,
+    pub history: Box<dyn SamHistory>,
     pub env_variables: HashMap<String, String>,
     pub dry: bool,
 }
 
 impl<R: Resolver> SamEngine<R> {
     pub fn run(&self, command: SamCommand) -> Result<i32> {
+        use SamCommand::*;
         match command {
-            SamCommand::ChooseAndExecuteAlias => self.choose_and_execute_alias(),
-            SamCommand::ExecuteAlias { alias } => self.execute_alias(&alias),
+            ChooseAndExecuteAlias => self.choose_and_execute_alias(),
+            ExecuteAlias { alias } => self.execute_alias(&alias),
+            DisplayLastExecutedAlias => self.display_last_executed_alias(),
+            ExecuteLastExecutedAlias => self.execute_last_executed_alias(),
+            DisplayHistory => self.display_history(),
         }
     }
 
@@ -55,16 +63,57 @@ impl<R: Resolver> SamEngine<R> {
             .collect();
 
         let final_alias = alias.with_choices(&choices).unwrap();
+        self.history.put(final_alias.clone())?;
         self.logger.final_command(alias, &final_alias.command());
+        self.execute_resolved_alias(&final_alias)
+    }
+
+    fn execute_resolved_alias(&self, alias: &ResolvedAlias) -> Result<i32> {
         if !self.dry {
-            let mut command: std::process::Command =
-                ShellCommand::new(final_alias.command()).into();
+            let mut command: std::process::Command = ShellCommand::new(alias.command()).into();
             command.envs(&self.env_variables);
             let exit_status = command.status()?;
             exit_status.code().ok_or(ErrorSamEngine::ExitCode)
         } else {
             Ok(0)
         }
+    }
+
+    fn display_last_executed_alias(&self) -> Result<i32> {
+        let resolved_alias_o = self.history.get_last()?;
+        if let Some(alias) = resolved_alias_o {
+            println!("{}", &alias.command());
+        }
+        Ok(0)
+    }
+
+    fn display_history(&self) -> Result<i32> {
+        let resolved_alias_o = self.history.get_last_n(10)?;
+        for alias in resolved_alias_o {
+            println!("\n=============\n");
+            print!("{}", alias);
+            print!("\n=============\n");
+        }
+        Ok(0)
+    }
+
+    fn execute_last_executed_alias(&self) -> Result<i32> {
+        let resolved_alias_o = self.history.get_last()?;
+        if let Some(alias) = resolved_alias_o {
+            self.execute_resolved_alias(&alias)
+        } else {
+            println!("history empty");
+            Ok(0)
+        }
+    }
+}
+
+pub trait SamHistory {
+    fn put(&self, alias: ResolvedAlias) -> Result<()>;
+    fn get_last_n(&self, n: usize) -> Result<Vec<ResolvedAlias>>;
+    fn get_last(&self) -> Result<Option<ResolvedAlias>> {
+        let mut last = self.get_last_n(1)?;
+        Ok(last.pop())
     }
 }
 
@@ -91,4 +140,6 @@ pub enum ErrorSamEngine {
     AliasRepository(#[from] ErrorsAliasesRepository),
     #[error("could not run a command\n-> {0}")]
     SubCommand(#[from] std::io::Error),
+    #[error("history is unavailable\n-> {0}")]
+    HistoryNotAvailable(#[from] Box<dyn std::error::Error>),
 }
