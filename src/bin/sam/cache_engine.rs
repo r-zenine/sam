@@ -1,4 +1,4 @@
-use crate::vars_cache::{CacheError, RocksDBVarsCache};
+use crate::vars_cache::{CacheError, RocksDBCache};
 use std::path::PathBuf;
 use std::time::Duration;
 use thiserror::Error;
@@ -23,7 +23,7 @@ impl CacheEngine {
     }
 
     fn print_keys(self) -> Result<i32> {
-        let cache = RocksDBVarsCache::new(self.cache_dir, &self.ttl);
+        let cache = RocksDBCache::with_ttl(self.cache_dir, &self.ttl);
         println!(
             "{}{}Keys present in cache{}\n",
             termion::style::Bold,
@@ -43,7 +43,7 @@ impl CacheEngine {
     }
 
     fn cache_clear(self) -> Result<i32> {
-        Ok(RocksDBVarsCache::new(self.cache_dir, &self.ttl)
+        Ok(RocksDBCache::with_ttl(self.cache_dir, &self.ttl)
             .clear_cache()
             .map(|_| 0)?)
     }

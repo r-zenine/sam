@@ -113,7 +113,7 @@ impl AliasesRepository {
 pub enum ErrorsAliasesRepository {
     #[error("Alias '{0}' has a missing dependency: '{1}'")]
     MissingDependencies(Identifier, Identifier),
-    #[error("Alias selection failed because \n -> {0}")]
+    #[error("Alias selection failed because \n-> {0}")]
     AliasSelectionFailure(#[from] ErrorsResolver),
     #[error("Invalid alias selected {0}")]
     AliasInvalidSelection(Identifier),

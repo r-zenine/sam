@@ -2,10 +2,10 @@ use crate::cache_engine::CacheEngine;
 use crate::config::AppSettings;
 use crate::config_engine::ConfigEngine;
 use crate::logger::{SilentLogger, StdErrLogger};
-use crate::sam_engine::{SamEngine, SamLogger};
+use crate::sam_engine::{SamEngine, SamHistory, SamLogger};
 use crate::userinterface::ErrorsUI;
 use crate::userinterface::UserInterface;
-use crate::vars_cache::{NoopVarsCache, RocksDBVarsCache, VarsCache};
+use crate::vars_cache::{NoopVarsCache, RocksDBCache, VarsCache};
 use sam::core::aliases_repository::AliasesRepository;
 use sam::core::aliases_repository::ErrorsAliasesRepository;
 use sam::core::vars_repository::ErrorsVarsRepository;
@@ -28,6 +28,7 @@ pub struct Environment {
     pub logger: Rc<dyn SamLogger>,
     pub env_variables: HashMap<String, String>,
     pub config: AppSettings,
+    pub history: Box<dyn SamHistory>,
 }
 
 impl Environment {
@@ -39,6 +40,7 @@ impl Environment {
             logger: self.logger,
             env_variables: self.env_variables,
             dry: self.config.dry,
+            history: self.history,
         }
     }
 
@@ -60,10 +62,12 @@ impl Environment {
 
 pub fn from_settings(config: AppSettings) -> Result<Environment> {
     let cache: Box<dyn VarsCache> = if !config.no_cache {
-        Box::new(RocksDBVarsCache::new(config.cache_dir(), &config.ttl()))
+        Box::new(RocksDBCache::with_ttl(config.cache_dir(), &config.ttl()))
     } else {
         Box::new(NoopVarsCache {})
     };
+    let history: Box<dyn SamHistory> = Box::new(RocksDBCache::new(config.history_dir()));
+
     let logger = logger_instance(config.silent);
     let ui_interface = UserInterface::new(config.variables(), cache)?;
     let files = walk_dir(config.root_dir())?;
@@ -88,6 +92,7 @@ pub fn from_settings(config: AppSettings) -> Result<Environment> {
         logger,
         env_variables: config.variables(),
         config,
+        history,
     })
 }
 
