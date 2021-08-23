@@ -15,7 +15,10 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
 const ABOUT: &str = "sam lets you difine custom aliases and search them using fuzzy search.";
-const ABOUT_SUB_RUN: &str = "show your aliases";
+const ABOUT_SUB_RUN: &str = "let's you select and alias then run it";
+const ABOUT_SUB_SHOW_LAST: &str = "shows the last command that was run";
+const ABOUT_SUB_SHOW_HISTORY: &str = "displays the last commands that you ran";
+const ABOUT_SUB_RUN_LAST: &str = "runs the last command that was run again";
 const ABOUT_SUB_CHECK_CONFIG: &str = "checks your configuration files";
 const ABOUT_SUB_CACHE_CLEAR: &str = "clears the cache for vars 'from_command' outputs";
 const ABOUT_SUB_CACHE_KEYS: &str = "lists all the cache keys";
@@ -76,7 +79,7 @@ fn app_init() -> App<'static, 'static> {
         .long("choices")
         .takes_value(true)
         .multiple(true)
-        .help("provide choices for vars");
+        .help("provide choices for vars. example '-c ns::var=choice'");
 
     let arg_dry = Arg::with_name("dry")
         .long("dry")
@@ -97,9 +100,9 @@ fn app_init() -> App<'static, 'static> {
         .arg(arg_choices.clone())
         .about(ABOUT_SUB_RUN);
 
-    let subc_display_history = App::new("history").about(ABOUT_SUB_RUN);
-    let subc_display_last = App::new("!").about(ABOUT_SUB_RUN);
-    let subc_rerun_last = App::new("!!").about(ABOUT_SUB_RUN);
+    let subc_display_history = App::new("history").about(ABOUT_SUB_SHOW_HISTORY);
+    let subc_display_last = App::new("show-last").alias("!").about(ABOUT_SUB_SHOW_LAST);
+    let subc_rerun_last = App::new("run-last").alias("%").about(ABOUT_SUB_RUN_LAST);
 
     let subc_alias = App::new("alias")
         .arg(
@@ -142,8 +145,8 @@ where
             let alias = parse_alias(e.value_of("alias"))?;
             SubCommand::SamCommand(SamCommand::ExecuteAlias { alias })
         }
-        ("!", Some(_)) => SubCommand::SamCommand(SamCommand::DisplayLastExecutedAlias),
-        ("!!", Some(_)) => SubCommand::SamCommand(SamCommand::ExecuteLastExecutedAlias),
+        ("show-last", Some(_)) => SubCommand::SamCommand(SamCommand::DisplayLastExecutedAlias),
+        ("run-last", Some(_)) => SubCommand::SamCommand(SamCommand::ExecuteLastExecutedAlias),
         ("history", Some(_)) => SubCommand::SamCommand(SamCommand::DisplayHistory),
         ("check-config", Some(_)) => SubCommand::ConfigCheck(ConfigCommand::All),
         ("cache-clear", Some(_)) => SubCommand::CacheCommand(CacheCommand::PrintKeys),
