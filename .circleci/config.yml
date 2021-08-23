@@ -122,7 +122,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - ./target/release
+            - ./target/release/*_macos_x86_64_*
 
   create_release: 
     docker: 
