@@ -16,9 +16,9 @@ const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
 const ABOUT: &str = "sam lets you difine custom aliases and search them using fuzzy search.";
 const ABOUT_SUB_RUN: &str = "let's you select and alias then run it";
-const ABOUT_SUB_SHOW_LAST: &str = "shows the last command that was run";
+const ABOUT_SUB_SHOW_LAST: &str = "shows the last command that was run, shortcut is `sam !`";
 const ABOUT_SUB_SHOW_HISTORY: &str = "displays the last commands that you ran";
-const ABOUT_SUB_RUN_LAST: &str = "runs the last command that was run again";
+const ABOUT_SUB_RUN_LAST: &str = "runs the last command that was run again. shortcut is `sam %`";
 const ABOUT_SUB_CHECK_CONFIG: &str = "checks your configuration files";
 const ABOUT_SUB_CACHE_CLEAR: &str = "clears the cache for vars 'from_command' outputs";
 const ABOUT_SUB_CACHE_KEYS: &str = "lists all the cache keys";
