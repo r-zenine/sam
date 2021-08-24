@@ -150,10 +150,6 @@ workflows:
           filters:
             tags:
               ignore: /^v.*/
-      - build_macos:
-          filters:
-            tags:
-              ignore: /^v.*/
 
 
   # Release related jobs.
@@ -172,7 +168,7 @@ workflows:
             tags:
               only: /^v.*/
             branches:
-              ignore: master
+              ignore: /.*/
 
       - create_release:
           requires:
