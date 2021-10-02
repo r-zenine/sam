@@ -7,6 +7,7 @@ use crate::utils::processes::ShellCommand;
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet, VecDeque};
 use thiserror::Error;
+
 #[derive(Debug)]
 pub struct ExecutionSequence<'repository> {
     inner: Vec<&'repository Identifier>,

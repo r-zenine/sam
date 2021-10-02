@@ -3,7 +3,7 @@ use sam::core::aliases_repository::{AliasesRepository, ErrorsAliasesRepository};
 use sam::core::choices::Choice;
 use sam::core::commands::Command;
 use sam::core::dependencies::{ErrorsResolver, Resolver};
-use sam::core::identifiers::{Identifier, IdentifierWithDesc};
+use sam::core::identifiers::{Identifier};
 use sam::core::vars_repository::{ErrorsVarsRepository, VarsRepository};
 use sam::utils::processes::ShellCommand;
 use std::collections::HashMap;

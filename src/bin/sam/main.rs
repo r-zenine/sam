@@ -54,11 +54,11 @@ type Result<T> = std::result::Result<T, ErrorMain>;
 
 #[derive(Debug, Error)]
 pub enum ErrorMain {
-    #[error("Configuration file contains invalid settings \n->\t{0}")]
+    #[error("Configuration file contains invalid settings \n-> {0}")]
     Settings(#[from] ErrorsSettings),
-    #[error("Invalid command line arguments\n->\t{0}")]
+    #[error("Invalid command line arguments\n->  {0}")]
     Cli(#[from] cli::CLIError),
-    #[error("the initialization of the application failed because \n->\t{0}")]
+    #[error("the initialization of the application failed because \n-> {0}")]
     Environment(#[from] ErrorEnvironment),
     #[error("{0}")]
     SamEngine(#[from] ErrorSamEngine),

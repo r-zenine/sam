@@ -2,10 +2,9 @@ use std::collections::HashSet;
 
 use crate::core::identifiers::Identifier;
 use crate::core::namespaces::Namespace;
-use comma::Command as CmdParser;
+use comma::parse_command;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::str::FromStr;
 
 lazy_static! {
     // matches the following patters :
@@ -71,13 +70,7 @@ fn extract_programs_from_command(cmd: &str) -> Vec<String> {
                 .flat_map(|c| c.name("sub_cmd"))
                 .map(|c| c.as_str()),
         )
-        .flat_map(|s| {
-            if let Ok(parsed_cmd) = CmdParser::from_str(s) {
-                Some(parsed_cmd.name)
-            } else {
-                None
-            }
-        })
+        .flat_map(|s| parse_command(s).and_then(|cmd| cmd.first().map(ToOwned::to_owned)))
         .collect()
 }
 
