@@ -7,8 +7,6 @@ use std::collections::HashMap;
 use std::error;
 use thiserror::Error;
 
-use super::identifiers::IdentifierWithDesc;
-
 pub trait Dependencies: Command {
     fn substitute_for_choices(
         &self,
@@ -61,7 +59,8 @@ pub trait Resolver {
     ) -> Result<Choice, ErrorsResolver>;
     fn select_identifier(
         &self,
-        identifiers: &[IdentifierWithDesc],
+        identifiers: &[Identifier],
+        descriptions: Option<&[&str]>,
         prompt: &str,
     ) -> Result<Identifier, ErrorsResolver>;
 }
@@ -87,9 +86,10 @@ pub enum ErrorsResolver {
 }
 
 pub mod mocks {
+
     use super::{ErrorsResolver, Resolver};
     use crate::core::choices::Choice;
-    use crate::core::identifiers::{Identifier, IdentifierWithDesc};
+    use crate::core::identifiers::Identifier;
     use crate::utils::processes::ShellCommand;
     use std::collections::HashMap;
 
@@ -97,15 +97,18 @@ pub mod mocks {
     pub struct StaticResolver {
         dynamic_res: HashMap<String, Choice>,
         static_res: HashMap<Identifier, Choice>,
+        identifier_to_select: Option<Identifier>,
     }
     impl StaticResolver {
         pub fn new(
             dynamic_res: HashMap<String, Choice>,
             static_res: HashMap<Identifier, Choice>,
+            identifier_to_select: Option<Identifier>,
         ) -> Self {
             StaticResolver {
                 dynamic_res,
                 static_res,
+                identifier_to_select,
             }
         }
     }
@@ -140,10 +143,13 @@ pub mod mocks {
         }
         fn select_identifier(
             &self,
-            _: &[IdentifierWithDesc],
+            _: &[Identifier],
+            _: Option<&[&str]>,
             _: &str,
         ) -> Result<Identifier, ErrorsResolver> {
-            todo!()
+            self.identifier_to_select
+                .clone()
+                .ok_or_else(|| ErrorsResolver::IdentifierSelectionEmpty())
         }
     }
 }
