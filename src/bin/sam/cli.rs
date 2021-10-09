@@ -156,8 +156,8 @@ where
         }
         ("history", Some(_)) => SubCommand::SamCommand(SamCommand::DisplayHistory),
         ("check-config", Some(_)) => SubCommand::ConfigCheck(ConfigCommand::All),
-        ("cache-clear", Some(_)) => SubCommand::CacheCommand(CacheCommand::PrintKeys),
-        ("cache-keys", Some(_)) => SubCommand::CacheCommand(CacheCommand::Clear),
+        ("cache-clear", Some(_)) => SubCommand::CacheCommand(CacheCommand::Clear),
+        ("cache-keys", Some(_)) => SubCommand::CacheCommand(CacheCommand::PrintKeys),
         (&_, _) => SubCommand::SamCommand(SamCommand::ChooseAndExecuteAlias),
     };
     Ok(CLIRequest { command, settings })

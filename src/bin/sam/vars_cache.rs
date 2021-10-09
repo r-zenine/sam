@@ -1,4 +1,6 @@
 use crate::ErrorSamEngine;
+use rocksdb::WriteBatch;
+use rocksdb::WriteOptions;
 use rocksdb::DB;
 use sam::core::aliases::ResolvedAlias;
 use serde::Deserialize;
@@ -68,10 +70,15 @@ impl RocksDBCache {
     pub fn clear_cache(&self) -> Result<(), CacheError> {
         let db = self.open_cache()?;
         let keys = db.iterator(rocksdb::IteratorMode::Start);
+        let mut batch = WriteBatch::default();
         for (key, _) in keys {
-            db.delete(key).map_err(CacheError::RocksDBError)?;
+            batch.delete(key);
         }
-        Ok(())
+        let mut options = WriteOptions::default();
+        options.set_sync(true);
+
+        db.write_opt(batch, &options)
+            .map_err(|e| CacheError::RocksDBError(e))
     }
 
     pub fn keys(&self) -> Result<Vec<String>, CacheError> {
@@ -96,9 +103,11 @@ impl VarsCache for RocksDBCache {
         let bytes = bincode::serialize(&v)?;
         let db = self.open_cache()?;
 
-        db.put(command.as_ref(), bytes)
-            .map_err(CacheError::RocksDBError)?;
-        db.flush().map_err(CacheError::RocksDBError)
+        let mut options = WriteOptions::default();
+        options.set_sync(true);
+
+        db.put_opt(command.as_ref(), bytes, &options)
+            .map_err(CacheError::RocksDBError)
     }
 
     fn get(&self, command: &dyn AsRef<str>) -> Result<Option<String>, CacheError> {
@@ -117,7 +126,7 @@ impl SamHistory for RocksDBCache {
         let db = self
             .open_cache()
             .map_err(|err| ErrorSamEngine::HistoryNotAvailable(Box::new(err)))?;
-        let keys = db.iterator(rocksdb::IteratorMode::End);
+        let keys = db.iterator(rocksdb::IteratorMode::Start);
         Ok(keys
             .into_iter()
             .take(n)
@@ -133,11 +142,13 @@ impl SamHistory for RocksDBCache {
             .duration_since(std::time::UNIX_EPOCH)
             .map_err(|err| ErrorSamEngine::HistoryNotAvailable(Box::new(err)))?
             .as_secs();
-        let bin_ts = bincode::serialize(&key)
-            .map_err(|err| ErrorSamEngine::HistoryNotAvailable(Box::new(err)))?;
+        let bin_ts = key.to_le_bytes();
         let alias_bytes = serde_yaml::to_vec(&alias)
             .map_err(|err| ErrorSamEngine::HistoryNotAvailable(Box::new(err)))?;
-        db.put(bin_ts, alias_bytes)
+
+        let mut options = WriteOptions::default();
+        options.set_sync(true);
+        db.put_opt(bin_ts, alias_bytes, &options)
             .map_err(|err| ErrorSamEngine::HistoryNotAvailable(Box::new(err)))
     }
 }
