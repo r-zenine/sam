@@ -17,7 +17,6 @@ lazy_static! {
 pub struct Identifier {
     #[serde(rename(serialize = "name", deserialize = "name"))]
     pub inner: String,
-    #[serde(skip)]
     pub namespace: Option<String>,
 }
 
