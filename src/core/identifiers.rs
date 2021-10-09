@@ -114,10 +114,13 @@ impl Identifier {
         let s = str.into();
         if s.contains("::") {
             let parts: Vec<&str> = s.split("::").take(2).collect();
-            return (
-                Identifier::sanitize_identifier(parts[1].to_string()),
-                Some(Identifier::sanitize_identifier(parts[0].to_string())),
-            );
+            let name = Identifier::sanitize_identifier(parts[1].to_string());
+            let namespace = Identifier::sanitize_identifier(parts[0].to_string());
+            if namespace != "" {
+                return (name, Some(namespace));
+            } else {
+                return (name, None);
+            }
         }
         (s, None)
     }
@@ -138,7 +141,7 @@ impl PartialEq<&Identifier> for Identifier {
 
 impl Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.namespace().is_some() {
+        if self.namespace().is_some() && self.namespace().unwrap() != "" {
             write!(
                 f,
                 "{}::{}",
@@ -213,6 +216,10 @@ mod tests {
         assert_eq!(
             Identifier::from_str("aws::ec2_instance_ip"),
             Identifier::with_namespace("ec2_instance_ip", Some("aws"))
+        );
+        assert_eq!(
+            Identifier::from_str("::ec2_instance_ip"),
+            Identifier::new("ec2_instance_ip")
         )
     }
 }
