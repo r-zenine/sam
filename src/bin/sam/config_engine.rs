@@ -6,7 +6,9 @@ use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConfigCommand {
+    #[allow(dead_code)]
     CheckUnsetEnvVars,
+    #[allow(dead_code)]
     CheckUnavailablePrograms,
     All,
 }
