@@ -95,7 +95,7 @@ impl<R: Resolver> SamEngine<R> {
             let original_alias = Alias::from(resolved_alias.clone());
             let exec_seq = self.vars.execution_sequence(original_alias.clone())?;
             let identifiers = exec_seq.identifiers();
-            if !identifiers.is_empty()  {
+            if !identifiers.is_empty() {
                 let selected_var = self.resolver.select_identifier(
                     &identifiers,
                     None,

@@ -149,7 +149,7 @@ pub mod mocks {
         ) -> Result<Identifier, ErrorsResolver> {
             self.identifier_to_select
                 .clone()
-                .ok_or( ErrorsResolver::IdentifierSelectionEmpty())
+                .ok_or(ErrorsResolver::IdentifierSelectionEmpty())
         }
     }
 }
