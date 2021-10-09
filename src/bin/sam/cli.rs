@@ -199,7 +199,7 @@ fn parse_choice(default: &str) -> Result<(Identifier, Choice), CLIError> {
         let id = Identifier::from_str(parts[0]);
         if id.namespace.is_none() {
             Err(CLIError::MissingNamespaceForChoice(
-                id.clone(),
+                id,
                 default.to_string(),
             ))
         } else {

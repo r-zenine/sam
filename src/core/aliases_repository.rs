@@ -31,7 +31,7 @@ impl AliasesRepository {
         }
         let mut mpf = HashMap::new();
         for (key, alias) in mp.iter() {
-            let t_alias = Self::substitute_alias_defs(&alias, &mp)?;
+            let t_alias = Self::substitute_alias_defs(alias, &mp)?;
             mpf.insert(key.clone(), t_alias);
         }
         Ok(AliasesRepository { aliases: mpf })
@@ -39,7 +39,7 @@ impl AliasesRepository {
 
     pub fn get(&self, id: &Identifier) -> Result<&Alias, ErrorsAliasesRepository> {
         self.aliases
-            .get(&id)
+            .get(id)
             .ok_or_else(|| ErrorsAliasesRepository::AliasInvalidSelection(id.clone()))
     }
 
@@ -71,7 +71,7 @@ impl AliasesRepository {
         aliases: &HashMap<Identifier, Alias>,
     ) -> Result<Alias, ErrorsAliasesRepository> {
         let mut t_alias = alias.clone();
-        let deps = Self::parse(&alias);
+        let deps = Self::parse(alias);
         if !deps.is_empty() {
             let alias_str = alias.alias();
             let mut alias_parts = vec![];

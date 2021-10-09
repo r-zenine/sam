@@ -115,7 +115,7 @@ impl Identifier {
             let parts: Vec<&str> = s.split("::").take(2).collect();
             let name = Identifier::sanitize_identifier(parts[1].to_string());
             let namespace = Identifier::sanitize_identifier(parts[0].to_string());
-            if namespace != "" {
+            if !namespace.is_empty() {
                 return (name, Some(namespace));
             } else {
                 return (name, None);

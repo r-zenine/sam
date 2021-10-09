@@ -95,9 +95,7 @@ impl<R: Resolver> SamEngine<R> {
             let original_alias = Alias::from(resolved_alias.clone());
             let exec_seq = self.vars.execution_sequence(original_alias.clone())?;
             let identifiers = exec_seq.identifiers();
-            if identifiers.len() == 0 {
-                self.execute_alias(&original_alias.identifier())
-            } else {
+            if !identifiers.is_empty()  {
                 let selected_var = self.resolver.select_identifier(
                     &identifiers,
                     None,
@@ -116,8 +114,8 @@ impl<R: Resolver> SamEngine<R> {
                     .collect();
 
                 self.vars.set_defaults(&new_defaults)?;
-                self.execute_alias(&original_alias.identifier())
             }
+            self.execute_alias(&original_alias.identifier())
         } else {
             println!("history empty");
             Ok(0)

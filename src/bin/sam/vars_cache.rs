@@ -78,7 +78,7 @@ impl RocksDBCache {
         options.set_sync(true);
 
         db.write_opt(batch, &options)
-            .map_err(|e| CacheError::RocksDBError(e))
+            .map_err(CacheError::RocksDBError)
     }
 
     pub fn keys(&self) -> Result<Vec<String>, CacheError> {
