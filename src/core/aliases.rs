@@ -136,7 +136,7 @@ impl Command for Alias {
 impl Dependencies for &Alias {}
 impl Dependencies for Alias {}
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ResolvedAlias {
     name: Identifier,
     desc: String,

@@ -126,7 +126,7 @@ impl SamHistory for RocksDBCache {
         let db = self
             .open_cache()
             .map_err(|err| ErrorSamEngine::HistoryNotAvailable(Box::new(err)))?;
-        let keys = db.iterator(rocksdb::IteratorMode::Start);
+        let keys = db.iterator(rocksdb::IteratorMode::End);
         Ok(keys
             .into_iter()
             .take(n)

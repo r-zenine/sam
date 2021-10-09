@@ -73,6 +73,7 @@ impl<R: Resolver> SamEngine<R> {
     fn display_last_executed_alias(&self) -> Result<i32> {
         let resolved_alias_o = self.history.get_last()?;
         if let Some(alias) = resolved_alias_o {
+            println!("Alias: {}", &alias.name());
             println!("{}", &alias.command());
         }
         Ok(0)
@@ -88,26 +89,35 @@ impl<R: Resolver> SamEngine<R> {
         Ok(0)
     }
 
-    // TODO correct implementation
     fn modify_then_execute_last_executed_alias(&mut self) -> Result<i32> {
         let resolved_alias_o = self.history.get_last()?;
         if let Some(resolved_alias) = resolved_alias_o {
             let original_alias = Alias::from(resolved_alias.clone());
-            let exec_seq = self.vars.execution_sequence(original_alias)?;
+            let exec_seq = self.vars.execution_sequence(original_alias.clone())?;
             let identifiers = exec_seq.identifiers();
-            let selected_var = self.resolver.select_identifier(
-                &identifiers,
-                None,
-                "Select the variable to override:",
-            )?;
-            let new_defaults: HashMap<Identifier, Choice> = identifiers
-                .into_iter()
-                .take_while(|e| *e != selected_var)
-                .flat_map(|e| resolved_alias.choice(&e).map(|choice| (e, choice)))
-                .collect();
-            self.vars.set_defaults(&new_defaults)?;
-            self.executor
-                .execute_resolved_alias(&resolved_alias, &self.env_variables)
+            if identifiers.len() == 0 {
+                self.execute_alias(&original_alias.identifier())
+            } else {
+                let selected_var = self.resolver.select_identifier(
+                    &identifiers,
+                    None,
+                    "Select the variable to override:",
+                )?;
+
+                let var_position = identifiers
+                    .iter()
+                    .position(|x| x == &selected_var)
+                    .unwrap_or_default();
+
+                let new_defaults: HashMap<Identifier, Choice> = identifiers
+                    .into_iter()
+                    .skip(var_position + 1)
+                    .flat_map(|e| resolved_alias.choice(&e).map(|choice| (e, choice)))
+                    .collect();
+
+                self.vars.set_defaults(&new_defaults)?;
+                self.execute_alias(&original_alias.identifier())
+            }
         } else {
             println!("history empty");
             Ok(0)
@@ -222,6 +232,7 @@ mod tests {
         assert_eq!(resolved_alias.choices().len(), 2);
         assert_eq!(resolved_alias.choice(&variable_1).unwrap(), choice_v_1);
         assert_eq!(resolved_alias.choice(&variable_2).unwrap(), choice_v_2);
+        assert_eq!(&engine.history.get_last().unwrap().unwrap(), resolved_alias);
     }
 
     #[test]
@@ -255,6 +266,7 @@ mod tests {
         assert_eq!(resolved_alias.choices().len(), 2);
         assert_eq!(resolved_alias.choice(&variable_1).unwrap(), choice_v_1);
         assert_eq!(resolved_alias.choice(&variable_2).unwrap(), choice_v_2);
+        assert_eq!(&engine.history.get_last().unwrap().unwrap(), resolved_alias);
     }
 
     fn make_engine(
@@ -289,7 +301,7 @@ mod mocks {
 
     #[derive(Default)]
     pub struct InMemoryHistory {
-        aliases: RefCell<std::collections::VecDeque<ResolvedAlias>>,
+        pub aliases: RefCell<std::collections::VecDeque<ResolvedAlias>>,
     }
 
     impl SamHistory for InMemoryHistory {
@@ -299,8 +311,14 @@ mod mocks {
             Ok(())
         }
 
-        fn get_last_n(&self, _n: usize) -> super::Result<Vec<ResolvedAlias>> {
-            Ok(vec![])
+        fn get_last_n(&self, n: usize) -> super::Result<Vec<ResolvedAlias>> {
+            Ok(self
+                .aliases
+                .borrow()
+                .iter()
+                .take(n)
+                .map(ToOwned::to_owned)
+                .collect())
         }
     }
 }
