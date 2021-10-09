@@ -12,6 +12,17 @@ use thiserror::Error;
 pub struct ExecutionSequence<'repository> {
     inner: Vec<&'repository Identifier>,
 }
+
+impl<'repository> ExecutionSequence<'repository> {
+    pub fn identifiers(&'repository self) -> Vec<Identifier> {
+        let mut rep: Vec<Identifier> = Vec::with_capacity(self.inner.len());
+        for e in self.inner.clone() {
+            rep.push(e.clone());
+        }
+        rep
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct VarsRepository {
     vars: HashSet<Var>,
@@ -245,7 +256,7 @@ mod tests {
             VAR_DIRECTORY_NAME.clone() => VAR_DIRECTORY_CHOICE_1.clone(),
             VAR_PATTERN_NAME.clone() => VAR_PATTERN_CHOICE_2.clone(),
         ];
-        let resolver = StaticResolver::new(dynamic_res, static_res);
+        let resolver = StaticResolver::new(dynamic_res, static_res, None);
         let var1 = VAR_LISTING.clone();
         let ret_var1 = VarsRepository::resolve(&resolver, &var1, &choices);
         assert!(ret_var1.is_ok());
@@ -309,7 +320,7 @@ mod tests {
             VAR_DIRECTORY_NAME.clone() => VAR_DIRECTORY_CHOICE_1.clone(),
             VAR_PATTERN_NAME.clone() => VAR_PATTERN_CHOICE_2.clone(),
         ];
-        let resolver = StaticResolver::new(dynamic_res, static_res);
+        let resolver = StaticResolver::new(dynamic_res, static_res, None);
         let full = vec![
             VAR_DIRECTORY.clone(),
             VAR_LISTING.clone(),
@@ -328,3 +339,5 @@ mod tests {
         assert_eq!(res.unwrap().sort(), expected);
     }
 }
+
+pub mod fixtures {}
