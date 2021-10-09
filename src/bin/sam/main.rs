@@ -15,11 +15,11 @@ mod cli;
 mod config;
 mod config_engine;
 mod environment;
+mod executors;
 mod logger;
 mod sam_engine;
 mod userinterface;
 mod vars_cache;
-mod executors;
 
 fn main() {
     match run() {
