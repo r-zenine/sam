@@ -19,6 +19,7 @@ mod logger;
 mod sam_engine;
 mod userinterface;
 mod vars_cache;
+mod executors;
 
 fn main() {
     match run() {

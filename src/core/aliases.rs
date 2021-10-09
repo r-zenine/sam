@@ -145,6 +145,30 @@ pub struct ResolvedAlias {
     choices: HashMap<Identifier, Choice>,
 }
 
+impl ResolvedAlias {
+    pub fn choice(&self, identifier: &Identifier) -> Option<Choice> {
+        self.choices.get(identifier).map(Clone::clone)
+    }
+
+    pub fn name(&self) -> &Identifier {
+        &self.name
+    }
+
+    pub fn choices(&self) -> &HashMap<Identifier, Choice> {
+        &self.choices
+    }
+}
+
+impl From<ResolvedAlias> for Alias {
+    fn from(r_alias: ResolvedAlias) -> Self {
+        Alias {
+            name: r_alias.name,
+            desc: r_alias.desc,
+            alias: r_alias.orignal_alias,
+        }
+    }
+}
+
 impl Namespace for &ResolvedAlias {
     fn namespace(&self) -> Option<&str> {
         self.name.namespace()

@@ -1,8 +1,9 @@
 use crate::cache_engine::CacheEngine;
 use crate::config::AppSettings;
 use crate::config_engine::ConfigEngine;
+use crate::executors::{DryExecutor, ShellExecutor};
 use crate::logger::{SilentLogger, StdErrLogger};
-use crate::sam_engine::{SamEngine, SamHistory, SamLogger};
+use crate::sam_engine::{SamEngine, SamExecutor, SamHistory, SamLogger};
 use crate::userinterface::ErrorsUI;
 use crate::userinterface::UserInterface;
 use crate::vars_cache::{NoopVarsCache, RocksDBCache, VarsCache};
@@ -33,14 +34,20 @@ pub struct Environment {
 
 impl Environment {
     pub fn sam_engine(self) -> SamEngine<UserInterface> {
+        let executor: Rc<dyn SamExecutor> = if self.config.dry {
+            Rc::new(DryExecutor {})
+        } else {
+            Rc::new(ShellExecutor {})
+        };
+
         SamEngine {
             resolver: self.ui_interface,
             aliases: self.aliases,
             vars: self.vars,
             logger: self.logger,
             env_variables: self.env_variables,
-            dry: self.config.dry,
             history: self.history,
+            executor,
         }
     }
 
