@@ -199,7 +199,7 @@ impl From<&Identifier> for IdentifierWithDescItem {
     }
 }
 
-#[allow(clippy::clippy::from_over_into)]
+#[allow(clippy::from_over_into)]
 impl Into<UISelector> for IdentifierWithDescItem {
     fn into(self) -> UISelector {
         Arc::new(self)
@@ -211,7 +211,7 @@ impl SkimItem for IdentifierWithDescItem {
         Cow::Owned(format!(
             "{}\t{}",
             self.identifier.name(),
-            self.description.as_deref().unwrap_or_else(|| ""),
+            self.description.as_deref().unwrap_or(""),
         ))
     }
 }
@@ -235,7 +235,7 @@ impl From<&Alias> for AliasItem {
     }
 }
 
-#[allow(clippy::clippy::from_over_into)]
+#[allow(clippy::from_over_into)]
 impl Into<UISelector> for AliasItem {
     fn into(self) -> UISelector {
         Arc::new(self)
@@ -248,7 +248,7 @@ impl SkimItem for AliasItem {
     }
 }
 
-#[allow(clippy::clippy::from_over_into)]
+#[allow(clippy::from_over_into)]
 impl Into<Command> for AliasItem {
     fn into(self) -> Command {
         ShellCommand::make_command(self.alias)
@@ -367,7 +367,7 @@ impl Resolver for UserInterface {
         prompt: &str,
     ) -> Result<Identifier, ErrorsResolver> {
         let items: Vec<UISelector> = identifiers
-            .into_iter()
+            .iter()
             .enumerate()
             .map(|(i, identifier)| {
                 IdentifierWithDescItem {
@@ -385,7 +385,7 @@ impl Resolver for UserInterface {
             .map_err(|e| ErrorsResolver::IdentifierSelectionInvalid(Box::new(e)))?;
         identifiers
             .get(idx)
-            .map(|id| id.clone())
+            .cloned()
             .ok_or(ErrorsResolver::IdentifierSelectionEmpty())
     }
 }

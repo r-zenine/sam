@@ -63,7 +63,7 @@ fn extract_programs_from_command(cmd: &str) -> Vec<String> {
 
     cmd.split("&&")
         .flat_map(|s| s.split("||"))
-        .flat_map(|s| s.split("|"))
+        .flat_map(|s| s.split('|'))
         .chain(
             SUBCMD_RE
                 .captures_iter(cmd.as_str())
