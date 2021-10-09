@@ -8,7 +8,6 @@ use std::ops::Range;
 use thiserror::Error;
 
 use super::dependencies::Resolver;
-use super::identifiers::IdentifierWithDesc;
 
 lazy_static! {
     // matches the following patters :
@@ -48,11 +47,12 @@ impl AliasesRepository {
         self.aliases.values().map(Alias::clone).collect()
     }
 
-    fn identifiers(&self) -> Vec<IdentifierWithDesc> {
-        self.aliases
-            .values()
-            .map(Alias::indentifier_with_desc)
-            .collect()
+    fn identifiers(&self) -> Vec<Identifier> {
+        self.aliases.values().map(Alias::identifier).collect()
+    }
+
+    fn descriptions(&self) -> Vec<&str> {
+        self.aliases.values().map(Alias::desc).collect()
     }
 
     pub fn select_alias(
@@ -61,7 +61,8 @@ impl AliasesRepository {
         prompt: &str,
     ) -> Result<&Alias, ErrorsAliasesRepository> {
         let identifiers = self.identifiers();
-        let selection = r.select_identifier(&identifiers, prompt)?;
+        let descriptions = self.descriptions();
+        let selection = r.select_identifier(&identifiers, Some(&descriptions), prompt)?;
         self.get(&selection)
     }
 

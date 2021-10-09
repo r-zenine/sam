@@ -2,7 +2,7 @@ use prettytable::{cell, format, row, Table};
 use sam::core::aliases::Alias;
 use sam::core::choices::Choice;
 use sam::core::dependencies::{Dependencies, ErrorsResolver, Resolver};
-use sam::core::identifiers::{Identifier, IdentifierWithDesc};
+use sam::core::identifiers::Identifier;
 use sam::io::readers::read_choices;
 use sam::utils::fsutils::{ErrorsFS, TempFile};
 use sam::utils::processes::ShellCommand;
@@ -177,19 +177,24 @@ pub enum ErrorsUI {
 
 #[derive(Clone, Debug)]
 pub struct IdentifierWithDescItem {
-    identifier: IdentifierWithDesc,
+    identifier: Identifier,
+    description: Option<String>,
 }
 
-impl From<IdentifierWithDesc> for IdentifierWithDescItem {
-    fn from(identifier: IdentifierWithDesc) -> Self {
-        IdentifierWithDescItem { identifier }
+impl From<Identifier> for IdentifierWithDescItem {
+    fn from(identifier: Identifier) -> Self {
+        IdentifierWithDescItem {
+            identifier,
+            description: None,
+        }
     }
 }
 
-impl From<&IdentifierWithDesc> for IdentifierWithDescItem {
-    fn from(identifier: &IdentifierWithDesc) -> Self {
+impl From<&Identifier> for IdentifierWithDescItem {
+    fn from(identifier: &Identifier) -> Self {
         IdentifierWithDescItem {
             identifier: identifier.clone(),
+            description: None,
         }
     }
 }
@@ -205,7 +210,8 @@ impl SkimItem for IdentifierWithDescItem {
     fn text(&self) -> Cow<str> {
         Cow::Owned(format!(
             "{}\t{}",
-            self.identifier.name, self.identifier.desc
+            self.identifier.name(),
+            self.description.as_deref().unwrap_or_else(|| ""),
         ))
     }
 }
@@ -356,14 +362,20 @@ impl Resolver for UserInterface {
 
     fn select_identifier(
         &self,
-        identifiers: &[IdentifierWithDesc],
+        identifiers: &[Identifier],
+        descriptions: Option<&[&str]>,
         prompt: &str,
     ) -> Result<Identifier, ErrorsResolver> {
         let items: Vec<UISelector> = identifiers
-            .iter()
-            .map(|identifier| {
+            .into_iter()
+            .enumerate()
+            .map(|(i, identifier)| {
                 IdentifierWithDescItem {
                     identifier: identifier.clone(),
+                    // TODO handle descriptions
+                    description: descriptions
+                        .and_then(|descs| descs.get(i))
+                        .map(ToString::to_string),
                 }
                 .into()
             })
@@ -373,7 +385,7 @@ impl Resolver for UserInterface {
             .map_err(|e| ErrorsResolver::IdentifierSelectionInvalid(Box::new(e)))?;
         identifiers
             .get(idx)
-            .map(|id| id.name.clone())
+            .map(|id| id.clone())
             .ok_or(ErrorsResolver::IdentifierSelectionEmpty())
     }
 }
