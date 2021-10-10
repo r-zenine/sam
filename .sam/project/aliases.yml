@@ -1,0 +1,4 @@
+---
+- name: new_version
+  desc: releases a new version of the program
+  alias: .packaging/bump_version.sh {{ version_type }}

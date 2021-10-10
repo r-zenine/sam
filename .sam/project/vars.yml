@@ -1,0 +1,11 @@
+---
+- name: version_type
+  desc: The type of version you want
+  choices: 
+    - value: minor
+      desc: ''
+    - value: major
+      desc: ''
+    - value: patch
+      desc: ''
+
