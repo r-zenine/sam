@@ -16,7 +16,6 @@ use sam::io::readers::read_vars_repository;
 use sam::io::readers::ErrorsAliasRead;
 use sam::io::readers::ErrorsVarRead;
 use sam::utils::fsutils;
-use sam::utils::fsutils::walk_dir;
 use std::collections::HashMap;
 use std::rc::Rc;
 use thiserror::Error;
@@ -77,21 +76,20 @@ pub fn from_settings(config: AppSettings) -> Result<Environment> {
 
     let logger = logger_instance(config.silent);
     let ui_interface = UserInterface::new(config.variables(), cache)?;
-    let files = walk_dir(config.root_dir())?;
+
     let mut aliases_vec = vec![];
+    for f in config.aliases_files() {
+        aliases_vec.extend(read_aliases_from_path(&f)?);
+    }
+    let aliases = AliasesRepository::new(aliases_vec.into_iter())?;
+
     let mut vars = VarsRepository::default();
-    for f in files {
-        if let Some(file_name) = f.file_name() {
-            if file_name == "aliases.yaml" || file_name == "aliases.yml" {
-                aliases_vec.extend(read_aliases_from_path(f.as_path())?);
-            } else if file_name == "vars.yaml" || file_name == "vars.yml" {
-                vars.merge(read_vars_repository(f.as_path())?);
-            }
-        }
+    for f in config.vars_files() {
+        vars.merge(read_vars_repository(&f)?);
     }
     vars.set_defaults(&config.defaults)?;
-    let aliases = AliasesRepository::new(aliases_vec.into_iter())?;
     vars.ensure_no_missing_dependency()?;
+
     Ok(Environment {
         ui_interface,
         aliases,
