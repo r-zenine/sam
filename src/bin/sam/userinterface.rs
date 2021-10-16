@@ -210,7 +210,7 @@ impl SkimItem for IdentifierWithDescItem {
     fn text(&self) -> Cow<str> {
         Cow::Owned(format!(
             "{}\t{}",
-            self.identifier.name(),
+            self.identifier,
             self.description.as_deref().unwrap_or(""),
         ))
     }
