@@ -3,6 +3,7 @@ use crate::vars_cache;
 use sam::core::choices::Choice;
 use sam::core::identifiers::Identifier;
 use sam::utils::fsutils;
+use sam::utils::fsutils::walk_dir;
 use sam::utils::fsutils::ErrorsFS;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -16,7 +17,7 @@ const CONFIG_FILE_NAME: &str = ".sam_rc.toml";
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct AppSettings {
-    root_dir: PathBuf,
+    root_dir: Vec<PathBuf>,
     ttl: u64,
     #[serde(flatten)]
     pub env_variables: HashMap<String, String>,
@@ -79,10 +80,6 @@ impl AppSettings {
         self.defaults = cmd_args.default_choices.0;
     }
 
-    pub fn root_dir(&self) -> &'_ Path {
-        self.root_dir.as_ref()
-    }
-
     pub fn ttl(&self) -> Duration {
         Duration::from_secs(self.ttl)
     }
@@ -96,9 +93,11 @@ impl AppSettings {
     }
 
     fn validate(orig: AppSettings) -> Result<AppSettings> {
-        let files = fsutils::walk_dir(orig.root_dir.as_path())?;
-        for f in files {
-            fsutils::ensure_exists(f).and_then(fsutils::ensure_sufficient_permisions)?;
+        for path in &orig.root_dir {
+            let files = fsutils::walk_dir(path)?;
+            for f in files {
+                fsutils::ensure_exists(f).and_then(fsutils::ensure_sufficient_permisions)?;
+            }
         }
         Ok(orig)
     }
@@ -128,6 +127,34 @@ impl AppSettings {
     }
     pub fn variables(&self) -> HashMap<String, String> {
         self.env_variables.clone()
+    }
+
+    fn sam_files(&self) -> impl Iterator<Item = PathBuf> + '_ {
+        self.root_dir
+            .iter()
+            .map(AsRef::as_ref)
+            .flat_map(walk_dir)
+            .flat_map(|r| r)
+    }
+
+    pub fn aliases_files(&self) -> impl Iterator<Item = PathBuf> + '_ {
+        self.sam_files().filter(|f| {
+            if let Some(file_name) = f.file_name() {
+                file_name == "aliases.yaml" || file_name == "aliases.yml"
+            } else {
+                false
+            }
+        })
+    }
+
+    pub fn vars_files(&self) -> impl Iterator<Item = PathBuf> + '_ {
+        self.sam_files().filter(|f| {
+            if let Some(file_name) = f.file_name() {
+                file_name == "vars.yaml" || file_name == "vars.yml"
+            } else {
+                false
+            }
+        })
     }
 }
 
