@@ -3,18 +3,16 @@ use crate::config::AppSettings;
 use crate::config_engine::ConfigEngine;
 use crate::executors::{DryExecutor, ShellExecutor};
 use crate::logger::{SilentLogger, StdErrLogger};
-use crate::sam_engine::{SamEngine, SamExecutor, SamHistory, SamLogger};
-use crate::userinterface::ErrorsUI;
-use crate::userinterface::UserInterface;
-use crate::vars_cache::{NoopVarsCache, RocksDBCache, VarsCache};
-use sam::io::readers::read_aliases_from_path;
-use sam::io::readers::read_vars_repository;
-use sam::io::readers::ErrorsAliasRead;
-use sam::io::readers::ErrorsVarRead;
-use sam_core::aliases_repository::AliasesRepository;
-use sam_core::aliases_repository::ErrorsAliasesRepository;
-use sam_core::vars_repository::ErrorsVarsRepository;
-use sam_core::vars_repository::VarsRepository;
+use sam_core::engines::{SamEngine, SamExecutor, SamLogger};
+use sam_core::repositories::{
+    AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
+};
+use sam_persistence::{NoopVarsCache, RocksDBCache, VarsCache};
+use sam_readers::read_aliases_from_path;
+use sam_readers::read_vars_repository;
+use sam_readers::ErrorsAliasRead;
+use sam_readers::ErrorsVarRead;
+use sam_tui::{ErrorsUI, UserInterface};
 use sam_utils::fsutils;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -28,7 +26,7 @@ pub struct Environment {
     pub logger: Rc<dyn SamLogger>,
     pub env_variables: HashMap<String, String>,
     pub config: AppSettings,
-    pub history: Box<dyn SamHistory>,
+    pub history: Box<dyn sam_core::engines::SamHistory>,
 }
 
 impl Environment {
@@ -72,7 +70,8 @@ pub fn from_settings(config: AppSettings) -> Result<Environment> {
     } else {
         Box::new(NoopVarsCache {})
     };
-    let history: Box<dyn SamHistory> = Box::new(RocksDBCache::new(config.history_dir()));
+    let history: Box<dyn sam_core::engines::SamHistory> =
+        Box::new(RocksDBCache::new(config.history_dir()));
 
     let logger = logger_instance(config.silent);
     let ui_interface = UserInterface::new(config.variables(), cache)?;

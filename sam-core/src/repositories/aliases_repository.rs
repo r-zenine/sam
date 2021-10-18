@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::ops::Range;
 use thiserror::Error;
 
-use super::dependencies::Resolver;
+use crate::dependencies::Resolver;
 
 lazy_static! {
     // matches the following patters :

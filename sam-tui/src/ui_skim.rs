@@ -1,10 +1,10 @@
 use prettytable::{cell, format, row, Table};
-use sam::io::readers::read_choices;
 use sam_core::aliases::Alias;
 use sam_core::choices::Choice;
 use sam_core::dependencies::{Dependencies, ErrorsResolver, Resolver};
 use sam_core::identifiers::Identifier;
 use sam_core::processes::ShellCommand;
+use sam_readers::read_choices;
 use sam_utils::fsutils::{ErrorsFS, TempFile};
 use skim::prelude::*;
 use std::cell::RefCell;
@@ -15,7 +15,7 @@ use std::process::Command;
 
 use thiserror::Error;
 
-use crate::vars_cache::VarsCache;
+use sam_persistence::VarsCache;
 
 type UISelector = Arc<dyn SkimItem>;
 

@@ -1,9 +1,9 @@
 use crate::cache_engine::CacheCommand;
 use crate::config_engine::ConfigCommand;
-use crate::sam_engine::SamCommand;
 use crate::HashMap;
 use clap::{App, Arg, ArgMatches, Values};
 use sam_core::choices::Choice;
+use sam_core::engines::SamCommand;
 use sam_core::identifiers;
 use sam_core::identifiers::Identifier;
 use std::convert::TryFrom;
@@ -226,7 +226,8 @@ mod tests {
     use sam_core::{choices::Choice, identifiers::Identifier};
 
     use super::{app_init, make_cli_request, CLIRequest, SubCommand};
-    use crate::{cli::CLISettings, sam_engine::SamCommand};
+    use crate::cli::CLISettings;
+    use sam_core::engines::SamCommand;
 
     #[test]
     fn alias_subcommand() {
