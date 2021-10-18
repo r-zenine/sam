@@ -1,9 +1,9 @@
-use crate::core::choices::Choice;
-use crate::core::commands::Command;
-use crate::core::dependencies::{Dependencies, ErrorsResolver, Resolver};
-use crate::core::identifiers::{Identifier, Identifiers};
-use crate::core::vars::Var;
-use crate::utils::processes::ShellCommand;
+use crate::choices::Choice;
+use crate::commands::Command;
+use crate::dependencies::{Dependencies, ErrorsResolver, Resolver};
+use crate::identifiers::{Identifier, Identifiers};
+use crate::processes::ShellCommand;
+use crate::vars::Var;
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet, VecDeque};
 use thiserror::Error;
@@ -232,10 +232,10 @@ pub enum ErrorsVarsRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::dependencies::mocks::StaticResolver;
-    use crate::core::identifiers::fixtures::*;
-    use crate::core::vars::fixtures::*;
     use maplit::hashmap;
+    use crate::dependencies::mocks::StaticResolver;
+    use crate::identifiers::fixtures::*;
+    use crate::vars::fixtures::*;
 
     #[test]
     fn test_resolve() {

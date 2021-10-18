@@ -1,8 +1,8 @@
-use crate::core::choices::Choice;
-use crate::core::commands::Command;
-use crate::core::dependencies::Dependencies;
-use crate::core::identifiers::Identifier;
-use crate::core::namespaces::{Namespace, NamespaceUpdater};
+use crate::choices::Choice;
+use crate::commands::Command;
+use crate::dependencies::Dependencies;
+use crate::identifiers::Identifier;
+use crate::namespaces::{Namespace, NamespaceUpdater};
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
 use std::hash::Hash;
@@ -118,9 +118,9 @@ impl Command for &Var {
 /// Dependencies returns the dependencies of this variable if it gets it's
 /// choices from a command.
 ///```rust
-/// use sam::core::vars::Var;
-/// use sam::core::identifiers::Identifier;
-/// use sam::core::commands::Command;
+/// use sam_core::vars::Var;
+/// use sam_core::identifiers::Identifier;
+/// use sam_core::commands::Command;
 /// let example = Var::from_command("name", "description", "ls -l {{ location }} | grep {{pattern}}");
 /// assert_eq!(example.dependencies(), vec![Identifier::new("location"), Identifier::new("pattern")]);
 ///```
@@ -148,9 +148,9 @@ impl Eq for Var {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::dependencies::ErrorsResolver;
-    use crate::core::identifiers::fixtures::*;
-    use crate::core::vars::fixtures::*;
+    use crate::dependencies::ErrorsResolver;
+    use crate::identifiers::fixtures::*;
+    use crate::vars::fixtures::*;
     use maplit::hashmap;
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -213,7 +213,7 @@ mod tests {
 
 pub mod fixtures {
     use super::*;
-    use crate::core::identifiers::fixtures::*;
+    use crate::identifiers::fixtures::*;
     use lazy_static::lazy_static;
     lazy_static! {
         pub static ref VAR_USE_LISTING_COMMAND: String =

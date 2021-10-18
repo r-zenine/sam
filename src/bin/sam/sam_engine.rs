@@ -1,10 +1,10 @@
-use sam::core::aliases::{Alias, ResolvedAlias};
-use sam::core::aliases_repository::{AliasesRepository, ErrorsAliasesRepository};
-use sam::core::choices::Choice;
-use sam::core::commands::Command;
-use sam::core::dependencies::{ErrorsResolver, Resolver};
-use sam::core::identifiers::Identifier;
-use sam::core::vars_repository::{ErrorsVarsRepository, VarsRepository};
+use sam_core::aliases::{Alias, ResolvedAlias};
+use sam_core::aliases_repository::{AliasesRepository, ErrorsAliasesRepository};
+use sam_core::choices::Choice;
+use sam_core::commands::Command;
+use sam_core::dependencies::{ErrorsResolver, Resolver};
+use sam_core::identifiers::Identifier;
+use sam_core::vars_repository::{ErrorsVarsRepository, VarsRepository};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::rc::Rc;
@@ -183,9 +183,7 @@ mod tests {
     use std::{collections::HashMap, rc::Rc};
 
     use maplit::hashmap;
-    use sam::core::{
-        choices::Choice, dependencies::mocks::StaticResolver, identifiers::Identifier,
-    };
+    use sam_core::{choices::Choice, dependencies::mocks::StaticResolver, identifiers::Identifier};
 
     use crate::{
         executors::mocks::LogExecutor,
@@ -293,7 +291,7 @@ mod tests {
 mod mocks {
     use std::cell::RefCell;
 
-    use sam::core::aliases::ResolvedAlias;
+    use sam_core::aliases::ResolvedAlias;
 
     use super::SamHistory;
 
@@ -326,7 +324,7 @@ mod fixtures {
     use std::collections::HashMap;
 
     use maplit::hashmap;
-    use sam::core::{
+    use sam_core::{
         aliases::Alias, aliases_repository::AliasesRepository, vars::Var,
         vars_repository::VarsRepository,
     };

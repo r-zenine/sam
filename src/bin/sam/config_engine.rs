@@ -1,6 +1,6 @@
-use sam::core::commands::unset_env_vars;
-use sam::core::vars_repository::VarsRepository;
-use sam::core::{aliases_repository::AliasesRepository, commands::programs_used};
+use sam_core::commands::unset_env_vars;
+use sam_core::vars_repository::VarsRepository;
+use sam_core::{aliases_repository::AliasesRepository, commands::programs_used};
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 

@@ -1,7 +1,7 @@
-use crate::core::choices::Choice;
-use crate::core::commands::Command;
-use crate::core::identifiers::Identifier;
-use crate::utils::processes::ShellCommand;
+use crate::choices::Choice;
+use crate::commands::Command;
+use crate::identifiers::Identifier;
+use crate::processes::ShellCommand;
 use regex::Regex;
 use std::collections::HashMap;
 use std::error;
@@ -88,9 +88,9 @@ pub enum ErrorsResolver {
 pub mod mocks {
 
     use super::{ErrorsResolver, Resolver};
-    use crate::core::choices::Choice;
-    use crate::core::identifiers::Identifier;
-    use crate::utils::processes::ShellCommand;
+    use crate::choices::Choice;
+    use crate::identifiers::Identifier;
+    use crate::processes::ShellCommand;
     use std::collections::HashMap;
 
     #[derive(Debug)]

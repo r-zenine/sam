@@ -1,4 +1,4 @@
-use crate::core::namespaces::{Namespace, NamespaceUpdater};
+use crate::namespaces::{Namespace, NamespaceUpdater};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -29,8 +29,8 @@ pub struct IdentifierWithDesc {
 impl Identifier {
     /// new creates an new Identifier object and it will sanitize the input.
     ///```rust
-    /// use sam::core::identifiers::Identifier;
-    /// use sam::core::namespaces::Namespace;
+    /// use sam_core::identifiers::Identifier;
+    /// use sam_core::namespaces::Namespace;
     /// let var = Identifier::new("{{ pattern }}");
     /// assert_eq!(var.name(), "pattern");
     /// let var = Identifier::new("{{ pattern}}");
@@ -53,8 +53,8 @@ impl Identifier {
     }
     /// new creates an new Identifier object and it will sanitize the input.
     ///```rust
-    /// use sam::core::identifiers::Identifier;
-    /// use sam::core::namespaces::Namespace;
+    /// use sam_core::identifiers::Identifier;
+    /// use sam_core::namespaces::Namespace;
     /// let var = Identifier::with_namespace("{{ pattern }}", Some("ns"));
     /// assert_eq!(var.name(), "pattern");
     /// assert_eq!(var.namespace(), Some("ns"));
@@ -77,8 +77,8 @@ impl Identifier {
     /// Dependencies returns the dependencies of this variable if it gets it's
     /// choices from a command.
     ///```rust
-    /// use sam::core::identifiers::Identifier;
-    /// use sam::core::commands::Command;
+    /// use sam_core::identifiers::Identifier;
+    /// use sam_core::commands::Command;
     /// let example = Identifier::parse::<&str>("ls -l {{ location }} | grep {{pattern}}", None);
     /// assert_eq!(example, vec![Identifier::new("location"), Identifier::new("pattern")]);
     ///```

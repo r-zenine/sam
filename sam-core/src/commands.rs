@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use crate::core::identifiers::Identifier;
-use crate::core::namespaces::Namespace;
+use crate::identifiers::Identifier;
+use crate::namespaces::Namespace;
 use comma::parse_command;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -77,9 +77,9 @@ fn extract_programs_from_command(cmd: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
 
-    use crate::core::commands::Command;
-    use crate::core::commands::{extract_env_vars, unset_env_vars};
-    use crate::core::namespaces::Namespace;
+    use crate::commands::{extract_env_vars, unset_env_vars};
+    use crate::commands::Command;
+    use crate::namespaces::Namespace;
     #[test]
     fn test_extract_env_vars() {
         let result: Vec<&'static str> = vec!["Some_VAR"];

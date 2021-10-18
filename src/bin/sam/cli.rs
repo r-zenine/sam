@@ -1,11 +1,11 @@
 use crate::cache_engine::CacheCommand;
 use crate::config_engine::ConfigCommand;
 use crate::sam_engine::SamCommand;
-use crate::Choice;
 use crate::HashMap;
-use crate::Identifier;
 use clap::{App, Arg, ArgMatches, Values};
-use sam::core::identifiers;
+use sam_core::choices::Choice;
+use sam_core::identifiers;
+use sam_core::identifiers::Identifier;
 use std::convert::TryFrom;
 use std::env;
 use std::ffi::OsString;
@@ -223,7 +223,7 @@ mod tests {
 
     use crate::cli::DefaultChoices;
     use maplit::hashmap;
-    use sam::core::{choices::Choice, identifiers::Identifier};
+    use sam_core::{choices::Choice, identifiers::Identifier};
 
     use super::{app_init, make_cli_request, CLIRequest, SubCommand};
     use crate::{cli::CLISettings, sam_engine::SamCommand};

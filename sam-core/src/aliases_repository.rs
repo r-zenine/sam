@@ -1,6 +1,6 @@
-use crate::core::aliases::Alias;
-use crate::core::dependencies::ErrorsResolver;
-use crate::core::identifiers::Identifier;
+use crate::aliases::Alias;
+use crate::dependencies::ErrorsResolver;
+use crate::identifiers::Identifier;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
@@ -123,9 +123,9 @@ pub enum ErrorsAliasesRepository {
 #[cfg(test)]
 mod tests {
     use super::AliasesRepository;
-    use crate::core::aliases::fixtures::*;
-    use crate::core::aliases::Alias;
-    use crate::core::identifiers::fixtures::*;
+    use crate::aliases::fixtures::*;
+    use crate::aliases::Alias;
+    use crate::identifiers::fixtures::*;
     use maplit::hashmap;
     use std::ops::Range;
     #[test]

@@ -1,8 +1,8 @@
-use crate::core::aliases::Alias;
-use crate::core::choices::Choice;
-use crate::core::namespaces::NamespaceUpdater;
-use crate::core::vars::Var;
-use crate::core::vars_repository::{ErrorsVarsRepository, VarsRepository};
+use sam_core::aliases::Alias;
+use sam_core::choices::Choice;
+use sam_core::namespaces::NamespaceUpdater;
+use sam_core::vars::Var;
+use sam_core::vars_repository::{ErrorsVarsRepository, VarsRepository};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
@@ -114,9 +114,9 @@ pub enum ErrorsChoiceRead {
 #[cfg(test)]
 mod tests {
     use super::{read_aliases, read_vars};
-    use crate::core::aliases::Alias;
-    use crate::core::choices::Choice;
-    use crate::core::vars::Var;
+    use sam_core::aliases::Alias;
+    use sam_core::choices::Choice;
+    use sam_core::vars::Var;
     use std::io::BufReader;
 
     #[test]

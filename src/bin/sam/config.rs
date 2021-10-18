@@ -1,10 +1,10 @@
 use crate::cli::CLISettings;
 use crate::vars_cache;
-use sam::core::choices::Choice;
-use sam::core::identifiers::Identifier;
 use sam::utils::fsutils;
 use sam::utils::fsutils::walk_dir;
 use sam::utils::fsutils::ErrorsFS;
+use sam_core::choices::Choice;
+use sam_core::identifiers::Identifier;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;

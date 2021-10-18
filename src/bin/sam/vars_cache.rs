@@ -2,7 +2,7 @@ use crate::ErrorSamEngine;
 use rocksdb::WriteBatch;
 use rocksdb::WriteOptions;
 use rocksdb::DB;
-use sam::core::aliases::ResolvedAlias;
+use sam_core::aliases::ResolvedAlias;
 use serde::Deserialize;
 use serde::Serialize;
 use std::path::Path;

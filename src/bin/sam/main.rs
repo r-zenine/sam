@@ -1,11 +1,8 @@
-use crate::config::AppSettings;
-use crate::config::ErrorsSettings;
+use crate::config::{AppSettings, ErrorsSettings};
 use crate::config_engine::ErrorsConfigEngine;
 use crate::environment::ErrorEnvironment;
 use cache_engine::ErrorCacheEngine;
 use cli::SubCommand;
-use sam::core::choices::Choice;
-use sam::core::identifiers::Identifier;
 use sam_engine::ErrorSamEngine;
 use std::collections::HashMap;
 use thiserror::Error;
