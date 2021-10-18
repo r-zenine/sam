@@ -1,11 +1,11 @@
 use prettytable::{cell, format, row, Table};
-use sam::core::aliases::Alias;
-use sam::core::choices::Choice;
-use sam::core::dependencies::{Dependencies, ErrorsResolver, Resolver};
-use sam::core::identifiers::Identifier;
 use sam::io::readers::read_choices;
 use sam::utils::fsutils::{ErrorsFS, TempFile};
-use sam::utils::processes::ShellCommand;
+use sam_core::aliases::Alias;
+use sam_core::choices::Choice;
+use sam_core::dependencies::{Dependencies, ErrorsResolver, Resolver};
+use sam_core::identifiers::Identifier;
+use sam_core::processes::ShellCommand;
 use skim::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -330,7 +330,7 @@ impl Resolver for UserInterface {
 
     fn resolve_static(
         &self,
-        var: sam::core::identifiers::Identifier,
+        var: Identifier,
         cmd: impl Iterator<Item = Choice>,
     ) -> Result<Choice, ErrorsResolver> {
         let mut choices: Vec<Choice> = cmd.collect();

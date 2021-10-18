@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use crate::sam_engine::{self, ErrorSamEngine, SamExecutor};
-use sam::{
-    core::{aliases::ResolvedAlias, commands::Command},
-    utils::processes::ShellCommand,
+use sam_core::{
+    processes::ShellCommand,
+    {aliases::ResolvedAlias, commands::Command},
 };
 
 pub struct ShellExecutor {}
@@ -36,7 +36,7 @@ impl SamExecutor for DryExecutor {
 pub mod mocks {
     use std::{cell::RefCell, collections::HashMap};
 
-    use sam::core::aliases::ResolvedAlias;
+    use sam_core::aliases::ResolvedAlias;
 
     use crate::sam_engine::{self, SamExecutor};
 

@@ -1,10 +1,10 @@
-use crate::core::choices::Choice;
-use crate::core::commands::Command;
-use crate::core::dependencies::Dependencies;
-use crate::core::dependencies::ErrorsResolver;
-use crate::core::identifiers::Identifier;
-use crate::core::namespaces::{Namespace, NamespaceUpdater};
-use crate::utils::processes::ShellCommand;
+use crate::choices::Choice;
+use crate::commands::Command;
+use crate::dependencies::Dependencies;
+use crate::dependencies::ErrorsResolver;
+use crate::identifiers::Identifier;
+use crate::namespaces::{Namespace, NamespaceUpdater};
+use crate::processes::ShellCommand;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -254,8 +254,8 @@ impl Display for Alias {
 }
 
 pub mod fixtures {
-    use crate::core::aliases::Alias;
-    use crate::core::identifiers::fixtures::*;
+    use crate::aliases::Alias;
+    use crate::identifiers::fixtures::*;
     use lazy_static::lazy_static;
 
     lazy_static! {
@@ -280,8 +280,8 @@ pub mod fixtures {
 #[cfg(test)]
 mod tests {
     use super::Alias;
-    use crate::core::commands::Command;
-    use crate::core::identifiers::Identifier;
+    use crate::commands::Command;
+    use crate::identifiers::Identifier;
     #[test]
     fn vars() {
         let alias = Alias::new(
