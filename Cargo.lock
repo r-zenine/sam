@@ -1172,6 +1172,7 @@ dependencies = [
  "rocksdb",
  "rustyline",
  "sam-core",
+ "sam-utils",
  "serde",
  "serde_yaml",
  "shellwords",
@@ -1206,8 +1207,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "sam-readers"
+version = "0.1.0"
+
+[[package]]
 name = "sam-ui-skim"
 version = "0.1.0"
+dependencies = [
+ "prettytable-rs",
+ "sam",
+ "sam-cache",
+ "sam-core",
+ "skim",
+ "thiserror",
+]
+
+[[package]]
+name = "sam-utils"
+version = "0.1.0"
+dependencies = [
+ "dirs 4.0.0",
+ "rand 0.8.4",
+ "thiserror",
+ "uuid",
+]
 
 [[package]]
 name = "scopeguard"
