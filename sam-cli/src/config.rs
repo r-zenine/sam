@@ -1,7 +1,7 @@
 use crate::cli::CLISettings;
-use crate::vars_cache;
 use sam_core::choices::Choice;
 use sam_core::identifiers::Identifier;
+use sam_persistence::CacheError;
 use sam_utils::fsutils;
 use sam_utils::fsutils::walk_dir;
 use sam_utils::fsutils::ErrorsFS;
@@ -167,7 +167,7 @@ pub enum ErrorsSettings {
     #[error("got the following error\n-> {0}")]
     FileSystem(#[from] ErrorsFS),
     #[error("could not initialize the cache\n-> {0}")]
-    VarsCache(#[from] vars_cache::CacheError),
+    VarsCache(#[from] CacheError),
     #[error("we were unable to locate the home directory for the current user")]
     CantFindHomeDirectory,
     #[error("we were unable to locate the cache directory for the current user")]

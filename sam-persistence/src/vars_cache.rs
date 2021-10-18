@@ -1,8 +1,8 @@
-use crate::ErrorSamEngine;
 use rocksdb::WriteBatch;
 use rocksdb::WriteOptions;
 use rocksdb::DB;
 use sam_core::aliases::ResolvedAlias;
+use sam_core::engines::ErrorSamEngine;
 use serde::Deserialize;
 use serde::Serialize;
 use std::path::Path;
@@ -11,7 +11,7 @@ use std::time::SystemTimeError;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 
-use crate::sam_engine::SamHistory;
+use sam_core::engines::SamHistory;
 
 pub trait VarsCache {
     fn put(&self, command: &dyn AsRef<str>, output: &dyn AsRef<str>) -> Result<(), CacheError>;
@@ -190,7 +190,7 @@ pub enum CacheError {
 mod tests {
     use super::RocksDBCache;
     use crate::vars_cache::VarsCache;
-    use sam::utils::fsutils::TempDirectory;
+    use sam_utils::fsutils::TempDirectory;
     use std::time::Duration;
 
     #[test]

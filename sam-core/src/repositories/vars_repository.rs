@@ -232,10 +232,10 @@ pub enum ErrorsVarsRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use maplit::hashmap;
     use crate::dependencies::mocks::StaticResolver;
     use crate::identifiers::fixtures::*;
     use crate::vars::fixtures::*;
+    use maplit::hashmap;
 
     #[test]
     fn test_resolve() {

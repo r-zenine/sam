@@ -1,4 +1,4 @@
-use crate::vars_cache::{CacheError, RocksDBCache};
+use sam_persistence::{CacheError, RocksDBCache};
 use std::path::PathBuf;
 use std::time::Duration;
 use thiserror::Error;

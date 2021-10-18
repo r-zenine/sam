@@ -2,7 +2,24 @@
 name = "sam-cli"
 version = "0.1.0"
 edition = "2018"
+# Example of customizing binaries in Cargo.toml.
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "sam"
+path = "src/main.rs"
 
 [dependencies]
+sam-core = {path="../sam-core"}
+sam-utils = {path="../sam-utils"}
+sam-tui = {path="../sam-tui"}
+sam-readers = {path="../sam-readers"}
+sam-persistence = {path="../sam-persistence"}
+clap = "2.33.3"
+thiserror = "1.0.30"
+termion = "1.5.6"
+toml = "0.5.8"
+serde = { version = "1.0.130", features = ["derive"] }
+dirs = "4.0.0"
+
+[dev-dependencies]
+maplit = "1.0.2"

@@ -1,10 +1,10 @@
-use sam_core::aliases::{Alias, ResolvedAlias};
-use sam_core::aliases_repository::{AliasesRepository, ErrorsAliasesRepository};
-use sam_core::choices::Choice;
-use sam_core::commands::Command;
-use sam_core::dependencies::{ErrorsResolver, Resolver};
-use sam_core::identifiers::Identifier;
-use sam_core::vars_repository::{ErrorsVarsRepository, VarsRepository};
+use crate::aliases::{Alias, ResolvedAlias};
+use crate::choices::Choice;
+use crate::commands::Command;
+use crate::dependencies::{ErrorsResolver, Resolver};
+use crate::identifiers::Identifier;
+use crate::repositories::{AliasesRepository, ErrorsAliasesRepository};
+use crate::repositories::{ErrorsVarsRepository, VarsRepository};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::rc::Rc;
@@ -182,14 +182,12 @@ pub enum ErrorSamEngine {
 mod tests {
     use std::{collections::HashMap, rc::Rc};
 
+    use crate::{choices::Choice, dependencies::mocks::StaticResolver, identifiers::Identifier};
     use maplit::hashmap;
-    use sam_core::{choices::Choice, dependencies::mocks::StaticResolver, identifiers::Identifier};
 
-    use crate::{
-        executors::mocks::LogExecutor,
-        logger::SilentLogger,
-        sam_engine::{mocks::InMemoryHistory, SamCommand, SamEngine},
-    };
+    use crate::engines::mocks::{InMemoryHistory, LogExecutor, SilentLogger};
+
+    use crate::engines::{SamCommand, SamEngine};
 
     use super::{fixtures, SamExecutor};
 
@@ -291,7 +289,7 @@ mod tests {
 mod mocks {
     use std::cell::RefCell;
 
-    use sam_core::aliases::ResolvedAlias;
+    use crate::aliases::ResolvedAlias;
 
     use super::SamHistory;
 
@@ -323,11 +321,10 @@ mod mocks {
 mod fixtures {
     use std::collections::HashMap;
 
-    use maplit::hashmap;
-    use sam_core::{
-        aliases::Alias, aliases_repository::AliasesRepository, vars::Var,
-        vars_repository::VarsRepository,
+    use crate::{
+        aliases::Alias, repositories::AliasesRepository, repositories::VarsRepository, vars::Var,
     };
+    use maplit::hashmap;
 
     pub struct SamData {
         pub aliases: AliasesRepository,
