@@ -9,7 +9,13 @@ license = "GPL-3.0"
 repository = "https://github.com/r-zenine/sam"
 
 [workspace]
-members = ["sam-cli", "sam-cache", "sam-ui-skim", "sam-core"]
+members = [
+    "sam-cli", 
+    "sam-cache", 
+    "sam-readers", 
+    "sam-ui-skim", 
+    "sam-core", 
+    "sam-utils"]
 
 [[bin]]
 name = "sam"
@@ -55,6 +61,7 @@ shellwords = "1.1.0"
 comma = "1.0.0"
 rustyline = "9.0.0"
 sam-core = { path = "./sam-core" }
+sam-utils = { path = "./sam-utils" }
 
 [dev-dependencies]
 tempdir = "0.3.7"
