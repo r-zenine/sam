@@ -12,7 +12,7 @@ check: build
 	cargo clippy && cargo check && cargo fmt -- --check
 
 test: build check
-	cargo test --release
+	cargo test --release --workspace
 
 package_linux: test check build version 
 	cd ./target/release/ && tar -czvf $(PROJECT)_linux_x86_64_$(VERSION).tar.gz $(PROJECT)
@@ -22,6 +22,9 @@ package_macos: test check build version
 
 package_debian:
 	cargo deb
+
+publish_version: 
+	cargo workspaces version
 
 version:
 	$(info =====  $@  =====)
@@ -46,4 +49,4 @@ ifneq ($(GIT_TAG),)
 	gh release upload $(GIT_TAG) ./target/release/$(PROJECT)_macos_x86_64_$(VERSION).tar.gz 
 endif
 
-.PHONY: version create_release 
+.PHONY: version create_release publish_version
