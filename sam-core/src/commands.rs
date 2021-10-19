@@ -77,8 +77,8 @@ fn extract_programs_from_command(cmd: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
 
-    use crate::commands::{extract_env_vars, unset_env_vars};
     use crate::commands::Command;
+    use crate::commands::{extract_env_vars, unset_env_vars};
     use crate::namespaces::Namespace;
     #[test]
     fn test_extract_env_vars() {
