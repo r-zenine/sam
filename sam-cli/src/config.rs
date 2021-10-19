@@ -134,7 +134,7 @@ impl AppSettings {
             .iter()
             .map(AsRef::as_ref)
             .flat_map(walk_dir)
-            .flat_map(|r| r)
+            .flatten()
     }
 
     pub fn aliases_files(&self) -> impl Iterator<Item = PathBuf> + '_ {
