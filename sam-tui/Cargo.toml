@@ -11,6 +11,5 @@ sam-persistence = {path="../sam-persistence"}
 sam-utils = {path="../sam-utils"}
 sam-readers = {path="../sam-readers"}
 skim = "0.9.4"
-prettytable-rs = "0.8.0"
 thiserror = "1.0.30"
 termion = "1.5.6"
