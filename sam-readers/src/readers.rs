@@ -23,6 +23,11 @@ pub fn read_aliases_from_path(path: &'_ Path) -> Result<Vec<Alias>, ErrorsAliasR
 
     for a in aliases.as_mut_slice() {
         NamespaceUpdater::update_from_path(a, path);
+        if a.identifier().inner.contains(" ") {
+            return Err(ErrorsAliasRead::AliasInvalidName(
+                a.identifier().to_string(),
+            ));
+        }
     }
 
     Ok(aliases)
@@ -83,6 +88,8 @@ where
 
 #[derive(Debug, Error)]
 pub enum ErrorsAliasRead {
+    #[error("invalid caracter in alias `{0}` name allowed caracters are [a-zA-z_1-0-]")]
+    AliasInvalidName(String),
     #[error("parsing error for aliases file {source_file}\n-> {error}.")]
     AliasSerde {
         error: serde_yaml::Error,
