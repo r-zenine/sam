@@ -1,16 +1,15 @@
-use prettytable::{cell, format, row, Table};
+use crate::preview_skim::PreviewSkim;
 use sam_core::aliases::Alias;
 use sam_core::choices::Choice;
-use sam_core::dependencies::{Dependencies, ErrorsResolver, Resolver};
+use sam_core::dependencies::{ErrorsResolver, Resolver};
 use sam_core::identifiers::Identifier;
 use sam_core::processes::ShellCommand;
 use sam_readers::read_choices;
-use sam_utils::fsutils::{ErrorsFS, TempFile};
+use sam_utils::fsutils::ErrorsFS;
 use skim::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::Write;
+use std::ops::Deref;
 use std::process::Command;
 
 use thiserror::Error;
@@ -20,9 +19,7 @@ use sam_persistence::VarsCache;
 type UISelector = Arc<dyn SkimItem>;
 
 pub struct UserInterface {
-    preview_file: TempFile,
-    preview_command: String,
-    chosen_alias: Option<Alias>,
+    selected_identifier: RefCell<Option<Identifier>>,
     choices: RefCell<HashMap<Identifier, Choice>>,
     variables: HashMap<String, String>,
     cache: Box<dyn VarsCache>,
@@ -33,12 +30,20 @@ impl UserInterface {
         variables: HashMap<String, String>,
         cache: Box<dyn VarsCache>,
     ) -> Result<UserInterface, ErrorsUI> {
-        let preview_file = TempFile::new()?;
-        let preview_command = format!("cat {}", &preview_file.path.as_path().display());
         Ok(UserInterface {
-            preview_file,
-            preview_command,
-            chosen_alias: None,
+            selected_identifier: RefCell::default(),
+            choices: RefCell::new(HashMap::new()),
+            variables,
+            cache,
+        })
+    }
+    pub fn with_identifier(
+        selected_identifier: Identifier,
+        variables: HashMap<String, String>,
+        cache: Box<dyn VarsCache>,
+    ) -> Result<UserInterface, ErrorsUI> {
+        Ok(UserInterface {
+            selected_identifier: RefCell::new(Some(selected_identifier)),
             choices: RefCell::new(HashMap::new()),
             variables,
             cache,
@@ -47,11 +52,11 @@ impl UserInterface {
 
     fn skim_options<'ui>(
         prompt: &'ui str,
-        preview_command: Option<&'ui str>,
+        preview_command: &'ui str,
     ) -> Result<SkimOptions<'ui>, ErrorsUI> {
         SkimOptionsBuilder::default()
             .prompt(Some(prompt))
-            .preview(preview_command)
+            .preview(Some(preview_command))
             .preview_window(Some("right:wrap"))
             .tabstop(Some("8"))
             .multi(false)
@@ -65,8 +70,9 @@ impl UserInterface {
         let (s, r) = bounded(choices.len());
         let source = choices.clone();
         iterator_into_sender(source.into_iter(), s)?;
-        self.update_preview()?;
-        let options = UserInterface::skim_options(prompt, self.preview_command())?;
+        let preview_command = self.preview_command();
+        println!("Preview Cmd: {}", preview_command);
+        let options = UserInterface::skim_options(prompt, &preview_command)?;
         let output = Skim::run_with(&options, Some(r)).ok_or(ErrorsUI::SkimNoSelection)?;
 
         if output.is_abort {
@@ -89,73 +95,13 @@ impl UserInterface {
         }
     }
 
-    fn update_preview(&self) -> Result<(), ErrorsUI> {
-        if let Some(alias) = &self.chosen_alias {
-            let mut handle = self.preview_file.file.borrow_mut();
-            (*handle).set_len(0)?;
-            writeln!(
-                (*handle),
-                "\n{}Namespace:{} {}",
-                termion::style::Bold,
-                termion::style::Reset,
-                alias.namespace().unwrap_or("global")
-            )?;
-            writeln!(
-                (*handle),
-                "\n{}Alias:{} {}",
-                termion::style::Bold,
-                termion::style::Reset,
-                alias.name()
-            )?;
-            writeln!(
-                (*handle),
-                "\n{}Description:{} {}",
-                termion::style::Bold,
-                termion::style::Reset,
-                alias.desc()
-            )?;
-            writeln!(
-                (*handle),
-                "\n{}Initial Command:{} {}{}{}{}",
-                termion::style::Bold,
-                termion::style::Reset,
-                termion::style::Bold,
-                termion::color::Fg(termion::color::Cyan),
-                alias.alias(),
-                termion::style::Reset,
-            )?;
-
-            writeln!((*handle))?;
-            let hashmap = self.choices.borrow();
-            if hashmap.len() > 0 {
-                writeln!(
-                    (*handle),
-                    "{}Current Command:{} {}{}{}{}\n",
-                    termion::style::Bold,
-                    termion::style::Reset,
-                    termion::style::Bold,
-                    termion::color::Fg(termion::color::Green),
-                    alias.substitute_for_choices_partial(&hashmap),
-                    termion::style::Reset,
-                )?;
-                let mut table = Table::new();
-                table.set_format(*format::consts::FORMAT_NO_COLSEP);
-                table.set_titles(row!["Variable", "Choice"]);
-                for (var, choice) in (*hashmap).clone() {
-                    table.add_row(row![&var.name(), choice.value()]);
-                }
-                table.print::<File>(handle.by_ref())?;
-            }
-            (*handle).flush()?;
-        }
-        Ok(())
-    }
-
-    fn preview_command(&'_ self) -> Option<&'_ str> {
-        if self.chosen_alias.is_some() {
-            Some(self.preview_command.as_str())
+    fn preview_command(&'_ self) -> String {
+        let borrowed_choices = self.choices.borrow();
+        let preview = PreviewSkim::new(&borrowed_choices);
+        if let Some(alias) = self.selected_identifier.borrow().deref() {
+            preview.preview_for_identifier(alias)
         } else {
-            None
+            preview.preview()
         }
     }
 }
@@ -208,11 +154,7 @@ impl Into<UISelector> for IdentifierWithDescItem {
 
 impl SkimItem for IdentifierWithDescItem {
     fn text(&self) -> Cow<str> {
-        Cow::Owned(format!(
-            "{}\t{}",
-            self.identifier,
-            self.description.as_deref().unwrap_or(""),
-        ))
+        Cow::Owned(format!("{}", self.identifier,))
     }
 }
 
@@ -383,10 +325,12 @@ impl Resolver for UserInterface {
         let idx = self
             .choose(items, prompt)
             .map_err(|e| ErrorsResolver::IdentifierSelectionInvalid(Box::new(e)))?;
-        identifiers
+        let identifier = identifiers
             .get(idx)
             .cloned()
-            .ok_or(ErrorsResolver::IdentifierSelectionEmpty())
+            .ok_or(ErrorsResolver::IdentifierSelectionEmpty())?;
+        self.selected_identifier.replace(Some(identifier.clone()));
+        Ok(identifier)
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::cache_engine::CacheCommand;
 use crate::config_engine::ConfigCommand;
+use crate::preview_engine::PreviewCommand;
 use crate::HashMap;
 use clap::{App, Arg, ArgMatches, Values};
 use sam_core::choices::Choice;
@@ -23,12 +24,14 @@ const ABOUT_SUB_CHECK_CONFIG: &str = "checks your configuration files";
 const ABOUT_SUB_CACHE_CLEAR: &str = "clears the cache for vars 'from_command' outputs";
 const ABOUT_SUB_CACHE_KEYS: &str = "lists all the cache keys";
 const ABOUT_SUB_ALIAS: &str = "run's a provided alias";
+const ABOUT_SUB_PREVIEW: &str = "Display preview of the provided alias";
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SubCommand {
     SamCommand(SamCommand),
     CacheCommand(CacheCommand),
     ConfigCheck(ConfigCommand),
+    PreviewCommand(PreviewCommand),
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct CLIRequest {
@@ -60,6 +63,7 @@ impl TryFrom<ArgMatches<'_>> for CLISettings {
         let defaults_values = matches
             .values_of("choices")
             .or_else(|| defaults_extractor("alias"))
+            .or_else(|| defaults_extractor("preview"))
             .or_else(|| defaults_extractor("run"));
 
         let default_choices = DefaultChoices::try_from(defaults_values)?;
@@ -116,6 +120,15 @@ fn app_init() -> App<'static, 'static> {
         )
         .arg(arg_choices.clone())
         .about(ABOUT_SUB_ALIAS);
+    let subc_preview = App::new("preview")
+        .arg(
+            Arg::with_name("alias")
+                .help("the alias to preview.")
+                .required(true)
+                .index(1),
+        )
+        .arg(arg_choices.clone())
+        .about(ABOUT_SUB_PREVIEW);
 
     App::new("sam")
         .version(VERSION)
@@ -127,6 +140,7 @@ fn app_init() -> App<'static, 'static> {
         .arg(arg_choices.clone())
         .subcommand(subc_run)
         .subcommand(subc_alias)
+        .subcommand(subc_preview)
         .subcommand(subc_display_last)
         .subcommand(subc_rerun_last)
         .subcommand(subc_modify_run_last)
@@ -148,6 +162,11 @@ where
         ("alias", Some(e)) => {
             let alias = parse_alias(e.value_of("alias"))?;
             SubCommand::SamCommand(SamCommand::ExecuteAlias { alias })
+        }
+        ("preview", Some(e)) => {
+            let alias_id = parse_alias(e.value_of("alias"))?;
+            println!("{:?}", alias_id);
+            SubCommand::PreviewCommand(PreviewCommand::PreviewAlias { alias_id })
         }
         ("show-last", Some(_)) => SubCommand::SamCommand(SamCommand::DisplayLastExecutedAlias),
         ("run-last", Some(_)) => SubCommand::SamCommand(SamCommand::ExecuteLastExecutedAlias),
@@ -221,7 +240,7 @@ pub enum CLIError {
 #[cfg(test)]
 mod tests {
 
-    use crate::cli::DefaultChoices;
+    use crate::{cli::DefaultChoices, preview_engine::PreviewCommand};
     use maplit::hashmap;
     use sam_core::{choices::Choice, identifiers::Identifier};
 
@@ -243,6 +262,35 @@ mod tests {
         let expected_cli_request = CLIRequest {
             command: SubCommand::SamCommand(SamCommand::ExecuteAlias {
                 alias: Identifier::with_namespace("some_alias", Some("some_namespace")),
+            }),
+            settings: CLISettings {
+                dry: false,
+                silent: false,
+                no_cache: false,
+                default_choices: DefaultChoices(hashmap! {
+                Identifier::with_namespace("some_choice", Some("some_ns")) => Choice::from_value("value"),
+                Identifier::with_namespace("some_other_choice", Some("some_ns")) => Choice::from_value("value2"),
+                                }),
+            },
+        };
+
+        assert_eq!(request.unwrap(), expected_cli_request);
+    }
+
+    #[test]
+    fn preview_subcommand() {
+        let app = app_init();
+        let test_string = &[
+            "sam",
+            "preview",
+            "some_namespace::some_alias",
+            "-csome_ns::some_choice=value",
+            "-csome_ns::some_other_choice=value2",
+        ];
+        let request = make_cli_request(app, test_string);
+        let expected_cli_request = CLIRequest {
+            command: SubCommand::PreviewCommand(PreviewCommand::PreviewAlias {
+                alias_id: Identifier::with_namespace("some_alias", Some("some_namespace")),
             }),
             settings: CLISettings {
                 dry: false,

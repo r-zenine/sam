@@ -45,7 +45,8 @@ impl Identifier {
         Identifier {
             inner: name
                 .into()
-                .replace(" ", "")
+                .replace("{{ ", "{{")
+                .replace(" }}", "}}")
                 .replace("{{", "")
                 .replace("}}", ""),
             namespace: None,
@@ -124,7 +125,8 @@ impl Identifier {
         (s, None)
     }
     fn sanitize_identifier(s: String) -> String {
-        s.replace(" ", "")
+        s.replace("{ ", "{")
+            .replace(" }", "}")
             .replace("{{", "")
             .replace("}}", "")
             .replace("]]", "")
@@ -200,7 +202,7 @@ mod tests {
     #[test]
     fn test_identifier_new() {
         let cases: Vec<(Identifier, &'static str)> = vec![
-            (Identifier::new("{{ toto }}"), "toto"),
+            (Identifier::new("{{ to to }}"), "to to"),
             (Identifier::new("{{ toto}}"), "toto"),
             (Identifier::new("{{toto }}"), "toto"),
             (Identifier::new("{{toto}}"), "toto"),
@@ -213,8 +215,8 @@ mod tests {
     #[test]
     fn test_identifier_from_str() {
         assert_eq!(
-            Identifier::from_str("aws::ec2_instance_ip"),
-            Identifier::with_namespace("ec2_instance_ip", Some("aws"))
+            Identifier::from_str("aws::ec2 instance_ip"),
+            Identifier::with_namespace("ec2 instance_ip", Some("aws"))
         );
         assert_eq!(
             Identifier::from_str("::ec2_instance_ip"),
