@@ -53,7 +53,7 @@ impl<'a> PreviewSkim<'a> {
         .expect("Should not fail, please open a bug!:");
         write!(
             preview_string,
-            "{} preview '{{}}' ",
+            "{} preview '{{}}'",
             self.preview_prefix.to_string_lossy()
         )
         .expect("Should not fail, please open a bug!:");

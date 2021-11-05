@@ -156,6 +156,7 @@ where
     T: Into<OsString> + Clone,
 {
     let matches = app.get_matches_from(args);
+
     let settings = CLISettings::try_from(matches.clone())?;
 
     let command: SubCommand = match matches.subcommand() {
@@ -165,7 +166,6 @@ where
         }
         ("preview", Some(e)) => {
             let alias_id = parse_alias(e.value_of("alias"))?;
-            println!("{:?}", alias_id);
             SubCommand::PreviewCommand(PreviewCommand::PreviewAlias { alias_id })
         }
         ("show-last", Some(_)) => SubCommand::SamCommand(SamCommand::DisplayLastExecutedAlias),
