@@ -39,7 +39,6 @@ impl<'a> PreviewSkim<'a> {
             write!(preview_string, " -c '{}={}' ", id, choice)
                 .expect("Should not fail, please open a bug!:");
         }
-        //write!(preview_string, " {{}}").expect("Should not fail, please open a bug!:");
 
         preview_string
     }
@@ -59,7 +58,6 @@ impl<'a> PreviewSkim<'a> {
         )
         .expect("Should not fail, please open a bug!:");
 
-        println!("Preview string: {}", preview_string);
         preview_string
     }
 }

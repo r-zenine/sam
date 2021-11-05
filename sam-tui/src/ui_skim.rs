@@ -71,7 +71,6 @@ impl UserInterface {
         let source = choices.clone();
         iterator_into_sender(source.into_iter(), s)?;
         let preview_command = self.preview_command();
-        println!("Preview Cmd: {}", preview_command);
         let options = UserInterface::skim_options(prompt, &preview_command)?;
         let output = Skim::run_with(&options, Some(r)).ok_or(ErrorsUI::SkimNoSelection)?;
 
