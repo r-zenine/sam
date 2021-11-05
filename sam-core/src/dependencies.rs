@@ -61,7 +61,7 @@ pub trait Resolver {
         &self,
         identifiers: &[Identifier],
         descriptions: Option<&[&str]>,
-        prompt: &str,
+        prmpt: &str,
     ) -> Result<Identifier, ErrorsResolver>;
 }
 

@@ -58,6 +58,7 @@ impl Alias {
     pub fn alias(&self) -> &'_ str {
         self.alias.as_str()
     }
+
     pub fn with_choices(
         &self,
         choices: &HashMap<Identifier, Choice>,
@@ -70,6 +71,16 @@ impl Alias {
             resolved_alias: res,
             choices: choices.clone(),
         })
+    }
+
+    pub fn with_partial_choices(&self, choices: &HashMap<Identifier, Choice>) -> Alias {
+        let res = self.substitute_for_choices_partial(choices);
+
+        Alias {
+            name: self.name.clone(),
+            desc: self.desc.clone(),
+            alias: res,
+        }
     }
 
     pub fn sanitized_alias(&self) -> String {
