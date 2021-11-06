@@ -14,6 +14,9 @@ check: build
 test: build check
 	cargo test --release --workspace
 
+unused_deps: 
+	cargo +nightly udeps --all-targets
+
 package_linux: test check build version 
 	cd ./target/release/ && tar -czvf $(PROJECT)_linux_x86_64_$(VERSION).tar.gz $(PROJECT)
 
@@ -21,7 +24,7 @@ package_macos: test check build version
 	cd ./target/release/ && tar -czvf $(PROJECT)_macos_x86_64_$(VERSION).tar.gz $(PROJECT)
 
 package_debian:
-	cargo deb
+	cargo deb -p sam-cli
 
 publish_version: 
 	cargo workspaces version
