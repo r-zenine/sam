@@ -103,7 +103,6 @@ jobs:
       - restore_cache_cmd
       - prepare_toolchain_linux
       - package_linux
-      - package_debian
       - save_cache_cmd
       - persist_to_workspace:
           root: .
