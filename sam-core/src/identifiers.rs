@@ -47,6 +47,7 @@ impl Identifier {
                 .into()
                 .replace("{{ ", "{{")
                 .replace(" }}", "}}")
+                .replace(" ", "")
                 .replace("{{", "")
                 .replace("}}", ""),
             namespace: None,
@@ -127,6 +128,7 @@ impl Identifier {
     fn sanitize_identifier(s: String) -> String {
         s.replace("{ ", "{")
             .replace(" }", "}")
+            .replace(" ", "")
             .replace("{{", "")
             .replace("}}", "")
             .replace("]]", "")
@@ -202,7 +204,6 @@ mod tests {
     #[test]
     fn test_identifier_new() {
         let cases: Vec<(Identifier, &'static str)> = vec![
-            (Identifier::new("{{ to to }}"), "to to"),
             (Identifier::new("{{ toto}}"), "toto"),
             (Identifier::new("{{toto }}"), "toto"),
             (Identifier::new("{{toto}}"), "toto"),
