@@ -49,10 +49,10 @@ impl AppSettings {
 
     pub fn load(cli_settings: Option<CLISettings>) -> Result<Self> {
         let home_dir_o = Self::home_dir_config_path()?;
-        let current_dir_o = Self::current_dir_config_path()?;
+        let current_dir_o = Self::current_dir_config_path();
 
         let config_home_dir = Self::read_config(home_dir_o);
-        let config_current_dir = Self::read_config(current_dir_o);
+        let config_current_dir = current_dir_o.and_then(Self::read_config);
 
         let cache_dir = Self::cache_dir_path()?;
         let history_dir = Self::history_dir_path()?;
@@ -94,9 +94,10 @@ impl AppSettings {
 
     fn validate(orig: AppSettings) -> Result<AppSettings> {
         for path in &orig.root_dir {
-            let files = fsutils::walk_dir(path)?;
-            for f in files {
-                fsutils::ensure_exists(f).and_then(fsutils::ensure_sufficient_permisions)?;
+            if let Ok(files) = fsutils::walk_dir(&path) {
+                for f in files {
+                    fsutils::ensure_exists(f).and_then(fsutils::ensure_sufficient_permisions)?;
+                }
             }
         }
         Ok(orig)
@@ -160,11 +161,11 @@ impl AppSettings {
 
 #[derive(Debug, Error)]
 pub enum ErrorsSettings {
-    #[error("got the following error\n-> {0}")]
+    #[error("got deserialize the configuration file because\n-> {0}")]
     CantDeserialize(#[from] toml::de::Error),
-    #[error("got the following error\n-> {0}")]
+    #[error("can't read the configuration file because\n-> {0}")]
     CantReadConfigFile(#[from] io::Error),
-    #[error("got the following error\n-> {0}")]
+    #[error("got the following file-system related error\n-> {0}")]
     FileSystem(#[from] ErrorsFS),
     #[error("could not initialize the cache\n-> {0}")]
     VarsCache(#[from] CacheError),

@@ -49,6 +49,12 @@ impl ShellCommand<String> {
     }
 }
 
+impl From<&'_ str> for ShellCommand<String> {
+    fn from(s: &'_ str) -> Self {
+        Self::new(s.to_string())
+    }
+}
+
 #[allow(clippy::from_over_into)]
 impl<T> Into<Command> for ShellCommand<T>
 where
