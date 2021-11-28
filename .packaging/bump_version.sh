@@ -34,7 +34,9 @@ case $1 in
 esac
 
 NEW_VERSION=$VERSION_MAJOR.$VERSION_MINOR.$VERSION_PATCH
-sed -i '' "s/^version = .*/version = \"$NEW_VERSION\"/" $CARGO_FILE
+for file in $(find . -name 'Cargo.toml'); do
+    sed -i '' "s/^version = .*/version = \"$NEW_VERSION\"/" $file
+done 
 echo "New version will be $NEW_VERSION"
 
 git add $CARGO_FILE
