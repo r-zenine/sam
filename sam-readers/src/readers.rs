@@ -23,7 +23,7 @@ pub fn read_aliases_from_path(path: &'_ Path) -> Result<Vec<Alias>, ErrorsAliasR
 
     for a in aliases.as_mut_slice() {
         NamespaceUpdater::update_from_path(a, path);
-        if a.identifier().inner.contains(" ") {
+        if a.identifier().inner.contains(' ') {
             return Err(ErrorsAliasRead::AliasInvalidName(
                 a.identifier().to_string(),
             ));
