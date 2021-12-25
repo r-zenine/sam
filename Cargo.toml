@@ -6,5 +6,4 @@ members = [
     "sam-tui", 
     "sam-core", 
     "sam-utils",
-    "sam-pkg"
 ]

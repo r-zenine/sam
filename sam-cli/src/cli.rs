@@ -20,6 +20,8 @@ const ABOUT_SUB_RUN: &str = "let's you select and alias then run it";
 const ABOUT_SUB_SHOW_LAST: &str = "shows the last command that was run, shortcut is `sam !`";
 const ABOUT_SUB_SHOW_HISTORY: &str = "displays the last commands that you ran";
 const ABOUT_SUB_RUN_LAST: &str = "runs the last command that was run again. shortcut is `sam %`";
+const ABOUT_SUB_MODIFY_RUN_LAST: &str =
+    "runs the last command that was run again. shortcut is `sam $`";
 const ABOUT_SUB_CHECK_CONFIG: &str = "checks your configuration files";
 const ABOUT_SUB_CACHE_CLEAR: &str = "clears the cache for vars 'from_command' outputs";
 const ABOUT_SUB_CACHE_KEYS: &str = "lists all the cache keys";
@@ -109,7 +111,7 @@ fn app_init() -> App<'static, 'static> {
     let subc_rerun_last = App::new("run-last").alias("%").about(ABOUT_SUB_RUN_LAST);
     let subc_modify_run_last = App::new("modify-run-last")
         .alias("$")
-        .about(ABOUT_SUB_RUN_LAST);
+        .about(ABOUT_SUB_MODIFY_RUN_LAST);
 
     let subc_alias = App::new("alias")
         .arg(
