@@ -39,7 +39,7 @@ for file in $(find . -name 'Cargo.toml'); do
 done 
 echo "New version will be $NEW_VERSION"
 
-git add $CARGO_FILE
+git add --all
 git commit -m"release version $NEW_VERSION"
 git tag v$NEW_VERSION
 git push origin

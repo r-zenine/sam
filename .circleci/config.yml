@@ -87,7 +87,7 @@ commands:
 jobs:
   build:
     docker:
-      - image: 'cimg/rust:1.52.1'
+      - image: 'cimg/rust:1.57.0'
     steps:
       - checkout
       - restore_cache_cmd
@@ -97,7 +97,7 @@ jobs:
 
   build_linux:
     docker:
-      - image: 'cimg/rust:1.52.1'
+      - image: 'cimg/rust:1.57.0'
     steps:
       - checkout
       - restore_cache_cmd
@@ -112,7 +112,7 @@ jobs:
 
   build_macos:
     macos:
-      xcode: 11.3.0 # indicate our selected version of Xcode
+      xcode: 12.4.0 # indicate our selected version of Xcode
     steps:
       - checkout
       # - restore_cache_cmd
@@ -125,7 +125,7 @@ jobs:
 
   create_release: 
     docker: 
-      - image: 'cimg/rust:1.52.1'
+      - image: 'cimg/rust:1.57.0'
     steps:
       - checkout
       - setup_github_cli

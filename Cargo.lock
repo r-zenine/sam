@@ -843,7 +843,7 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
 name = "sam-cli"
-version = "0.17.1"
+version = "0.17.2"
 dependencies = [
  "clap",
  "dirs 4.0.0",
@@ -861,7 +861,7 @@ dependencies = [
 
 [[package]]
 name = "sam-core"
-version = "0.17.1"
+version = "0.17.2"
 dependencies = [
  "comma",
  "lazy_static",
@@ -876,7 +876,7 @@ dependencies = [
 
 [[package]]
 name = "sam-persistence"
-version = "0.17.1"
+version = "0.17.2"
 dependencies = [
  "bincode",
  "rocksdb",
@@ -889,7 +889,7 @@ dependencies = [
 
 [[package]]
 name = "sam-readers"
-version = "0.17.1"
+version = "0.17.2"
 dependencies = [
  "sam-core",
  "serde",
@@ -899,7 +899,7 @@ dependencies = [
 
 [[package]]
 name = "sam-tui"
-version = "0.17.1"
+version = "0.17.2"
 dependencies = [
  "sam-core",
  "sam-persistence",
@@ -912,7 +912,7 @@ dependencies = [
 
 [[package]]
 name = "sam-utils"
-version = "0.17.1"
+version = "0.17.2"
 dependencies = [
  "dirs 4.0.0",
  "rand",
