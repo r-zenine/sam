@@ -13,7 +13,6 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
-use super::identifiers::IdentifierWithDesc;
 
 lazy_static! {
     // matches the following patters :
@@ -90,12 +89,6 @@ impl Alias {
         self.name.clone()
     }
 
-    pub fn indentifier_with_desc(&self) -> IdentifierWithDesc {
-        IdentifierWithDesc {
-            name: self.name.clone(),
-            desc: self.desc.clone(),
-        }
-    }
     pub fn full_name(&self) -> Cow<'_, str> {
         let n = self.name();
         if let Some(ns) = self.namespace() {

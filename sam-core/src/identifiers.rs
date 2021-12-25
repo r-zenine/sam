@@ -20,11 +20,7 @@ pub struct Identifier {
     pub namespace: Option<String>,
 }
 
-#[derive(Debug, Clone)]
-pub struct IdentifierWithDesc {
-    pub name: Identifier,
-    pub desc: String,
-}
+
 
 impl Identifier {
     /// new creates an new Identifier object and it will sanitize the input.
