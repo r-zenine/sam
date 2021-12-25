@@ -94,7 +94,7 @@ impl AppSettings {
 
     fn validate(orig: AppSettings) -> Result<AppSettings> {
         for path in &orig.root_dir {
-            if let Ok(files) = fsutils::walk_dir(&path) {
+            if let Ok(files) = fsutils::walk_dir(path) {
                 for f in files {
                     fsutils::ensure_exists(f).and_then(fsutils::ensure_sufficient_permisions)?;
                 }

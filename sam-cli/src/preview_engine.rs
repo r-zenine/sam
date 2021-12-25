@@ -34,7 +34,7 @@ impl PreviewEngine {
 
     fn preview_alias(&mut self, alias_id: Identifier) -> Result<i32> {
         let choices: &HashMap<Identifier, Choice> = &self.defaults;
-        let alias: Alias = self.aliases.get(&alias_id)?.with_partial_choices(&choices);
+        let alias: Alias = self.aliases.get(&alias_id)?.with_partial_choices(choices);
         let exec_seq = self.vars.execution_sequence(alias.clone())?;
 
         write!(
@@ -67,7 +67,7 @@ impl PreviewEngine {
                 termion::style::Reset,
             )?;
             for id in exec_seq.identifiers() {
-                write!(self.output, "- {}\n", id)?;
+                writeln!(self.output, "- {}", id)?;
             }
         }
 
@@ -79,7 +79,7 @@ impl PreviewEngine {
                 termion::style::Reset,
             )?;
             for (id, choice) in choices.iter() {
-                write!(self.output, "- {}\t= {}\n", id, choice)?;
+                writeln!(self.output, "- {}\t= {}", id, choice)?;
             }
         }
 
