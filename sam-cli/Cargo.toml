@@ -1,6 +1,6 @@
 [package]
 name = "sam-cli"
-version = "0.17.1"
+version = "0.17.2"
 edition = "2021"
 # Example of customizing binaries in Cargo.toml.
 
