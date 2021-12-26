@@ -6,6 +6,9 @@ use sam_core::{
     choices::Choice,
     commands::Command,
     dependencies::ErrorsResolver,
+    engines::{
+        AliasesRepositoryT, ErrorsAliasesRepositoryT, ErrorsVarsRepositoryT, VarsRepositoryT,
+    },
     identifiers::Identifier,
     repositories::{
         AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
@@ -94,7 +97,11 @@ pub enum ErrorsPreviewEngine {
     #[error("Can't write to output\n-> {0}")]
     ErrorOutput(#[from] std::io::Error),
     #[error("Can't retrieve requested alias\n-> {0}")]
+    ErrorAliasesRepositoryT(#[from] ErrorsAliasesRepositoryT),
+    #[error("Can't retrieve requested alias\n-> {0}")]
     ErrorAliasesRepository(#[from] ErrorsAliasesRepository),
+    #[error("Can't figure out execution sequence\n-> {0}")]
+    ErrorVarsRepositoryT(#[from] ErrorsVarsRepositoryT),
     #[error("Can't figure out execution sequence\n-> {0}")]
     ErrorVarsRepository(#[from] ErrorsVarsRepository),
     #[error("Can't substitute provided choices\n-> {0}")]

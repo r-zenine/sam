@@ -1,6 +1,10 @@
 pub mod mocks;
 mod sam_engine;
+pub use sam_engine::AliasesRepositoryT;
+pub use sam_engine::VarsRepositoryT;
 pub use sam_engine::ErrorSamEngine;
+pub use sam_engine::ErrorsAliasesRepositoryT;
+pub use sam_engine::ErrorsVarsRepositoryT;
 pub use sam_engine::SamCommand;
 pub use sam_engine::SamEngine;
 pub use sam_engine::SamExecutor;

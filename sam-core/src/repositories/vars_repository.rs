@@ -1,6 +1,7 @@
 use crate::choices::Choice;
 use crate::commands::Command;
 use crate::dependencies::{Dependencies, ErrorsResolver, Resolver};
+use crate::engines::{ErrorsVarsRepositoryT, VarsRepositoryT};
 use crate::identifiers::{Identifier, Identifiers};
 use crate::processes::ShellCommand;
 use crate::vars::Var;
@@ -8,34 +9,12 @@ use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet, VecDeque};
 use thiserror::Error;
 
-#[derive(Debug)]
-pub struct ExecutionSequence<'repository> {
-    inner: Vec<&'repository Identifier>,
-}
-
-impl<'repository> ExecutionSequence<'repository> {
-    pub fn identifiers(&'repository self) -> Vec<Identifier> {
-        let mut rep: Vec<Identifier> = Vec::with_capacity(self.inner.len());
-        for e in self.inner.clone() {
-            rep.push(e.clone());
-        }
-        rep
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct VarsRepository {
     vars: HashSet<Var>,
     defaults: HashMap<Identifier, Choice>,
 }
 
-impl<'repository> AsRef<[&'repository Identifier]> for ExecutionSequence<'repository> {
-    fn as_ref(&self) -> &[&'repository Identifier] {
-        self.inner.as_slice()
-    }
-}
-
-// TODO tests for this.
 impl VarsRepository {
     /// new creates a var Repository. this function will return an `ErrorVarRepository::ErrorMissingDependencies`
     /// if a Var provided has a dependency that is not found in the Iterator.
@@ -59,26 +38,6 @@ impl VarsRepository {
         self.vars.extend(other.vars);
     }
 
-    pub fn set_defaults(
-        &mut self,
-        defaults: &HashMap<Identifier, Choice>,
-    ) -> Result<(), ErrorsVarsRepository> {
-        let mut identifiers = vec![];
-        for key in defaults.keys() {
-            if !self.vars.contains(key) {
-                identifiers.push(key.clone());
-            }
-        }
-        if identifiers.is_empty() {
-            self.defaults = defaults.to_owned();
-            Ok(())
-        } else {
-            Err(ErrorsVarsRepository::UnknowVarsDefaults(Identifiers {
-                0: identifiers,
-            }))
-        }
-    }
-
     pub fn ensure_no_missing_dependency(&self) -> Result<(), ErrorsVarsRepository> {
         let missing: Vec<Identifier> = self
             .vars
@@ -95,15 +54,58 @@ impl VarsRepository {
         }
     }
 
-    /// Execution sequence returns for a given `Dep: Dependencies`
-    /// an execution sequence of VARs in order to fulfill it's dependencies.
-    pub fn execution_sequence<Deps>(
+    /// will return a valid choice for the current Var using the provided VarResolver and the
+    /// HashMap of choices provided.
+    /// First, this function will look into the `choices` HashMap to fill values for all the dependencies of the current
+    /// `Var`and then use the resolver to get a `Choice` for the current `Var`
+    pub fn resolve<'repository, R>(
+        resolver: &'repository R,
+        var: &'repository Var,
+        choices: &'repository HashMap<Identifier, Choice>,
+    ) -> Result<Choice, ErrorsVarsRepositoryT>
+    where
+        R: Resolver,
+    {
+        Self::_resolve(resolver, var, choices).map_err(|err| {
+            ErrorsVarsRepositoryT::NoChoiceForVar {
+                var_name: var.name(),
+                error: err,
+            }
+        })
+    }
+
+    fn _resolve<'repository, R>(
+        resolver: &'repository R,
+        var: &'repository Var,
+        choices: &'repository HashMap<Identifier, Choice>,
+    ) -> Result<Choice, ErrorsResolver>
+    where
+        R: Resolver,
+    {
+        if var.is_command() {
+            let command = var.substitute_for_choices(choices)?;
+            resolver.resolve_dynamic(var.name(), ShellCommand::new(command))
+        } else if var.is_input() {
+            let prompt = var.prompt().unwrap_or("no provided prompt");
+            resolver.resolve_input(var.name(), prompt)
+        } else {
+            resolver.resolve_static(var.name(), var.choices().into_iter())
+        }
+    }
+
+    pub fn vars_iter(&self) -> impl Iterator<Item = &Var> {
+        self.vars.iter()
+    }
+}
+
+impl VarsRepositoryT for VarsRepository {
+    fn execution_sequence<Deps: Dependencies>(
         &self,
         dep: Deps,
-    ) -> Result<ExecutionSequence<'_>, ErrorsVarsRepository>
-    where
-        Deps: Dependencies,
-    {
+    ) -> std::result::Result<
+        crate::dependencies::ExecutionSequence<'_>,
+        crate::engines::ErrorsVarsRepositoryT,
+    > {
         let mut already_seen = HashSet::new();
         let mut already_inserted = HashSet::new();
         let mut candidates = dep.dependencies();
@@ -137,29 +139,29 @@ impl VarsRepository {
         }
 
         if !missing.is_empty() {
-            Err(ErrorsVarsRepository::MissingDependencies(Identifiers(
+            Err(ErrorsVarsRepositoryT::MissingDependencies(Identifiers(
                 missing,
             )))
         } else {
-            Ok(ExecutionSequence {
-                inner: execution_seq.into_iter().collect(),
-            })
+            Ok(crate::dependencies::ExecutionSequence::new(
+                execution_seq.into_iter().collect(),
+            ))
         }
     }
 
     // choices uses the provided resolver to fetch choices for
     // the provided `ExecutionSequence`.
-    pub fn choices<'repository, R>(
+    fn choices<'repository, R>(
         &'repository self,
         resolver: &'repository R,
-        vars: ExecutionSequence<'repository>,
-    ) -> Result<Vec<(Identifier, Choice)>, ErrorsVarsRepository>
+        vars: crate::dependencies::ExecutionSequence<'repository>,
+    ) -> Result<Vec<(Identifier, Choice)>, ErrorsVarsRepositoryT>
     where
         R: Resolver,
     {
         let mut choices: HashMap<Identifier, Choice> = HashMap::new();
-        for var_name in vars.inner {
-            if let Some(var) = self.vars.get(var_name) {
+        for var_name in vars.as_slice() {
+            if let Some(var) = self.vars.get(*var_name) {
                 let choice = if let Some(default) = self.defaults.get(&var.name()) {
                     default.to_owned()
                 } else {
@@ -167,52 +169,31 @@ impl VarsRepository {
                 };
                 choices.insert(var.name(), choice);
             } else {
-                return Err(ErrorsVarsRepository::MissingDependencies(Identifiers(
-                    vec![var_name.to_owned()],
+                return Err(ErrorsVarsRepositoryT::MissingDependencies(Identifiers(
+                    vec![var_name.clone().to_owned()],
                 )));
             }
         }
         Ok(choices.into_iter().collect())
     }
-    /// will return a valid choice for the current Var using the provided VarResolver and the
-    /// HashMap of choices provided.
-    /// First, this function will look into the `choices` HashMap to fill values for all the dependencies of the current
-    /// `Var`and then use the resolver to get a `Choice` for the current `Var`
-    pub fn resolve<'repository, R>(
-        resolver: &'repository R,
-        var: &'repository Var,
-        choices: &'repository HashMap<Identifier, Choice>,
-    ) -> Result<Choice, ErrorsVarsRepository>
-    where
-        R: Resolver,
-    {
-        Self::_resolve(resolver, var, choices).map_err(|err| ErrorsVarsRepository::NoChoiceForVar {
-            var_name: var.name(),
-            error: err,
-        })
-    }
-
-    fn _resolve<'repository, R>(
-        resolver: &'repository R,
-        var: &'repository Var,
-        choices: &'repository HashMap<Identifier, Choice>,
-    ) -> Result<Choice, ErrorsResolver>
-    where
-        R: Resolver,
-    {
-        if var.is_command() {
-            let command = var.substitute_for_choices(choices)?;
-            resolver.resolve_dynamic(var.name(), ShellCommand::new(command))
-        } else if var.is_input() {
-            let prompt = var.prompt().unwrap_or("no provided prompt");
-            resolver.resolve_input(var.name(), prompt)
-        } else {
-            resolver.resolve_static(var.name(), var.choices().into_iter())
+    fn set_defaults(
+        &mut self,
+        defaults: &HashMap<Identifier, Choice>,
+    ) -> std::result::Result<(), crate::engines::ErrorsVarsRepositoryT> {
+        let mut identifiers = vec![];
+        for key in defaults.keys() {
+            if !self.vars.contains(key) {
+                identifiers.push(key.clone());
+            }
         }
-    }
-
-    pub fn vars_iter(&self) -> impl Iterator<Item = &Var> {
-        self.vars.iter()
+        if identifiers.is_empty() {
+            self.defaults = defaults.to_owned();
+            Ok(())
+        } else {
+            Err(ErrorsVarsRepositoryT::UnknowVarsDefaults(Identifiers {
+                0: identifiers,
+            }))
+        }
     }
 }
 
