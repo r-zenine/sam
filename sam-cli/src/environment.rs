@@ -4,7 +4,7 @@ use crate::config_engine::ConfigEngine;
 use crate::executors::{DryExecutor, ShellExecutor};
 use crate::logger::{SilentLogger, StdErrLogger};
 use crate::preview_engine::PreviewEngine;
-use sam_core::engines::{SamEngine, SamExecutor, SamLogger};
+use sam_core::engines::{SamEngine, SamExecutor, SamLogger, VarsRepositoryT, ErrorsVarsRepositoryT};
 use sam_core::repositories::{
     AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
 };
@@ -31,7 +31,7 @@ pub struct Environment {
 }
 
 impl Environment {
-    pub fn sam_engine(self) -> SamEngine<UserInterface> {
+    pub fn sam_engine(self) -> SamEngine<UserInterface, AliasesRepository, VarsRepository> {
         let executor: Rc<dyn SamExecutor> = if self.config.dry {
             Rc::new(DryExecutor {})
         } else {
@@ -131,6 +131,8 @@ pub enum ErrorEnvironment {
     VarRead(#[from] ErrorsVarRead),
     #[error("could not figure out dependencies\n-> {0}")]
     VarsRepository(#[from] ErrorsVarsRepository),
+    #[error("could not figure out dependencies\n-> {0}")]
+    VarsRepositoryT(#[from] ErrorsVarsRepositoryT),
     #[error("could not figure out alias substitution\n-> {0}")]
     AliasRepository(#[from] ErrorsAliasesRepository),
 }

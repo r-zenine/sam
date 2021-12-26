@@ -1,5 +1,6 @@
 use crate::aliases::Alias;
 use crate::dependencies::ErrorsResolver;
+use crate::engines::{AliasesRepositoryT, ErrorsAliasesRepositoryT};
 use crate::identifiers::Identifier;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -37,12 +38,6 @@ impl AliasesRepository {
         Ok(AliasesRepository { aliases: mpf })
     }
 
-    pub fn get(&self, id: &Identifier) -> Result<&Alias, ErrorsAliasesRepository> {
-        self.aliases
-            .get(id)
-            .ok_or_else(|| ErrorsAliasesRepository::AliasInvalidSelection(id.clone()))
-    }
-
     pub fn aliases(&self) -> Vec<Alias> {
         self.aliases.values().map(Alias::clone).collect()
     }
@@ -53,17 +48,6 @@ impl AliasesRepository {
 
     fn descriptions(&self) -> Vec<&str> {
         self.aliases.values().map(Alias::desc).collect()
-    }
-
-    pub fn select_alias(
-        &self,
-        r: &impl Resolver,
-        prompt: &str,
-    ) -> Result<&Alias, ErrorsAliasesRepository> {
-        let identifiers = self.identifiers();
-        let descriptions = self.descriptions();
-        let selection = r.select_identifier(&identifiers, Some(&descriptions), prompt)?;
-        self.get(&selection)
     }
 
     fn substitute_alias_defs(
@@ -107,6 +91,25 @@ impl AliasesRepository {
                 )
             })
             .collect()
+    }
+}
+
+impl AliasesRepositoryT for AliasesRepository {
+    fn select_alias<R: Resolver>(
+        &self,
+        r: &R,
+        prompt: &str,
+    ) -> Result<&Alias, ErrorsAliasesRepositoryT> {
+        let identifiers = self.identifiers();
+        let descriptions = self.descriptions();
+        let selection = r.select_identifier(&identifiers, Some(&descriptions), prompt)?;
+        self.get(&selection)
+    }
+
+    fn get(&self, id: &Identifier) -> Result<&Alias, ErrorsAliasesRepositoryT> {
+        self.aliases
+            .get(id)
+            .ok_or_else(|| ErrorsAliasesRepositoryT::AliasInvalidSelection(id.clone()))
     }
 }
 

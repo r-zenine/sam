@@ -1,10 +1,8 @@
 use crate::aliases::{Alias, ResolvedAlias};
 use crate::choices::Choice;
 use crate::commands::Command;
-use crate::dependencies::{ErrorsResolver, Resolver};
-use crate::identifiers::Identifier;
-use crate::repositories::{AliasesRepository, ErrorsAliasesRepository};
-use crate::repositories::{ErrorsVarsRepository, VarsRepository};
+use crate::dependencies::{Dependencies, ErrorsResolver, ExecutionSequence, Resolver};
+use crate::identifiers::{Identifier, Identifiers};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::rc::Rc;
@@ -12,6 +10,63 @@ use thiserror::Error;
 
 const PROMPT: &str = "Choose an alias to run > ";
 
+pub trait VarsRepositoryT {
+    fn execution_sequence<Deps: Dependencies>(
+        &self,
+        dep: Deps,
+    ) -> std::result::Result<ExecutionSequence<'_>, ErrorsVarsRepositoryT>;
+
+    fn choices<'repository, R: Resolver>(
+        &'repository self,
+        resolver: &'repository R,
+        vars: ExecutionSequence<'repository>,
+    ) -> std::result::Result<Vec<(Identifier, Choice)>, ErrorsVarsRepositoryT>;
+
+    fn set_defaults(
+        &mut self,
+        defaults: &HashMap<Identifier, Choice>,
+    ) -> std::result::Result<(), ErrorsVarsRepositoryT>;
+}
+
+#[derive(Debug, Error)]
+pub enum ErrorsVarsRepositoryT {
+    #[error("missing the following dependencies:\n{0}")]
+    MissingDependencies(Identifiers),
+    #[error("the provided variables are unknown:\n{0}")]
+    UnknowVarsDefaults(Identifiers),
+    #[error("no choices available for var {var_name}\n-> {error}")]
+    NoChoiceForVar {
+        var_name: Identifier,
+        error: ErrorsResolver,
+    },
+}
+
+pub trait AliasesRepositoryT {
+    fn select_alias<R: Resolver>(
+        &self,
+        r: &R,
+        prompt: &str,
+    ) -> std::result::Result<&Alias, ErrorsAliasesRepositoryT>;
+    fn get(&self, id: &Identifier) -> std::result::Result<&Alias, ErrorsAliasesRepositoryT>;
+}
+
+#[derive(Debug, Error)]
+pub enum ErrorsAliasesRepositoryT {
+    #[error("Alias selection failed because \n-> {0}")]
+    AliasSelectionFailure(#[from] ErrorsResolver),
+    #[error("Invalid alias selected {0}")]
+    AliasInvalidSelection(Identifier),
+}
+
+// Changes:
+// Rename SamCommand -> UseCaseAliasExec
+//
+// Exclude
+// -> DisplayHistory,           DisplayLastExecutedAlias   from here and move it to the UseCaseAudit
+//
+// Exclude
+// -> ExecuteLastExecutedAlias, ModifyThenExecuteLastAlias from here and move it to the UseCaseExecutionReplay
+//
 #[derive(Clone, Debug, PartialEq)]
 pub enum SamCommand {
     ChooseAndExecuteAlias,
@@ -22,17 +77,18 @@ pub enum SamCommand {
     DisplayHistory,
 }
 
-pub struct SamEngine<R: Resolver> {
+// TODO Rename to UseCaseAliasExec
+pub struct SamEngine<R: Resolver, AR: AliasesRepositoryT, VR: VarsRepositoryT> {
     pub resolver: R,
-    pub aliases: AliasesRepository,
-    pub vars: VarsRepository,
+    pub aliases: AR,
+    pub vars: VR,
     pub logger: Rc<dyn SamLogger>,
     pub history: Box<dyn SamHistory>,
     pub env_variables: HashMap<String, String>,
     pub executor: Rc<dyn SamExecutor>,
 }
 
-impl<R: Resolver> SamEngine<R> {
+impl<R: Resolver, AR: AliasesRepositoryT, VR: VarsRepositoryT> SamEngine<R, AR, VR> {
     pub fn run(&mut self, command: SamCommand) -> Result<i32> {
         use SamCommand::*;
         match command {
@@ -169,9 +225,9 @@ pub enum ErrorSamEngine {
     #[error("could not resolve the dependency because\n-> {0}")]
     Resolver(#[from] ErrorsResolver),
     #[error("could not figure out dependencies\n-> {0}")]
-    VarsRepository(#[from] ErrorsVarsRepository),
+    VarsRepository(#[from] ErrorsVarsRepositoryT),
     #[error("could not select the alias to run\n-> {0}")]
-    AliasRepository(#[from] ErrorsAliasesRepository),
+    AliasRepositoryT(#[from] ErrorsAliasesRepositoryT),
     #[error("could not run a command\n-> {0}")]
     SubCommand(#[from] std::io::Error),
     #[error("history is unavailable\n-> {0}")]

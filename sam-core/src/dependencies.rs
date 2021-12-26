@@ -47,6 +47,28 @@ fn substitute_choice(origin: &str, dependency: &Identifier, choice: &str) -> Str
     re2.replace(&tmp, choice).to_string()
 }
 
+#[derive(Debug)]
+pub struct ExecutionSequence<'repository> {
+    inner: Vec<&'repository Identifier>,
+}
+
+impl<'repository> ExecutionSequence<'repository> {
+    pub fn new(inner: Vec<&'repository Identifier>) -> Self {
+        ExecutionSequence { inner }
+    }
+    pub fn identifiers(&'repository self) -> Vec<Identifier> {
+        let mut rep: Vec<Identifier> = Vec::with_capacity(self.inner.len());
+        for e in self.inner.clone() {
+            rep.push(e.clone());
+        }
+        rep
+    }
+
+    pub fn as_slice(&'repository self) -> &[&'repository Identifier] {
+        self.inner.as_slice()
+    }
+}
+
 pub trait Resolver {
     fn resolve_input(&self, var: Identifier, prompt: &str) -> Result<Choice, ErrorsResolver>;
     fn resolve_dynamic<CMD>(&self, var: Identifier, cmd: CMD) -> Result<Choice, ErrorsResolver>
