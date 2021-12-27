@@ -879,6 +879,9 @@ name = "sam-persistence"
 version = "0.17.2"
 dependencies = [
  "bincode",
+ "lazy_static",
+ "maplit",
+ "regex",
  "rocksdb",
  "sam-core",
  "sam-utils",
@@ -892,6 +895,7 @@ name = "sam-readers"
 version = "0.17.2"
 dependencies = [
  "sam-core",
+ "sam-persistence",
  "serde",
  "serde_yaml",
  "thiserror",

@@ -1,9 +1,9 @@
-use crate::engines::{AliasCollection, ErrorsAliasCollection};
-use crate::entities::aliases::Alias;
-use crate::entities::dependencies::ErrorsResolver;
-use crate::entities::identifiers::Identifier;
 use lazy_static::lazy_static;
 use regex::Regex;
+use sam_core::engines::{AliasCollection, ErrorsAliasCollection};
+use sam_core::entities::aliases::Alias;
+use sam_core::entities::dependencies::ErrorsResolver;
+use sam_core::entities::identifiers::Identifier;
 use std::collections::HashMap;
 use std::ops::Range;
 use thiserror::Error;
@@ -112,10 +112,10 @@ pub enum ErrorsAliasesRepository {
 #[cfg(test)]
 mod tests {
     use super::AliasesRepository;
-    use crate::entities::aliases::fixtures::*;
-    use crate::entities::aliases::Alias;
-    use crate::entities::identifiers::fixtures::*;
     use maplit::hashmap;
+    use sam_core::entities::aliases::fixtures::*;
+    use sam_core::entities::aliases::Alias;
+    use sam_core::entities::identifiers::fixtures::*;
     use std::ops::Range;
     #[test]
     fn parse_test() {

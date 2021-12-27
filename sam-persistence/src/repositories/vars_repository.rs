@@ -1,10 +1,10 @@
-use crate::algorithms::{VarsCollection, VarsDefaultValues};
-use crate::engines::VarsDefaultValuesSetter;
-use crate::entities::choices::Choice;
-use crate::entities::commands::Command;
-use crate::entities::dependencies::ErrorsResolver;
-use crate::entities::identifiers::{Identifier, Identifiers};
-use crate::entities::vars::Var;
+use sam_core::algorithms::{VarsCollection, VarsDefaultValues};
+use sam_core::engines::VarsDefaultValuesSetter;
+use sam_core::entities::choices::Choice;
+use sam_core::entities::commands::Command;
+use sam_core::entities::dependencies::ErrorsResolver;
+use sam_core::entities::identifiers::{Identifier, Identifiers};
+use sam_core::entities::vars::Var;
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
@@ -98,8 +98,8 @@ pub enum ErrorsVarsRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entities::identifiers::fixtures::*;
-    use crate::entities::vars::fixtures::*;
+    use sam_core::entities::identifiers::fixtures::*;
+    use sam_core::entities::vars::fixtures::*;
 
     #[test]
     fn test_var_repository_new() {
