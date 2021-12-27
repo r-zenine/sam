@@ -1,7 +1,7 @@
 use sam_core::entities::commands::programs_used;
 use sam_core::entities::commands::unset_env_vars;
-use sam_core::repositories::AliasesRepository;
-use sam_core::repositories::VarsRepository;
+use sam_persistence::repositories::AliasesRepository;
+use sam_persistence::repositories::VarsRepository;
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 

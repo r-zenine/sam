@@ -2,7 +2,7 @@ use sam_core::entities::aliases::Alias;
 use sam_core::entities::choices::Choice;
 use sam_core::entities::namespaces::NamespaceUpdater;
 use sam_core::entities::vars::Var;
-use sam_core::repositories::{ErrorsVarsRepository, VarsRepository};
+use sam_persistence::repositories::{ErrorsVarsRepository, VarsRepository};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;

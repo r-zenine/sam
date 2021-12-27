@@ -9,9 +9,10 @@ use sam_core::{
     entities::commands::Command,
     entities::dependencies::ErrorsResolver,
     entities::identifiers::Identifier,
-    repositories::{
-        AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
-    },
+};
+
+use sam_persistence::repositories::{
+    AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
 };
 
 #[derive(Debug, Clone, PartialEq)]

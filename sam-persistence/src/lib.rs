@@ -1,3 +1,4 @@
+pub mod repositories;
 mod vars_cache;
 pub use vars_cache::CacheEntry;
 pub use vars_cache::CacheError;

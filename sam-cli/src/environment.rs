@@ -5,7 +5,7 @@ use crate::executors::{DryExecutor, ShellExecutor};
 use crate::logger::{SilentLogger, StdErrLogger};
 use crate::preview_engine::PreviewEngine;
 use sam_core::engines::{SamEngine, SamExecutor, SamLogger, VarsDefaultValuesSetter};
-use sam_core::repositories::{
+use sam_persistence::repositories::{
     AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
 };
 use sam_persistence::{NoopVarsCache, RocksDBCache, VarsCache};
