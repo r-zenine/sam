@@ -97,7 +97,7 @@ pub fn choices_for_execution_sequence<'a, R: Resolver>(
             choices.insert(var.name(), choice);
         } else {
             return Err(ErrorDependencyResolution::MissingDependencies(Identifiers(
-                vec![var_name.clone().to_owned()],
+                vec![(*var_name).clone()],
             )));
         }
     }
