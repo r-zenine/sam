@@ -1,8 +1,6 @@
-use crate::aliases::Alias;
+use crate::entities::aliases::{Alias, ResolvedAlias};
 use std::fmt::Display;
 use std::{cell::RefCell, collections::HashMap};
-
-use crate::aliases::ResolvedAlias;
 
 use crate::engines::{ErrorSamEngine, SamExecutor, SamHistory, SamLogger};
 

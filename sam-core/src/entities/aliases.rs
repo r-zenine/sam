@@ -1,10 +1,11 @@
-use crate::choices::Choice;
-use crate::commands::Command;
-use crate::dependencies::Dependencies;
-use crate::dependencies::ErrorsResolver;
-use crate::identifiers::Identifier;
-use crate::namespaces::{Namespace, NamespaceUpdater};
-use crate::processes::ShellCommand;
+use crate::entities::choices::Choice;
+use crate::entities::commands::Command;
+use crate::entities::dependencies::Dependencies;
+use crate::entities::dependencies::ErrorsResolver;
+use crate::entities::identifiers::Identifier;
+use crate::entities::namespaces::Namespace;
+use crate::entities::namespaces::NamespaceUpdater;
+use crate::entities::processes::ShellCommand;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,6 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::fmt::Formatter;
-
 
 lazy_static! {
     // matches the following patters :
@@ -258,8 +258,8 @@ impl Display for Alias {
 }
 
 pub mod fixtures {
-    use crate::aliases::Alias;
-    use crate::identifiers::fixtures::*;
+    use crate::entities::aliases::Alias;
+    use crate::entities::identifiers::fixtures::*;
     use lazy_static::lazy_static;
 
     lazy_static! {
@@ -284,8 +284,8 @@ pub mod fixtures {
 #[cfg(test)]
 mod tests {
     use super::Alias;
-    use crate::commands::Command;
-    use crate::identifiers::Identifier;
+    use crate::entities::commands::Command;
+    use crate::entities::identifiers::Identifier;
     #[test]
     fn vars() {
         let alias = Alias::new(

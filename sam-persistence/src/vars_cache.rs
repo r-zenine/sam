@@ -1,7 +1,7 @@
 use rocksdb::WriteBatch;
 use rocksdb::WriteOptions;
 use rocksdb::DB;
-use sam_core::aliases::ResolvedAlias;
+use sam_core::entities::aliases::ResolvedAlias;
 use sam_core::engines::ErrorSamEngine;
 use serde::Deserialize;
 use serde::Serialize;

@@ -1,4 +1,4 @@
-use sam_core::aliases::Alias;
+use sam_core::entities::aliases::Alias;
 use std::fmt::Display;
 
 use sam_core::engines::SamLogger;

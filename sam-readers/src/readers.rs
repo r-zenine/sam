@@ -1,8 +1,8 @@
-use sam_core::aliases::Alias;
-use sam_core::choices::Choice;
-use sam_core::namespaces::NamespaceUpdater;
+use sam_core::entities::aliases::Alias;
+use sam_core::entities::choices::Choice;
+use sam_core::entities::namespaces::NamespaceUpdater;
+use sam_core::entities::vars::Var;
 use sam_core::repositories::{ErrorsVarsRepository, VarsRepository};
-use sam_core::vars::Var;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
@@ -121,9 +121,9 @@ pub enum ErrorsChoiceRead {
 #[cfg(test)]
 mod tests {
     use super::{read_aliases, read_vars};
-    use sam_core::aliases::Alias;
-    use sam_core::choices::Choice;
-    use sam_core::vars::Var;
+    use sam_core::entities::aliases::Alias;
+    use sam_core::entities::choices::Choice;
+    use sam_core::entities::vars::Var;
     use std::io::BufReader;
 
     #[test]

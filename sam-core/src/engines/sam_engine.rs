@@ -1,8 +1,13 @@
-use crate::aliases::{Alias, ResolvedAlias};
-use crate::choices::Choice;
-use crate::commands::Command;
-use crate::dependencies::{Dependencies, ErrorsResolver, ExecutionSequence, Resolver};
-use crate::identifiers::{Identifier, Identifiers};
+use crate::algorithms::{
+    choices_for_execution_sequence, execution_sequence_for_dependencies, ErrorDependencyResolution,
+    VarsCollection, VarsDefaultValues,
+};
+use crate::entities::aliases::{Alias, ResolvedAlias};
+use crate::entities::choices::Choice;
+use crate::entities::commands::Command;
+use crate::entities::dependencies::{ErrorsResolver, Resolver};
+use crate::entities::identifiers::Identifier;
+// TODO get rid of this import
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::rc::Rc;
@@ -10,48 +15,29 @@ use thiserror::Error;
 
 const PROMPT: &str = "Choose an alias to run > ";
 
-pub trait VarsRepositoryT {
-    fn execution_sequence<Deps: Dependencies>(
-        &self,
-        dep: Deps,
-    ) -> std::result::Result<ExecutionSequence<'_>, ErrorsVarsRepositoryT>;
-
-    fn choices<'repository, R: Resolver>(
-        &'repository self,
-        resolver: &'repository R,
-        vars: ExecutionSequence<'repository>,
-    ) -> std::result::Result<Vec<(Identifier, Choice)>, ErrorsVarsRepositoryT>;
-
-    fn set_defaults(
-        &mut self,
-        defaults: &HashMap<Identifier, Choice>,
-    ) -> std::result::Result<(), ErrorsVarsRepositoryT>;
+pub trait VarsDefaultValuesSetter {
+    fn set_defaults(&mut self, defaults: &HashMap<Identifier, Choice>);
 }
 
-#[derive(Debug, Error)]
-pub enum ErrorsVarsRepositoryT {
-    #[error("missing the following dependencies:\n{0}")]
-    MissingDependencies(Identifiers),
-    #[error("the provided variables are unknown:\n{0}")]
-    UnknowVarsDefaults(Identifiers),
-    #[error("no choices available for var {var_name}\n-> {error}")]
-    NoChoiceForVar {
-        var_name: Identifier,
-        error: ErrorsResolver,
-    },
-}
-
-pub trait AliasesRepositoryT {
+pub trait AliasCollection {
     fn select_alias<R: Resolver>(
         &self,
         r: &R,
         prompt: &str,
-    ) -> std::result::Result<&Alias, ErrorsAliasesRepositoryT>;
-    fn get(&self, id: &Identifier) -> std::result::Result<&Alias, ErrorsAliasesRepositoryT>;
+    ) -> std::result::Result<&Alias, ErrorsAliasCollection> {
+        let identifiers = self.identifiers();
+        let descriptions = self.descriptions();
+        let selection = r.select_identifier(&identifiers, Some(&descriptions), prompt)?;
+        self.get(&selection)
+    }
+
+    fn get(&self, id: &Identifier) -> std::result::Result<&Alias, ErrorsAliasCollection>;
+    fn identifiers(&self) -> Vec<Identifier>;
+    fn descriptions(&self) -> Vec<&str>;
 }
 
 #[derive(Debug, Error)]
-pub enum ErrorsAliasesRepositoryT {
+pub enum ErrorsAliasCollection {
     #[error("Alias selection failed because \n-> {0}")]
     AliasSelectionFailure(#[from] ErrorsResolver),
     #[error("Invalid alias selected {0}")]
@@ -78,17 +64,30 @@ pub enum SamCommand {
 }
 
 // TODO Rename to UseCaseAliasExec
-pub struct SamEngine<R: Resolver, AR: AliasesRepositoryT, VR: VarsRepositoryT> {
+pub struct SamEngine<
+    R: Resolver,
+    AR: AliasCollection,
+    VR: VarsCollection,
+    DV: VarsDefaultValuesSetter + VarsDefaultValues,
+> {
     pub resolver: R,
     pub aliases: AR,
     pub vars: VR,
+    pub defaults: DV,
     pub logger: Rc<dyn SamLogger>,
     pub history: Box<dyn SamHistory>,
+    // TODO this should be handled elsewhere, most likely in the executor
     pub env_variables: HashMap<String, String>,
     pub executor: Rc<dyn SamExecutor>,
 }
 
-impl<R: Resolver, AR: AliasesRepositoryT, VR: VarsRepositoryT> SamEngine<R, AR, VR> {
+impl<
+        R: Resolver,
+        AR: AliasCollection,
+        VR: VarsCollection,
+        DV: VarsDefaultValues + VarsDefaultValuesSetter,
+    > SamEngine<R, AR, VR, DV>
+{
     pub fn run(&mut self, command: SamCommand) -> Result<i32> {
         use SamCommand::*;
         match command {
@@ -112,12 +111,11 @@ impl<R: Resolver, AR: AliasesRepositoryT, VR: VarsRepositoryT> SamEngine<R, AR, 
     }
 
     fn run_alias(&self, alias: &Alias) -> Result<i32> {
-        let exec_seq = self.vars.execution_sequence(alias)?;
-        let choices: HashMap<Identifier, Choice> = self
-            .vars
-            .choices(&self.resolver, exec_seq)?
-            .into_iter()
-            .collect();
+        let exec_seq = execution_sequence_for_dependencies(&self.vars, alias)?;
+        let choices: HashMap<Identifier, Choice> =
+            choices_for_execution_sequence(&self.vars, &self.defaults, &self.resolver, exec_seq)?
+                .into_iter()
+                .collect();
 
         let final_alias = alias.with_choices(&choices).unwrap();
         self.history.put(final_alias.clone())?;
@@ -149,7 +147,7 @@ impl<R: Resolver, AR: AliasesRepositoryT, VR: VarsRepositoryT> SamEngine<R, AR, 
         let resolved_alias_o = self.history.get_last()?;
         if let Some(resolved_alias) = resolved_alias_o {
             let original_alias = Alias::from(resolved_alias.clone());
-            let exec_seq = self.vars.execution_sequence(original_alias.clone())?;
+            let exec_seq = execution_sequence_for_dependencies(&self.vars, original_alias.clone())?;
             let identifiers = exec_seq.identifiers();
             if !identifiers.is_empty() {
                 let selected_var = self.resolver.select_identifier(
@@ -169,7 +167,7 @@ impl<R: Resolver, AR: AliasesRepositoryT, VR: VarsRepositoryT> SamEngine<R, AR, 
                     .flat_map(|e| resolved_alias.choice(&e).map(|choice| (e, choice)))
                     .collect();
 
-                self.vars.set_defaults(&new_defaults)?;
+                self.defaults.set_defaults(&new_defaults);
             }
             self.execute_alias(&original_alias.identifier())
         } else {
@@ -225,9 +223,9 @@ pub enum ErrorSamEngine {
     #[error("could not resolve the dependency because\n-> {0}")]
     Resolver(#[from] ErrorsResolver),
     #[error("could not figure out dependencies\n-> {0}")]
-    VarsRepository(#[from] ErrorsVarsRepositoryT),
+    DependencyResolution(#[from] ErrorDependencyResolution),
     #[error("could not select the alias to run\n-> {0}")]
-    AliasRepositoryT(#[from] ErrorsAliasesRepositoryT),
+    AliasRepositoryT(#[from] ErrorsAliasCollection),
     #[error("could not run a command\n-> {0}")]
     SubCommand(#[from] std::io::Error),
     #[error("history is unavailable\n-> {0}")]
@@ -238,13 +236,17 @@ pub enum ErrorSamEngine {
 mod tests {
     use std::{collections::HashMap, rc::Rc};
 
-    use crate::{choices::Choice, dependencies::mocks::StaticResolver, identifiers::Identifier};
+    use crate::algorithms::mocks::{VarsCollectionMock, VarsDefaultValuesMock};
+    use crate::entities::{
+        choices::Choice, dependencies::mocks::StaticResolver, identifiers::Identifier,
+    };
     use maplit::hashmap;
 
     use crate::engines::mocks::{InMemoryHistory, LogExecutor, SilentLogger};
 
     use crate::engines::{SamCommand, SamEngine};
 
+    use super::mocks::StaticAliasRepository;
     use super::{fixtures, SamExecutor};
 
     #[test]
@@ -324,7 +326,8 @@ mod tests {
         static_res: HashMap<Identifier, Choice>,
         selected_identifier: Option<Identifier>,
         executor: Rc<dyn SamExecutor>,
-    ) -> SamEngine<StaticResolver> {
+    ) -> SamEngine<StaticResolver, StaticAliasRepository, VarsCollectionMock, VarsDefaultValuesMock>
+    {
         let history = Box::new(InMemoryHistory::default());
         let logger = Rc::new(SilentLogger {});
         let sam_data = fixtures::multi_namespace_aliases_and_vars();
@@ -333,6 +336,7 @@ mod tests {
             resolver,
             aliases: sam_data.aliases,
             vars: sam_data.vars,
+            defaults: sam_data.defaults,
             logger,
             history,
             env_variables: sam_data.env_variables,
@@ -343,15 +347,29 @@ mod tests {
 
 #[cfg(test)]
 mod mocks {
+    use crate::algorithms::mocks::VarsDefaultValuesMock;
+    use crate::engines::{AliasCollection, ErrorsAliasCollection};
+    use crate::entities::aliases::Alias;
+    use crate::entities::aliases::ResolvedAlias;
+    use crate::entities::choices::Choice;
+    use crate::entities::identifiers::Identifier;
     use std::cell::RefCell;
+    use std::collections::HashMap;
+    use std::collections::VecDeque;
 
-    use crate::aliases::ResolvedAlias;
+    use super::{SamHistory, VarsDefaultValuesSetter};
 
-    use super::SamHistory;
+    impl VarsDefaultValuesSetter for VarsDefaultValuesMock {
+        fn set_defaults(&mut self, defaults: &HashMap<Identifier, Choice>) {
+            for (key, value) in defaults {
+                self.0.insert(key.clone(), value.clone());
+            }
+        }
+    }
 
     #[derive(Default)]
     pub struct InMemoryHistory {
-        pub aliases: RefCell<std::collections::VecDeque<ResolvedAlias>>,
+        pub aliases: RefCell<VecDeque<ResolvedAlias>>,
     }
 
     impl SamHistory for InMemoryHistory {
@@ -371,6 +389,41 @@ mod mocks {
                 .collect())
         }
     }
+
+    pub struct StaticAliasRepository {
+        aliases: HashMap<Identifier, Alias>,
+    }
+
+    impl StaticAliasRepository {
+        pub fn new(aliases: impl Iterator<Item = Alias>) -> Self {
+            let mut mp = HashMap::new();
+            for alias in aliases {
+                let id = alias.identifier();
+                mp.insert(id, alias);
+            }
+            let mut mpf = HashMap::new();
+            for (key, alias) in mp.iter() {
+                mpf.insert(key.clone(), alias.clone());
+            }
+            StaticAliasRepository { aliases: mpf }
+        }
+    }
+
+    impl AliasCollection for StaticAliasRepository {
+        fn get(&self, id: &Identifier) -> std::result::Result<&Alias, ErrorsAliasCollection> {
+            self.aliases
+                .get(id)
+                .ok_or_else(|| ErrorsAliasCollection::AliasInvalidSelection(id.clone()))
+        }
+
+        fn identifiers(&self) -> Vec<Identifier> {
+            self.aliases.values().map(Alias::identifier).collect()
+        }
+
+        fn descriptions(&self) -> Vec<&str> {
+            self.aliases.values().map(Alias::desc).collect()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -378,13 +431,18 @@ mod fixtures {
     use std::collections::HashMap;
 
     use crate::{
-        aliases::Alias, repositories::AliasesRepository, repositories::VarsRepository, vars::Var,
+        algorithms::mocks::{VarsCollectionMock, VarsDefaultValuesMock},
+        entities::aliases::Alias,
+        entities::vars::Var,
     };
     use maplit::hashmap;
 
+    use super::mocks::StaticAliasRepository;
+
     pub struct SamData {
-        pub aliases: AliasesRepository,
-        pub vars: VarsRepository,
+        pub aliases: StaticAliasRepository,
+        pub vars: VarsCollectionMock,
+        pub defaults: VarsDefaultValuesMock,
         pub env_variables: HashMap<String, String>,
     }
 
@@ -417,7 +475,7 @@ mod fixtures {
               alias: 'some_cmd --type=$SOME_ENV_VAR_2 {{variable_1}}|grep {{variable_2}}'
             - name: 'alias_2'
               desc: 'description of alias_1 in ns2'
-              alias: '[[alias_1]] | echo {{variable_1}} '";
+              alias: 'some_cmd --type=$SOME_ENV_VAR_2 {{variable_1}}|grep {{variable_2}} | echo {{variable_1}} '";
 
         let env_variables = hashmap! {
             "SOME_ENV_VAR".to_string() => "env_var_value".to_string(),
@@ -427,11 +485,13 @@ mod fixtures {
         let vars_r: Vec<Var> = serde_yaml::from_str(vars_str).expect("Test fixtures are bad");
         let aliases_r: Vec<Alias> = serde_yaml::from_str(alias_str).expect("text fixtures are bad");
 
-        let vars = VarsRepository::new(vars_r.into_iter());
-        let aliases = AliasesRepository::new(aliases_r.into_iter()).expect("text fixtures are bad");
+        let vars = VarsCollectionMock(vars_r.into_iter().map(|c| (c.name(), c)).collect());
+        let defaults = VarsDefaultValuesMock::default();
+        let aliases = StaticAliasRepository::new(aliases_r.into_iter());
         SamData {
             aliases,
             vars,
+            defaults,
             env_variables,
         }
     }

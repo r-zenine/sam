@@ -1,7 +1,7 @@
-use crate::choices::Choice;
-use crate::commands::Command;
-use crate::identifiers::Identifier;
-use crate::processes::ShellCommand;
+use crate::entities::choices::Choice;
+use crate::entities::commands::Command;
+use crate::entities::identifiers::Identifier;
+use crate::entities::processes::ShellCommand;
 use regex::Regex;
 use std::collections::HashMap;
 use std::error;
@@ -69,8 +69,15 @@ impl<'repository> ExecutionSequence<'repository> {
     }
 }
 
+impl<'repository> AsRef<[&'repository Identifier]> for ExecutionSequence<'repository> {
+    fn as_ref(&self) -> &[&'repository Identifier] {
+        self.inner.as_slice()
+    }
+}
+
 pub trait Resolver {
     fn resolve_input(&self, var: Identifier, prompt: &str) -> Result<Choice, ErrorsResolver>;
+    // TODO make cmd a string
     fn resolve_dynamic<CMD>(&self, var: Identifier, cmd: CMD) -> Result<Choice, ErrorsResolver>
     where
         CMD: Into<ShellCommand<String>>;
@@ -110,9 +117,9 @@ pub enum ErrorsResolver {
 pub mod mocks {
 
     use super::{ErrorsResolver, Resolver};
-    use crate::choices::Choice;
-    use crate::identifiers::Identifier;
-    use crate::processes::ShellCommand;
+    use crate::entities::choices::Choice;
+    use crate::entities::identifiers::Identifier;
+    use crate::entities::processes::ShellCommand;
     use std::collections::HashMap;
 
     #[derive(Debug)]

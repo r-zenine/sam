@@ -2,3 +2,12 @@
 - name: new_version
   desc: releases a new version of the program
   alias: .packaging/bump_version.sh {{ version_type }}
+
+- name: line_count 
+  desc: source code line counts for the project
+  alias: cloc */src/*
+
+- name: workon_issue
+  desc: setup repository to work on a specific issue
+  alias: git checkout -b {{github_issue_branch_name}}
+

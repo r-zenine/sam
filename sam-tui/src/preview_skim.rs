@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 use std::path::PathBuf;
 
-use sam_core::{choices::Choice, identifiers::Identifier};
+use sam_core::entities::{choices::Choice, identifiers::Identifier};
 
 pub struct PreviewSkim<'a> {
     pub choices: &'a HashMap<Identifier, Choice>,

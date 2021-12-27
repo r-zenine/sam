@@ -1,9 +1,9 @@
 use crate::preview_skim::PreviewSkim;
-use sam_core::aliases::Alias;
-use sam_core::choices::Choice;
-use sam_core::dependencies::{ErrorsResolver, Resolver};
-use sam_core::identifiers::Identifier;
-use sam_core::processes::ShellCommand;
+use sam_core::entities::aliases::Alias;
+use sam_core::entities::choices::Choice;
+use sam_core::entities::dependencies::{ErrorsResolver, Resolver};
+use sam_core::entities::identifiers::Identifier;
+use sam_core::entities::processes::ShellCommand;
 use sam_readers::read_choices;
 use sam_utils::fsutils::ErrorsFS;
 use skim::prelude::*;
