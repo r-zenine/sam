@@ -1,8 +1,8 @@
 use rocksdb::WriteBatch;
 use rocksdb::WriteOptions;
 use rocksdb::DB;
-use sam_core::entities::aliases::ResolvedAlias;
 use sam_core::engines::ErrorSamEngine;
+use sam_core::entities::aliases::ResolvedAlias;
 use serde::Deserialize;
 use serde::Serialize;
 use std::path::Path;
