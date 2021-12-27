@@ -17,4 +17,8 @@
   desc: github issue branche name
   from_command: echo {{github_issue}} | tr '[:upper:]' '[:lower:]'|sed "s/ /-/g"
 
+- name: git_branch
+  desc: local git branch
+  from_command: git branch --list|sed 's/[\*? +]//g'
+
 

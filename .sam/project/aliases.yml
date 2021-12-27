@@ -11,3 +11,10 @@
   desc: setup repository to work on a specific issue
   alias: git checkout -b {{github_issue_branch_name}}
 
+- name: update_branch
+  desc: updates a git branch
+  alias: git checkout {{git_branch}} && git pull origin --rebase
+
+- name: delete_merged_branches
+  desc: delete all the local branches that have been merged
+  alias: git branch --merged | egrep -v "(^\*|master|main|dev)" | xargs git branch -d
