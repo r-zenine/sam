@@ -3,10 +3,10 @@ use crate::config_engine::ConfigCommand;
 use crate::preview_engine::PreviewCommand;
 use crate::HashMap;
 use clap::{App, Arg, ArgMatches, Values};
-use sam_core::choices::Choice;
+use sam_core::entities::choices::Choice;
 use sam_core::engines::SamCommand;
-use sam_core::identifiers;
-use sam_core::identifiers::Identifier;
+use sam_core::entities::identifiers;
+use sam_core::entities::identifiers::Identifier;
 use std::convert::TryFrom;
 use std::env;
 use std::ffi::OsString;
@@ -244,7 +244,7 @@ mod tests {
 
     use crate::{cli::DefaultChoices, preview_engine::PreviewCommand};
     use maplit::hashmap;
-    use sam_core::{choices::Choice, identifiers::Identifier};
+    use sam_core::entities::{choices::Choice, identifiers::Identifier};
 
     use super::{app_init, make_cli_request, CLIRequest, SubCommand};
     use crate::cli::CLISettings;

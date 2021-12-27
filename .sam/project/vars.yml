@@ -9,3 +9,12 @@
     - value: patch
       desc: ''
 
+- name: github_issue
+  desc: github issue related to the project
+  from_command: gh issue list --json number,title |jq  '.[] | "\(.number) \(.title)"'|sed 's/"//g'
+
+- name: github_issue_branch_name
+  desc: github issue branche name
+  from_command: echo {{github_issue}} | tr '[:upper:]' '[:lower:]'|sed "s/ /-/g"
+
+

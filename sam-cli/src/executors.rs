@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use sam_core::engines::{ErrorSamEngine, SamExecutor};
-use sam_core::{
+use sam_core::entities::{
     processes::ShellCommand,
     {aliases::ResolvedAlias, commands::Command},
 };

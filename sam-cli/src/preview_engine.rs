@@ -2,14 +2,13 @@ use std::{collections::HashMap, io::Write};
 use thiserror::Error;
 
 use sam_core::{
-    aliases::Alias,
-    choices::Choice,
-    commands::Command,
-    dependencies::ErrorsResolver,
-    engines::{
-        AliasesRepositoryT, ErrorsAliasesRepositoryT, ErrorsVarsRepositoryT, VarsRepositoryT,
-    },
-    identifiers::Identifier,
+    algorithms::{execution_sequence_for_dependencies, ErrorDependencyResolution},
+    engines::{AliasCollection, ErrorsAliasCollection},
+    entities::aliases::Alias,
+    entities::choices::Choice,
+    entities::commands::Command,
+    entities::dependencies::ErrorsResolver,
+    entities::identifiers::Identifier,
     repositories::{
         AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
     },
@@ -38,7 +37,7 @@ impl PreviewEngine {
     fn preview_alias(&mut self, alias_id: Identifier) -> Result<i32> {
         let choices: &HashMap<Identifier, Choice> = &self.defaults;
         let alias: Alias = self.aliases.get(&alias_id)?.with_partial_choices(choices);
-        let exec_seq = self.vars.execution_sequence(alias.clone())?;
+        let exec_seq = execution_sequence_for_dependencies(&self.vars, alias.clone())?;
 
         write!(
             self.output,
@@ -97,11 +96,11 @@ pub enum ErrorsPreviewEngine {
     #[error("Can't write to output\n-> {0}")]
     ErrorOutput(#[from] std::io::Error),
     #[error("Can't retrieve requested alias\n-> {0}")]
-    ErrorAliasesRepositoryT(#[from] ErrorsAliasesRepositoryT),
+    ErrorAliasesRepositoryT(#[from] ErrorsAliasCollection),
     #[error("Can't retrieve requested alias\n-> {0}")]
     ErrorAliasesRepository(#[from] ErrorsAliasesRepository),
     #[error("Can't figure out execution sequence\n-> {0}")]
-    ErrorVarsRepositoryT(#[from] ErrorsVarsRepositoryT),
+    ErrorDependencyResolution(#[from] ErrorDependencyResolution),
     #[error("Can't figure out execution sequence\n-> {0}")]
     ErrorVarsRepository(#[from] ErrorsVarsRepository),
     #[error("Can't substitute provided choices\n-> {0}")]

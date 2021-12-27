@@ -1,14 +1,12 @@
-use crate::aliases::Alias;
-use crate::dependencies::ErrorsResolver;
-use crate::engines::{AliasesRepositoryT, ErrorsAliasesRepositoryT};
-use crate::identifiers::Identifier;
+use crate::engines::{AliasCollection, ErrorsAliasCollection};
+use crate::entities::aliases::Alias;
+use crate::entities::dependencies::ErrorsResolver;
+use crate::entities::identifiers::Identifier;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
 use std::ops::Range;
 use thiserror::Error;
-
-use crate::dependencies::Resolver;
 
 lazy_static! {
     // matches the following patters :
@@ -40,14 +38,6 @@ impl AliasesRepository {
 
     pub fn aliases(&self) -> Vec<Alias> {
         self.aliases.values().map(Alias::clone).collect()
-    }
-
-    fn identifiers(&self) -> Vec<Identifier> {
-        self.aliases.values().map(Alias::identifier).collect()
-    }
-
-    fn descriptions(&self) -> Vec<&str> {
-        self.aliases.values().map(Alias::desc).collect()
     }
 
     fn substitute_alias_defs(
@@ -94,22 +84,18 @@ impl AliasesRepository {
     }
 }
 
-impl AliasesRepositoryT for AliasesRepository {
-    fn select_alias<R: Resolver>(
-        &self,
-        r: &R,
-        prompt: &str,
-    ) -> Result<&Alias, ErrorsAliasesRepositoryT> {
-        let identifiers = self.identifiers();
-        let descriptions = self.descriptions();
-        let selection = r.select_identifier(&identifiers, Some(&descriptions), prompt)?;
-        self.get(&selection)
-    }
-
-    fn get(&self, id: &Identifier) -> Result<&Alias, ErrorsAliasesRepositoryT> {
+impl AliasCollection for AliasesRepository {
+    fn get(&self, id: &Identifier) -> Result<&Alias, ErrorsAliasCollection> {
         self.aliases
             .get(id)
-            .ok_or_else(|| ErrorsAliasesRepositoryT::AliasInvalidSelection(id.clone()))
+            .ok_or_else(|| ErrorsAliasCollection::AliasInvalidSelection(id.clone()))
+    }
+    fn identifiers(&self) -> Vec<Identifier> {
+        self.aliases.values().map(Alias::identifier).collect()
+    }
+
+    fn descriptions(&self) -> Vec<&str> {
+        self.aliases.values().map(Alias::desc).collect()
     }
 }
 
@@ -126,9 +112,9 @@ pub enum ErrorsAliasesRepository {
 #[cfg(test)]
 mod tests {
     use super::AliasesRepository;
-    use crate::aliases::fixtures::*;
-    use crate::aliases::Alias;
-    use crate::identifiers::fixtures::*;
+    use crate::entities::aliases::fixtures::*;
+    use crate::entities::aliases::Alias;
+    use crate::entities::identifiers::fixtures::*;
     use maplit::hashmap;
     use std::ops::Range;
     #[test]

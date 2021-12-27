@@ -4,7 +4,7 @@ use crate::config_engine::ConfigEngine;
 use crate::executors::{DryExecutor, ShellExecutor};
 use crate::logger::{SilentLogger, StdErrLogger};
 use crate::preview_engine::PreviewEngine;
-use sam_core::engines::{SamEngine, SamExecutor, SamLogger, VarsRepositoryT, ErrorsVarsRepositoryT};
+use sam_core::engines::{SamEngine, SamExecutor, SamLogger, VarsDefaultValuesSetter};
 use sam_core::repositories::{
     AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
 };
@@ -31,7 +31,9 @@ pub struct Environment {
 }
 
 impl Environment {
-    pub fn sam_engine(self) -> SamEngine<UserInterface, AliasesRepository, VarsRepository> {
+    pub fn sam_engine(
+        self,
+    ) -> SamEngine<UserInterface, AliasesRepository, VarsRepository, VarsRepository> {
         let executor: Rc<dyn SamExecutor> = if self.config.dry {
             Rc::new(DryExecutor {})
         } else {
@@ -41,7 +43,8 @@ impl Environment {
         SamEngine {
             resolver: self.ui_interface,
             aliases: self.aliases,
-            vars: self.vars,
+            vars: self.vars.clone(),
+            defaults: self.vars,
             logger: self.logger,
             env_variables: self.env_variables,
             history: self.history,
@@ -96,7 +99,7 @@ pub fn from_settings(config: AppSettings) -> Result<Environment> {
     for f in config.vars_files() {
         vars.merge(read_vars_repository(&f)?);
     }
-    vars.set_defaults(&config.defaults)?;
+    vars.set_defaults(&config.defaults);
     vars.ensure_no_missing_dependency()?;
 
     Ok(Environment {
@@ -131,8 +134,6 @@ pub enum ErrorEnvironment {
     VarRead(#[from] ErrorsVarRead),
     #[error("could not figure out dependencies\n-> {0}")]
     VarsRepository(#[from] ErrorsVarsRepository),
-    #[error("could not figure out dependencies\n-> {0}")]
-    VarsRepositoryT(#[from] ErrorsVarsRepositoryT),
     #[error("could not figure out alias substitution\n-> {0}")]
     AliasRepository(#[from] ErrorsAliasesRepository),
 }

@@ -1,6 +1,6 @@
 use crate::cli::CLISettings;
-use sam_core::choices::Choice;
-use sam_core::identifiers::Identifier;
+use sam_core::entities::choices::Choice;
+use sam_core::entities::identifiers::Identifier;
 use sam_persistence::CacheError;
 use sam_utils::fsutils;
 use sam_utils::fsutils::walk_dir;
