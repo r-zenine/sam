@@ -8,13 +8,16 @@ use sam_core::engines::{SamEngine, SamExecutor, SamLogger, VarsDefaultValuesSett
 use sam_persistence::repositories::{
     AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
 };
-use sam_persistence::{NoopVarsCache, RocksDBCache, VarsCache};
+use sam_persistence::{
+    AliasHistory, CacheError, ErrorAliasHistory, NoopVarsCache, RustBreakCache, VarsCache,
+};
 use sam_readers::read_aliases_from_path;
 use sam_readers::read_vars_repository;
 use sam_readers::ErrorsAliasRead;
 use sam_readers::ErrorsVarRead;
 use sam_tui::{ErrorsUI, UserInterface};
 use sam_utils::fsutils;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use thiserror::Error;
@@ -27,7 +30,7 @@ pub struct Environment {
     pub logger: Rc<dyn SamLogger>,
     pub env_variables: HashMap<String, String>,
     pub config: AppSettings,
-    pub history: Box<dyn sam_core::engines::SamHistory>,
+    pub history: RefCell<Box<dyn sam_core::engines::SamHistory>>,
 }
 
 impl Environment {
@@ -79,12 +82,13 @@ impl Environment {
 
 pub fn from_settings(config: AppSettings) -> Result<Environment> {
     let cache: Box<dyn VarsCache> = if !config.no_cache {
-        Box::new(RocksDBCache::with_ttl(config.cache_dir(), &config.ttl()))
+        Box::new(RustBreakCache::with_ttl(config.cache_dir(), &config.ttl())?)
     } else {
         Box::new(NoopVarsCache {})
     };
-    let history: Box<dyn sam_core::engines::SamHistory> =
-        Box::new(RocksDBCache::new(config.history_dir()));
+    let history: RefCell<Box<dyn sam_core::engines::SamHistory>> = RefCell::new(Box::new(
+        AliasHistory::new(config.history_file(), Some(1000))?,
+    ));
 
     let logger = logger_instance(config.silent);
     let ui_interface = UserInterface::new(config.variables(), cache)?;
@@ -136,4 +140,8 @@ pub enum ErrorEnvironment {
     VarsRepository(#[from] ErrorsVarsRepository),
     #[error("could not figure out alias substitution\n-> {0}")]
     AliasRepository(#[from] ErrorsAliasesRepository),
+    #[error("could not open the history file because\n-> {0}")]
+    ErrAliasHistory(#[from] ErrorAliasHistory),
+    #[error("could not open the vars cache because\n-> {0}")]
+    CacheError(#[from] CacheError),
 }

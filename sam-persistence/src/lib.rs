@@ -1,7 +1,11 @@
+mod associative_state;
+mod history_aliases;
 pub mod repositories;
+mod sequential_state;
 mod vars_cache;
-pub use vars_cache::CacheEntry;
+pub use history_aliases::AliasHistory;
+pub use history_aliases::ErrorAliasHistory;
 pub use vars_cache::CacheError;
 pub use vars_cache::NoopVarsCache;
-pub use vars_cache::RocksDBCache;
+pub use vars_cache::RustBreakCache;
 pub use vars_cache::VarsCache;
