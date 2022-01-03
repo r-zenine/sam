@@ -7,6 +7,7 @@ use crate::entities::choices::Choice;
 use crate::entities::commands::Command;
 use crate::entities::dependencies::{ErrorsResolver, Resolver};
 use crate::entities::identifiers::Identifier;
+use std::cell::RefCell;
 // TODO get rid of this import
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -75,7 +76,7 @@ pub struct SamEngine<
     pub vars: VR,
     pub defaults: DV,
     pub logger: Rc<dyn SamLogger>,
-    pub history: Box<dyn SamHistory>,
+    pub history: RefCell<Box<dyn SamHistory>>,
     // TODO this should be handled elsewhere, most likely in the executor
     pub env_variables: HashMap<String, String>,
     pub executor: Rc<dyn SamExecutor>,
@@ -118,14 +119,14 @@ impl<
                 .collect();
 
         let final_alias = alias.with_choices(&choices).unwrap();
-        self.history.put(final_alias.clone())?;
+        self.history.borrow_mut().put(final_alias.clone())?;
         self.logger.final_command(alias, &final_alias.command());
         self.executor
             .execute_resolved_alias(&final_alias, &self.env_variables)
     }
 
     fn display_last_executed_alias(&self) -> Result<i32> {
-        let resolved_alias_o = self.history.get_last()?;
+        let resolved_alias_o = self.history.borrow().get_last()?;
         if let Some(alias) = resolved_alias_o {
             println!("Alias: {}", &alias.name());
             println!("{}", &alias.command());
@@ -134,7 +135,7 @@ impl<
     }
 
     fn display_history(&self) -> Result<i32> {
-        let resolved_alias_o = self.history.get_last_n(10)?;
+        let resolved_alias_o = self.history.borrow().get_last_n(10)?;
         for alias in resolved_alias_o {
             println!("\n=============\n");
             print!("{}", alias);
@@ -144,7 +145,7 @@ impl<
     }
 
     fn modify_then_execute_last_executed_alias(&mut self) -> Result<i32> {
-        let resolved_alias_o = self.history.get_last()?;
+        let resolved_alias_o = self.history.borrow().get_last()?;
         if let Some(resolved_alias) = resolved_alias_o {
             let original_alias = Alias::from(resolved_alias.clone());
             let exec_seq = execution_sequence_for_dependencies(&self.vars, original_alias.clone())?;
@@ -177,7 +178,7 @@ impl<
     }
 
     fn execute_last_executed_alias(&self) -> Result<i32> {
-        let resolved_alias_o = self.history.get_last()?;
+        let resolved_alias_o = self.history.borrow().get_last()?;
         if let Some(alias) = resolved_alias_o {
             self.executor
                 .execute_resolved_alias(&alias, &self.env_variables)
@@ -189,7 +190,7 @@ impl<
 }
 
 pub trait SamHistory {
-    fn put(&self, alias: ResolvedAlias) -> Result<()>;
+    fn put(&mut self, alias: ResolvedAlias) -> Result<()>;
     fn get_last_n(&self, n: usize) -> Result<Vec<ResolvedAlias>>;
     fn get_last(&self) -> Result<Option<ResolvedAlias>> {
         let mut last = self.get_last_n(1)?;
@@ -234,6 +235,7 @@ pub enum ErrorSamEngine {
 
 #[cfg(test)]
 mod tests {
+    use std::cell::RefCell;
     use std::{collections::HashMap, rc::Rc};
 
     use crate::algorithms::mocks::{VarsCollectionMock, VarsDefaultValuesMock};
@@ -284,7 +286,10 @@ mod tests {
         assert_eq!(resolved_alias.choices().len(), 2);
         assert_eq!(resolved_alias.choice(&variable_1).unwrap(), choice_v_1);
         assert_eq!(resolved_alias.choice(&variable_2).unwrap(), choice_v_2);
-        assert_eq!(&engine.history.get_last().unwrap().unwrap(), resolved_alias);
+        assert_eq!(
+            &engine.history.borrow().get_last().unwrap().unwrap(),
+            resolved_alias
+        );
     }
 
     #[test]
@@ -318,7 +323,10 @@ mod tests {
         assert_eq!(resolved_alias.choices().len(), 2);
         assert_eq!(resolved_alias.choice(&variable_1).unwrap(), choice_v_1);
         assert_eq!(resolved_alias.choice(&variable_2).unwrap(), choice_v_2);
-        assert_eq!(&engine.history.get_last().unwrap().unwrap(), resolved_alias);
+        assert_eq!(
+            &engine.history.borrow().get_last().unwrap().unwrap(),
+            resolved_alias
+        );
     }
 
     fn make_engine(
@@ -328,7 +336,7 @@ mod tests {
         executor: Rc<dyn SamExecutor>,
     ) -> SamEngine<StaticResolver, StaticAliasRepository, VarsCollectionMock, VarsDefaultValuesMock>
     {
-        let history = Box::new(InMemoryHistory::default());
+        let history = RefCell::new(Box::new(InMemoryHistory::default()));
         let logger = Rc::new(SilentLogger {});
         let sam_data = fixtures::multi_namespace_aliases_and_vars();
         let resolver = StaticResolver::new(dynamic_res, static_res, selected_identifier);
@@ -373,7 +381,7 @@ mod mocks {
     }
 
     impl SamHistory for InMemoryHistory {
-        fn put(&self, alias: ResolvedAlias) -> super::Result<()> {
+        fn put(&mut self, alias: ResolvedAlias) -> super::Result<()> {
             let mut queue = self.aliases.borrow_mut();
             queue.push_front(alias);
             Ok(())

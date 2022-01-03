@@ -18,3 +18,11 @@
 - name: delete_merged_branches
   desc: delete all the local branches that have been merged
   alias: git branch --merged | egrep -v "(^\*|master|main|dev)" | xargs git branch -d
+
+- name: list_unused_dependencies
+  desc: uses cargo udep to list unused dependencies
+  alias: cargo +nightly udeps --all-targets
+
+- name: list_outdated_dependencies
+  desc: uses cargo outdated to list the outdated dependencies of the workspace
+  alias: cargo outdated

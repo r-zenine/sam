@@ -1,4 +1,4 @@
-use sam_persistence::{CacheError, RocksDBCache};
+use sam_persistence::{CacheError, RustBreakCache};
 use std::path::PathBuf;
 use std::time::Duration;
 use thiserror::Error;
@@ -23,19 +23,19 @@ impl CacheEngine {
     }
 
     fn print_keys(self) -> Result<i32> {
-        let cache = RocksDBCache::with_ttl(self.cache_dir, &self.ttl);
+        let cache = RustBreakCache::with_ttl(self.cache_dir, &self.ttl)?;
         println!(
             "{}{}Keys present in cache{}\n",
             termion::style::Bold,
             termion::color::Fg(termion::color::Green),
             termion::style::Reset,
         );
-        for key in cache.keys()? {
+        for key in cache.entries()? {
             println!(
                 "- {}{}{}{}",
                 termion::style::Bold,
                 termion::color::Fg(termion::color::Green),
-                key,
+                key.command,
                 termion::style::Reset,
             );
         }
@@ -43,7 +43,7 @@ impl CacheEngine {
     }
 
     fn cache_clear(self) -> Result<i32> {
-        Ok(RocksDBCache::with_ttl(self.cache_dir, &self.ttl)
+        Ok(RustBreakCache::with_ttl(self.cache_dir, &self.ttl)?
             .clear_cache()
             .map(|_| 0)?)
     }

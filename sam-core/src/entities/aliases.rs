@@ -66,7 +66,7 @@ impl Alias {
         Ok(ResolvedAlias {
             name: self.name.clone(),
             desc: self.desc.clone(),
-            orignal_alias: self.alias.clone(),
+            original_alias: self.alias.clone(),
             resolved_alias: res,
             choices: choices.clone(),
         })
@@ -144,12 +144,27 @@ impl Dependencies for Alias {}
 pub struct ResolvedAlias {
     name: Identifier,
     desc: String,
-    orignal_alias: String,
+    original_alias: String,
     resolved_alias: String,
     choices: HashMap<Identifier, Choice>,
 }
 
 impl ResolvedAlias {
+    pub fn new(
+        name: Identifier,
+        desc: String,
+        original_alias: String,
+        resolved_alias: String,
+        choices: HashMap<Identifier, Choice>,
+    ) -> Self {
+        ResolvedAlias {
+            name,
+            desc,
+            original_alias,
+            resolved_alias,
+            choices,
+        }
+    }
     pub fn choice(&self, identifier: &Identifier) -> Option<Choice> {
         self.choices.get(identifier).map(Clone::clone)
     }
@@ -158,8 +173,18 @@ impl ResolvedAlias {
         &self.name
     }
 
+    pub fn desc(&self) -> &str {
+        &self.desc
+    }
+
     pub fn choices(&self) -> &HashMap<Identifier, Choice> {
         &self.choices
+    }
+    pub fn original_alias(&self) -> &str {
+        &self.original_alias
+    }
+    pub fn resolved_alias(&self) -> &str {
+        &self.resolved_alias
     }
 }
 
@@ -168,7 +193,7 @@ impl From<ResolvedAlias> for Alias {
         Alias {
             name: r_alias.name,
             desc: r_alias.desc,
-            alias: r_alias.orignal_alias,
+            alias: r_alias.original_alias,
         }
     }
 }

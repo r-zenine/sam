@@ -34,7 +34,7 @@ pub struct InMemoryHistory {
 }
 
 impl SamHistory for InMemoryHistory {
-    fn put(&self, alias: ResolvedAlias) -> Result<(), ErrorSamEngine> {
+    fn put(&mut self, alias: ResolvedAlias) -> Result<(), ErrorSamEngine> {
         let mut queue = self.aliases.borrow_mut();
         queue.push_front(alias);
         Ok(())
