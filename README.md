@@ -1,4 +1,6 @@
 # sam
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fr-zenine%2Fsam.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fr-zenine%2Fsam?ref=badge_shield)
+
 ![](demo.gif)
 
 sam stands for **small aliases manager**. It is a command line tool that helps you manage your **aliases** and other common command.
@@ -100,3 +102,7 @@ In your `vars_file`, you can define variables. Variables can either have a stati
   desc: file selection
   from_command: ls -1 {{ directory }}
 ```
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fr-zenine%2Fsam.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fr-zenine%2Fsam?ref=badge_large)
