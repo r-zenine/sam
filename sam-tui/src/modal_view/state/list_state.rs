@@ -63,6 +63,15 @@ impl<V: Value> ListState<V> {
             None
         }
     }
+
+    pub fn mark_all(&mut self) {
+        for value in &self.current_displayed_values {
+            if !self.marked_values.contains(&value) {
+                self.marked_values.insert(value.clone());
+            }
+        }
+    }
+
     pub fn entr(&mut self) -> Option<bool> {
         let value = self
             .highlighted_line

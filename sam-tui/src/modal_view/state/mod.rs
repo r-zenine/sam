@@ -27,6 +27,7 @@ pub enum Event {
     Up,
     Down,
     Mark,
+    MarkAll,
 }
 
 pub mod mocks {

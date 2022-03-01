@@ -51,7 +51,7 @@ impl<V: Value> ModalView<V> {
     fn key_transformer(key: Key) -> Option<Event> {
         match key {
             Key::Backspace | Key::Delete => Some(Event::Backspace),
-            Key::Esc => Some(Event::AppClosed),
+            Key::Esc => Some(Event::ToggleViewMode),
 
             Key::Up => Some(Event::Up),
             Key::Down => Some(Event::Down),
@@ -60,9 +60,9 @@ impl<V: Value> ModalView<V> {
             Key::Ctrl('n') => Some(Event::Down),
 
             Key::Ctrl('c') => Some(Event::AppClosed),
-            Key::Ctrl('o') => Some(Event::ToggleViewMode),
 
             Key::Ctrl('s') => Some(Event::Mark),
+            Key::Ctrl('a') => Some(Event::MarkAll),
 
             Key::Char('\n') => Some(Event::Entr),
             Key::Char(c) => Some(Event::InputChar(c)),
