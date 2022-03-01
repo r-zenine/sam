@@ -117,7 +117,7 @@ mod tests {
             ErrorsVarsRepository::MissingDependencies(identifiers) => {
                 assert_eq!(identifiers, Identifiers(vec![VAR_PATTERN_NAME.clone()]));
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 }
