@@ -100,6 +100,10 @@ impl<V: Value> ViewState<V> {
                 self.list.entr();
                 ExecutionState::ExitSuccess
             }
+            Event::MarkAll if self.current_mod == ViewMode::InsertMode => {
+                self.list.mark_all();
+                ExecutionState::Keep
+            }
             _ => ExecutionState::Keep,
         }
     }
