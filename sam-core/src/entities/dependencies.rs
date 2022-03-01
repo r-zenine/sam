@@ -129,7 +129,7 @@ pub mod mocks {
         identifier_to_select: Option<Identifier>,
     }
     impl StaticResolver {
-        pub fn new(
+        pub const fn new(
             dynamic_res: HashMap<String, Choice>,
             static_res: HashMap<Identifier, Choice>,
             identifier_to_select: Option<Identifier>,

@@ -150,7 +150,7 @@ pub struct ResolvedAlias {
 }
 
 impl ResolvedAlias {
-    pub fn new(
+    pub const fn new(
         name: Identifier,
         desc: String,
         original_alias: String,
@@ -169,7 +169,7 @@ impl ResolvedAlias {
         self.choices.get(identifier).map(Clone::clone)
     }
 
-    pub fn name(&self) -> &Identifier {
+    pub const fn name(&self) -> &Identifier {
         &self.name
     }
 
@@ -177,7 +177,7 @@ impl ResolvedAlias {
         &self.desc
     }
 
-    pub fn choices(&self) -> &HashMap<Identifier, Choice> {
+    pub const fn choices(&self) -> &HashMap<Identifier, Choice> {
         &self.choices
     }
     pub fn original_alias(&self) -> &str {

@@ -256,12 +256,14 @@ mod tests {
         let seq = execution_sequence_for_dependencies(&repo, VAR_USE_LISTING.clone()).unwrap();
         let res = choices_for_execution_sequence(&repo, &defaults, &resolver, seq);
         assert!(res.is_ok());
-        let expected = vec![
+        let mut expected = vec![
             (VAR_PATTERN_NAME.clone(), VAR_PATTERN_CHOICE_2.clone()),
             (VAR_LISTING_NAME.clone(), choice_final),
             (VAR_DIRECTORY_NAME.clone(), VAR_DIRECTORY_CHOICE_1.clone()),
-        ]
-        .sort();
-        assert_eq!(res.unwrap().sort(), expected);
+        ];
+        let mut result = res.unwrap();
+        result.sort();
+        expected.sort();
+        assert_eq!(result, expected);
     }
 }

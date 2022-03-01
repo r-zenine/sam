@@ -7,3 +7,6 @@ members = [
     "sam-core", 
     "sam-utils",
 ]
+
+[profile.release]
+strip = true

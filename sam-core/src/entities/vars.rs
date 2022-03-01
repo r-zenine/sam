@@ -65,11 +65,11 @@ impl Var {
         }
     }
 
-    pub fn is_command(&self) -> bool {
+    pub const fn is_command(&self) -> bool {
         self.from_command.is_some()
     }
 
-    pub fn is_input(&self) -> bool {
+    pub const fn is_input(&self) -> bool {
         self.from_input.is_some()
     }
 
@@ -206,7 +206,7 @@ mod tests {
             ErrorsResolver::NoChoiceWasAvailable(name) => {
                 assert_eq!(name, VAR_DIRECTORY_NAME.clone())
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 }
