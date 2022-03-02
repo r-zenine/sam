@@ -18,7 +18,7 @@ pub struct RustBreakCache {
     state: AssociativeStateWithTTL<CacheEntry>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct CacheEntry {
     pub command: String,
     pub output: String,
@@ -33,6 +33,10 @@ impl RustBreakCache {
 
     pub fn entries(&self) -> Result<impl Iterator<Item = CacheEntry>, CacheError> {
         Ok(self.state.entries()?.map(|(_, v)| v))
+    }
+
+    pub fn delete(&self, key: &str) -> Result<Option<CacheEntry>, CacheError> {
+        Ok(self.state.delete(key)?)
     }
 
     pub fn clear_cache(&self) -> Result<(), CacheError> {
