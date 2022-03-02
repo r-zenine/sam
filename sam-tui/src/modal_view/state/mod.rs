@@ -12,7 +12,6 @@ pub use view_state::ViewState;
 pub use view_state::ViewResponse;
 
 pub trait Value: Eq + std::hash::Hash + Clone + std::fmt::Debug {
-    fn id(&self) -> usize;
     fn text(&self) -> &str;
     fn preview(&self) -> String;
 }
@@ -42,10 +41,6 @@ pub mod mocks {
         }
     }
     impl Value for MockValue {
-        fn id(&self) -> usize {
-            self.0
-        }
-
         fn text(&self) -> &str {
             &self.1
         }
