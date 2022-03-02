@@ -25,7 +25,7 @@ pub enum ErrorAssociativeState {
     CreationFailure(RustbreakError),
     #[error("failed to initialize associative state because\n->{0}")]
     InitFailure(RustbreakError),
-    #[error("failed to load associative state because\n->{0}")]
+    #[error("failed to load associative state because\n-> {0}")]
     OpenFailure(RustbreakError),
     #[error("failed to write to associative state because\n->{0}")]
     WriteFailures(RustbreakError),
