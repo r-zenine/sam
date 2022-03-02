@@ -118,8 +118,8 @@ impl<V: Value> ViewState<V> {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ViewResponse<V: Value> {
-    marked_values: HashSet<V>,
-    selected_options: Vec<OptionToggle>,
+    pub marked_values: HashSet<V>,
+    pub selected_options: Vec<OptionToggle>,
 }
 
 #[cfg(test)]
