@@ -25,6 +25,8 @@ const ABOUT_SUB_MODIFY_RUN_LAST: &str =
 const ABOUT_SUB_CHECK_CONFIG: &str = "checks your configuration files";
 const ABOUT_SUB_CACHE_CLEAR: &str = "clears the cache for vars 'from_command' outputs";
 const ABOUT_SUB_CACHE_KEYS: &str = "lists all the cache keys";
+const ABOUT_SUB_CACHE_DELETE: &str =
+    "explore the content of the command cache in order to delete entries";
 const ABOUT_SUB_ALIAS: &str = "run's a provided alias";
 const ABOUT_SUB_PREVIEW: &str = "Display preview of the provided alias";
 
@@ -150,6 +152,7 @@ fn app_init() -> App<'static, 'static> {
         .subcommand(App::new("check-config").about(ABOUT_SUB_CHECK_CONFIG))
         .subcommand(App::new("cache-clear").about(ABOUT_SUB_CACHE_CLEAR))
         .subcommand(App::new("cache-keys").about(ABOUT_SUB_CACHE_KEYS))
+        .subcommand(App::new("cache-keys-delete").about(ABOUT_SUB_CACHE_DELETE))
 }
 
 fn make_cli_request<'a, T, I>(app: App<'a, 'a>, args: I) -> Result<CLIRequest, CLIError>
@@ -179,6 +182,8 @@ where
         ("check-config", Some(_)) => SubCommand::ConfigCheck(ConfigCommand::All),
         ("cache-clear", Some(_)) => SubCommand::CacheCommand(CacheCommand::Clear),
         ("cache-keys", Some(_)) => SubCommand::CacheCommand(CacheCommand::PrintKeys),
+        ("cache-keys-delete", Some(_)) => SubCommand::CacheCommand(CacheCommand::DeleteEntries),
+
         (&_, _) => SubCommand::SamCommand(SamCommand::ChooseAndExecuteAlias),
     };
     Ok(CLIRequest { command, settings })
