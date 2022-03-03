@@ -66,7 +66,7 @@ impl<V: Value> ListState<V> {
 
     pub fn mark_all(&mut self) {
         for value in &self.current_displayed_values {
-            if !self.marked_values.contains(&value) {
+            if !self.marked_values.contains(value) {
                 self.marked_values.insert(value.clone());
             }
         }
@@ -123,7 +123,7 @@ impl<V: Value> ListState<V> {
         self.current_displayed_values = self.filtered_view();
         self.highlighted_line = if let Some(cursor) = self.highlighted_line {
             if cursor >= self.current_displayed_values.len() {
-                if self.current_displayed_values.len() > 0 {
+                if !self.current_displayed_values.is_empty() {
                     Some(0)
                 } else {
                     None
@@ -131,12 +131,10 @@ impl<V: Value> ListState<V> {
             } else {
                 Some(cursor)
             }
+        } else if !self.current_displayed_values.is_empty() {
+            Some(0)
         } else {
-            if self.current_displayed_values.len() > 0 {
-                Some(0)
-            } else {
-                None
-            }
+            None
         }
     }
 }
@@ -156,9 +154,6 @@ impl ListFilter {
     }
     pub fn pop(&mut self) {
         self.0.pop();
-    }
-    pub fn take(self) -> String {
-        self.0
     }
 }
 
@@ -188,6 +183,4 @@ mod tests {
         assert!(list.marked_values.contains(&MockValue::new(2, "two")));
         assert!(list.marked_values.contains(&MockValue::new(4, "four")));
     }
-    #[test]
-    fn test_marks() {}
 }
