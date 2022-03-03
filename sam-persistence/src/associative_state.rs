@@ -72,7 +72,7 @@ where
         Ok(db)
     }
 
-#[allow(dead_code)]
+    #[allow(dead_code)]
     pub fn new(p: impl AsRef<Path>) -> Result<Self, ErrorAssociativeState> {
         let db = AssociativeStateWithTTL {
             path: p.as_ref().to_owned(),

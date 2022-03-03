@@ -80,5 +80,4 @@ mod tests {
         let filter = state.search_filter();
         assert_eq!(filter, "c");
     }
-
-   }
+}
