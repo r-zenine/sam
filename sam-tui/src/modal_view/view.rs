@@ -83,33 +83,4 @@ impl<V: Value> ModalView<V> {
     }
 }
 
-#[cfg(test)]
-mod test {
 
-    use super::ModalView;
-    use crate::modal_view::{state::mocks::MockValue, OptionToggle};
-
-    #[test]
-    fn test_controller_run() {
-        let initial_list = vec![
-            MockValue::new(1, "elem 1"),
-            MockValue::new(2, "elem 2"),
-            MockValue::new(12, "elem 12"),
-        ];
-        let initial_options = vec![
-            OptionToggle {
-                text: String::from("option"),
-                key: 'o',
-                active: false,
-            },
-            OptionToggle {
-                text: String::from("not option"),
-                key: 'n',
-                active: false,
-            },
-        ];
-        let mut controller = ModalView::new(initial_list, initial_options);
-        let response = controller.run();
-        panic!("{:?}", response);
-    }
-}
