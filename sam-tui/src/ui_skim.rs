@@ -123,6 +123,7 @@ pub enum ErrorsUI {
 #[derive(Clone, Debug)]
 pub struct IdentifierWithDescItem {
     identifier: Identifier,
+    #[allow(dead_code)]
     description: Option<String>,
 }
 
@@ -224,7 +225,7 @@ impl Resolver for UserInterface {
             &var, prompt
         );
         match std::io::stdin().read_line(&mut buffer) {
-            Ok(_) => Ok(Choice::new(buffer.replace("\n", ""), None)),
+            Ok(_) => Ok(Choice::new(buffer.replace('\n', ""), None)),
             Err(err) => Err(ErrorsResolver::NoInputWasProvided(var, err.to_string())),
         }
     }

@@ -81,9 +81,4 @@ mod tests {
         assert_eq!(filter, "c");
     }
 
-    #[test]
-    fn test_state_transitions_options_toggles() {}
-
-    #[test]
-    fn test_state_transitions_options_list_navigation() {}
-}
+   }

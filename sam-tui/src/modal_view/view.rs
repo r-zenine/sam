@@ -82,5 +82,3 @@ impl<V: Value> ModalView<V> {
         }
     }
 }
-
-

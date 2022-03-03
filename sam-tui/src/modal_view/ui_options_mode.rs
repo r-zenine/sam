@@ -15,7 +15,7 @@ pub(super) struct UIOptionsMode<'a> {
 }
 
 impl<'a> UIOptionsMode<'a> {
-    pub(super) fn new(theme: &'a UITheme) -> Self {
+    pub(super) const fn new(theme: &'a UITheme) -> Self {
         UIOptionsMode { theme }
     }
 
@@ -39,7 +39,8 @@ impl<'a> UIOptionsMode<'a> {
         let mut text = String::new();
         for opt in &options.options {
             let toggle = if opt.active { "⌘" } else { " " };
-            write!(text, "➺ {} ({}) : {}\n", toggle, opt.key, opt.text);
+            writeln!(text, "➺ {} ({}) : {}", toggle, opt.key, opt.text)
+                .expect("unexpectedly unable to write into a string, please open an issue with the associated stack trace.");
         }
         Paragraph::new(text)
             .block(self.block("Options"))

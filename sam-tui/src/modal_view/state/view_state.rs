@@ -60,7 +60,7 @@ impl<V: Value> ViewState<V> {
     }
 
     pub fn search_filter(&self) -> &str {
-        return self.list.search_filter();
+        self.list.search_filter()
     }
 
     pub fn update(&mut self, msg: &Event) -> ExecutionState {
