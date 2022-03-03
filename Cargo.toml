@@ -8,5 +8,3 @@ members = [
     "sam-utils",
 ]
 
-[profile.release]
-strip = true
