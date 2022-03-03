@@ -122,7 +122,7 @@ impl<V: Value> ListState<V> {
     fn update_display_and_highlight(&mut self) {
         self.current_displayed_values = self.filtered_view();
         self.highlighted_line = if let Some(cursor) = self.highlighted_line {
-            if cursor > self.current_displayed_values.len() {
+            if cursor >= self.current_displayed_values.len() {
                 if self.current_displayed_values.len() > 0 {
                     Some(0)
                 } else {
@@ -185,7 +185,8 @@ mod tests {
         list.update_filter('o');
         list.down();
         list.mark();
-        panic!("{:?}", list);
+        assert!(list.marked_values.contains(&MockValue::new(2, "two")));
+        assert!(list.marked_values.contains(&MockValue::new(4, "four")));
     }
     #[test]
     fn test_marks() {}

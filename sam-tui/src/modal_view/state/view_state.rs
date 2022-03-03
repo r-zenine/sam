@@ -243,22 +243,25 @@ mod tests {
                 MockValue::new(12, "elem 12"),
             ],
             initial_options: vec![
-                MockOptionToggle {
-                    name: String::from("option"),
-                    shortcut: 'o',
+                OptionToggle {
+                    text: String::from("option"),
+                    key: 'o',
+                    active: false,
                 },
-                MockOptionToggle {
-                    name: String::from("not option"),
-                    shortcut: 'n',
+                OptionToggle {
+                    text: String::from("not option"),
+                    key: 'n',
+                    active: false,
                 },
             ],
             expected_response: ViewResponse {
                 marked_values: vec![MockValue::new(1, "elem 1"), MockValue::new(12, "elem 12")]
                     .into_iter()
                     .collect(),
-                selected_options: vec![MockOptionToggle {
-                    name: String::from("option"),
-                    shortcut: 'o',
+                selected_options: vec![OptionToggle {
+                    text: String::from("option"),
+                    key: 'o',
+                    active: true,
                 }],
             },
         };
