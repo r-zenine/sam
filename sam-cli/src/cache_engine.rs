@@ -48,7 +48,7 @@ impl CacheEngine {
     fn delete_entries(self) -> Result<i32> {
         let cache = RustBreakCache::with_ttl(self.cache_dir, &self.ttl)?;
         let values: Vec<CacheEntryWrapper> = cache.entries()?.map(CacheEntryWrapper).collect();
-        if values.len() > 0 {
+        if !values.is_empty() {
             let controller = ModalView::new(values, vec![]);
             let response = controller.run();
             if let Some(output) = response {

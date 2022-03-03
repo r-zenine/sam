@@ -71,6 +71,8 @@ impl Environment {
         }
     }
 
+    // Clippy is making a false positive on this one
+    #[allow(clippy::missing_const_for_fn)]
     pub fn config_engine(self) -> ConfigEngine {
         ConfigEngine {
             aliases: self.aliases,
