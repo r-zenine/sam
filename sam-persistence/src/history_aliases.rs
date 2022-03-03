@@ -94,7 +94,4 @@ mod tests {
             .expect("Expecting a value to be returned");
         assert_eq!(test, last);
     }
-
-    #[test]
-    fn test_history_get_last_n() {}
 }
