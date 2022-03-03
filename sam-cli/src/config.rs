@@ -80,7 +80,7 @@ impl AppSettings {
         self.defaults = cmd_args.default_choices.0;
     }
 
-    pub fn ttl(&self) -> Duration {
+    pub const fn ttl(&self) -> Duration {
         Duration::from_secs(self.ttl)
     }
 
