@@ -249,6 +249,7 @@ impl Resolver for UserInterface {
             if output.status.code() == Some(0) && output.stderr.is_empty() {
                 self.cache
                     .put(
+                        &var.to_string(),
                         cmd_key.value(),
                         &String::from_utf8_lossy(output.stdout.as_slice()).to_owned(),
                     )

@@ -82,10 +82,14 @@ struct CacheEntryWrapper(CacheEntry);
 
 impl Value for CacheEntryWrapper {
     fn text(&self) -> &str {
-        &self.0.command
+        &self.0.name
     }
 
     fn preview(&self) -> String {
-        self.0.output.clone()
+        format!(
+            "Command: {}\n\nOUTPUT\n======\n{}",
+            self.0.command.as_str(),
+            self.0.output.as_str(),
+        )
     }
 }
