@@ -44,7 +44,7 @@ impl ShellCommand<String> {
         let mut cmd: Command = shell_cmd.into();
         cmd.envs(variables);
         let out = cmd.output()?;
-        let new_cmd = String::from_utf8_lossy(out.stdout.as_slice()).replace("\n", "");
+        let new_cmd = String::from_utf8_lossy(out.stdout.as_slice()).replace('\n', "");
         Ok(ShellCommand::<String>::new(new_cmd))
     }
 }
