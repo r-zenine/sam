@@ -4,9 +4,9 @@ use crate::algorithms::{
 };
 use crate::entities::aliases::{Alias, ResolvedAlias};
 use crate::entities::choices::Choice;
-use crate::entities::commands::Command;
 use crate::entities::dependencies::{ErrorsResolver, Resolver};
 use crate::entities::identifiers::Identifier;
+use core::panic;
 use std::cell::RefCell;
 // TODO get rid of this import
 use std::collections::HashMap;
@@ -96,7 +96,8 @@ impl<
             ExecuteAlias { alias } => self.execute_alias(&alias),
             DisplayLastExecutedAlias => self.display_last_executed_alias(),
             ExecuteLastExecutedAlias => self.execute_last_executed_alias(),
-            ModifyThenExecuteLastAlias => self.modify_then_execute_last_executed_alias(),
+            // TODO fixme later
+            ModifyThenExecuteLastAlias => Ok(1),
             DisplayHistory => self.display_history(),
         }
     }
@@ -113,14 +114,15 @@ impl<
 
     fn run_alias(&self, alias: &Alias) -> Result<i32> {
         let exec_seq = execution_sequence_for_dependencies(&self.vars, alias)?;
-        let choices: HashMap<Identifier, Choice> =
+        let choices: HashMap<Identifier, Vec<Choice>> =
             choices_for_execution_sequence(&self.vars, &self.defaults, &self.resolver, exec_seq)?
                 .into_iter()
                 .collect();
 
         let final_alias = alias.with_choices(&choices).unwrap();
         self.history.borrow_mut().put(final_alias.clone())?;
-        self.logger.final_command(alias, &final_alias.command());
+        // TODO fixme later
+        // self.logger.final_command(alias, &final_alias.command());
         self.executor
             .execute_resolved_alias(&final_alias, &self.env_variables)
     }
@@ -129,7 +131,10 @@ impl<
         let resolved_alias_o = self.history.borrow().get_last()?;
         if let Some(alias) = resolved_alias_o {
             println!("Alias: {}", &alias.name());
-            println!("{}", &alias.command());
+            println!("Commands:\n=========\n");
+            for cmd in alias.commands() {
+                println!("\t- {}\n", cmd);
+            }
         }
         Ok(0)
     }
@@ -144,7 +149,7 @@ impl<
         Ok(0)
     }
 
-    fn modify_then_execute_last_executed_alias(&mut self) -> Result<i32> {
+    /* fn modify_then_execute_last_executed_alias(&mut self) -> Result<i32> {
         let resolved_alias_o = self.history.borrow().get_last()?;
         if let Some(resolved_alias) = resolved_alias_o {
             let original_alias = Alias::from(resolved_alias.clone());
@@ -162,7 +167,7 @@ impl<
                     .position(|x| x == &selected_var)
                     .unwrap_or_default();
 
-                let new_defaults: HashMap<Identifier, Choice> = identifiers
+                let new_defaults: HashMap<Identifier, Vec<Choice>> = identifiers
                     .into_iter()
                     .skip(var_position + 1)
                     .flat_map(|e| resolved_alias.choice(&e).map(|choice| (e, choice)))
@@ -175,7 +180,7 @@ impl<
             println!("history empty");
             Ok(0)
         }
-    }
+    } */
 
     fn execute_last_executed_alias(&self) -> Result<i32> {
         let resolved_alias_o = self.history.borrow().get_last()?;
@@ -259,10 +264,10 @@ mod tests {
         let choice_v_2 = Choice::new("toto", None);
 
         let static_res = hashmap! {
-            variable_1.clone() => choice_v_1.clone(),
+            variable_1.clone() => vec![choice_v_1.clone()],
         };
         let dynamic_res = hashmap! {
-            String::from("echo '$SOME_ENV_VAR\\ntoto'") => Choice::new("toto", None)
+            String::from("echo '$SOME_ENV_VAR\\ntoto'") => vec![Choice::new("toto", None)]
         };
 
         let executor = Rc::new(LogExecutor::default());
@@ -283,9 +288,17 @@ mod tests {
         let (resolved_alias, _env_vars) = resolved_aliases.first().unwrap();
         assert_eq!(resolved_alias.name(), &selected_identifier);
         assert!(resolved_alias.choice(&variable_1).is_some());
+
+        // TODO fixme
         assert_eq!(resolved_alias.choices().len(), 2);
-        assert_eq!(resolved_alias.choice(&variable_1).unwrap(), choice_v_1);
-        assert_eq!(resolved_alias.choice(&variable_2).unwrap(), choice_v_2);
+        assert_eq!(
+            *resolved_alias.choice(&variable_1).unwrap().first().unwrap(),
+            choice_v_1
+        );
+        assert_eq!(
+            *resolved_alias.choice(&variable_2).unwrap().first().unwrap(),
+            choice_v_2
+        );
         assert_eq!(
             &engine.history.borrow().get_last().unwrap().unwrap(),
             resolved_alias
@@ -301,10 +314,10 @@ mod tests {
         let choice_v_2 = Choice::new("toto", None);
 
         let static_res = hashmap! {
-            variable_1.clone() => choice_v_1.clone(),
+            variable_1.clone() => vec![ choice_v_1.clone()],
         };
         let dynamic_res = hashmap! {
-            String::from("echo '$SOME_ENV_VAR\\ntoto'") => Choice::new("toto", None)
+            String::from("echo '$SOME_ENV_VAR\\ntoto'") => vec![Choice::new("toto", None)]
         };
 
         let executor = Rc::new(LogExecutor::default());
@@ -319,10 +332,17 @@ mod tests {
         // Only one alias was executed
         assert_eq!(resolved_aliases.len(), 1);
         let (resolved_alias, _env_vars) = resolved_aliases.first().unwrap();
-        assert!(resolved_alias.choice(&variable_1).is_some());
+        let choices_for_var1 = resolved_alias
+            .choice(&variable_1)
+            .expect("expected to find choices for variable1");
+        let choices_for_var2 = resolved_alias
+            .choice(&variable_2)
+            .expect("expected to find choices for variable1");
+
+        assert!(choices_for_var1.len() == 1);
         assert_eq!(resolved_alias.choices().len(), 2);
-        assert_eq!(resolved_alias.choice(&variable_1).unwrap(), choice_v_1);
-        assert_eq!(resolved_alias.choice(&variable_2).unwrap(), choice_v_2);
+        assert_eq!(choices_for_var1[0], choice_v_1);
+        assert_eq!(choices_for_var2[0], choice_v_2);
         assert_eq!(
             &engine.history.borrow().get_last().unwrap().unwrap(),
             resolved_alias
@@ -330,8 +350,8 @@ mod tests {
     }
 
     fn make_engine(
-        dynamic_res: HashMap<String, Choice>,
-        static_res: HashMap<Identifier, Choice>,
+        dynamic_res: HashMap<String, Vec<Choice>>,
+        static_res: HashMap<Identifier, Vec<Choice>>,
         selected_identifier: Option<Identifier>,
         executor: Rc<dyn SamExecutor>,
     ) -> SamEngine<StaticResolver, StaticAliasRepository, VarsCollectionMock, VarsDefaultValuesMock>

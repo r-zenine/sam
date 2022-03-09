@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 
 use sam_core::engines::{ErrorSamEngine, SamExecutor};
-use sam_core::entities::{
-    processes::ShellCommand,
-    {aliases::ResolvedAlias, commands::Command},
-};
+use sam_core::entities::{aliases::ResolvedAlias, processes::ShellCommand};
 
 pub struct ShellExecutor {}
 
@@ -14,10 +11,14 @@ impl SamExecutor for ShellExecutor {
         alias: &ResolvedAlias,
         env_variables: &HashMap<String, String>,
     ) -> Result<i32, ErrorSamEngine> {
-        let mut command: std::process::Command = ShellCommand::new(alias.command()).into();
-        command.envs(env_variables);
-        let exit_status = command.status()?;
-        exit_status.code().ok_or(ErrorSamEngine::ExitCode)
+        println!("{:?}", alias);
+        for cmd in alias.commands() {
+            let mut command: std::process::Command = ShellCommand::new(cmd).into();
+            command.envs(env_variables);
+            let exit_status = command.status()?;
+            exit_status.code().ok_or(ErrorSamEngine::ExitCode)?;
+        }
+        Ok(0)
     }
 }
 

@@ -21,7 +21,7 @@ fn main() {
     match run() {
         Ok(i) => std::process::exit(i),
         Err(err) => {
-            eprintln!(
+            println!(
                 "{}{}The application failed to run{} \n-> {}",
                 termion::color::Fg(termion::color::Red),
                 termion::style::Bold,

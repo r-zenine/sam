@@ -49,7 +49,7 @@ impl CacheEngine {
         let cache = RustBreakCache::with_ttl(self.cache_dir, &self.ttl)?;
         let values: Vec<CacheEntryWrapper> = cache.entries()?.map(CacheEntryWrapper).collect();
         if !values.is_empty() {
-            let controller = ModalView::new(values, vec![]);
+            let controller = ModalView::new(values, vec![], true);
             let response = controller.run();
             if let Some(output) = response {
                 for entry in output.marked_values {

@@ -15,7 +15,7 @@ use sam_readers::read_aliases_from_path;
 use sam_readers::read_vars_repository;
 use sam_readers::ErrorsAliasRead;
 use sam_readers::ErrorsVarRead;
-use sam_tui::{ErrorsUI, UserInterface};
+use sam_tui::{ErrorsUIV2, UserInterfaceV2};
 use sam_utils::fsutils;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -23,28 +23,34 @@ use std::rc::Rc;
 use thiserror::Error;
 
 pub struct Environment {
-    // TODO Todo remove user interface from the context
-    pub ui_interface: UserInterface,
     pub aliases: AliasesRepository,
     pub vars: VarsRepository,
     pub logger: Rc<dyn SamLogger>,
     pub env_variables: HashMap<String, String>,
     pub config: AppSettings,
     pub history: RefCell<Box<dyn sam_core::engines::SamHistory>>,
+    pub cache: Box<dyn VarsCache>,
 }
 
 impl Environment {
     pub fn sam_engine(
         self,
-    ) -> SamEngine<UserInterface, AliasesRepository, VarsRepository, VarsRepository> {
+    ) -> SamEngine<UserInterfaceV2, AliasesRepository, VarsRepository, VarsRepository> {
         let executor: Rc<dyn SamExecutor> = if self.config.dry {
             Rc::new(DryExecutor {})
         } else {
             Rc::new(ShellExecutor {})
         };
 
+        let resolver = UserInterfaceV2::new(
+            self.aliases.clone(),
+            self.vars.clone(),
+            self.env_variables.clone(),
+            self.cache,
+        );
+
         SamEngine {
-            resolver: self.ui_interface,
+            resolver,
             aliases: self.aliases,
             vars: self.vars.clone(),
             defaults: self.vars,
@@ -93,7 +99,6 @@ pub fn from_settings(config: AppSettings) -> Result<Environment> {
     ));
 
     let logger = logger_instance(config.silent);
-    let ui_interface = UserInterface::new(config.variables(), cache)?;
 
     let mut aliases_vec = vec![];
     for f in config.aliases_files() {
@@ -109,13 +114,13 @@ pub fn from_settings(config: AppSettings) -> Result<Environment> {
     vars.ensure_no_missing_dependency()?;
 
     Ok(Environment {
-        ui_interface,
         aliases,
         vars,
         logger,
         env_variables: config.variables(),
         config,
         history,
+        cache,
     })
 }
 
@@ -131,7 +136,7 @@ type Result<T> = std::result::Result<T, ErrorEnvironment>;
 #[derive(Debug, Error)]
 pub enum ErrorEnvironment {
     #[error("could not run the terminal user interface\n-> {0}")]
-    UI(#[from] ErrorsUI),
+    UI(#[from] ErrorsUIV2),
     #[error("filesystem related error\n-> {0}")]
     FilesLookup(#[from] fsutils::ErrorsFS),
     #[error("could not read aliases\n-> {0}")]

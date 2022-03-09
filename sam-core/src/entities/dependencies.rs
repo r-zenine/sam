@@ -10,15 +10,22 @@ use thiserror::Error;
 pub trait Dependencies: Command {
     fn substitute_for_choices(
         &self,
-        choices: &HashMap<Identifier, Choice>,
-    ) -> Result<String, ErrorsResolver> {
-        let mut command = self.command().to_string();
+        choices: &HashMap<Identifier, Vec<Choice>>,
+    ) -> Result<Vec<String>, ErrorsResolver> {
+        let mut command = vec![self.command().to_string()];
         for dep in self.dependencies() {
-            if let Some(chce) = choices.get(&dep) {
-                command = substitute_choice(&command, &dep, chce.value());
+            let mut new_commands = Vec::with_capacity(command.len());
+            if let Some(choices_for_dep) = choices.get(&dep) {
+                for choice in choices_for_dep {
+                    let out = command
+                        .iter()
+                        .map(|cmd| substitute_choice(&cmd, &dep, choice.value()));
+                    new_commands.extend(out);
+                }
             } else {
                 return Err(ErrorsResolver::NoChoiceWasAvailable(dep));
             }
+            command = new_commands;
         }
         Ok(command)
     }
@@ -78,14 +85,18 @@ impl<'repository> AsRef<[&'repository Identifier]> for ExecutionSequence<'reposi
 pub trait Resolver {
     fn resolve_input(&self, var: Identifier, prompt: &str) -> Result<Choice, ErrorsResolver>;
     // TODO make cmd a string
-    fn resolve_dynamic<CMD>(&self, var: Identifier, cmd: CMD) -> Result<Choice, ErrorsResolver>
+    fn resolve_dynamic<CMD>(
+        &self,
+        var: Identifier,
+        cmd: Vec<CMD>,
+    ) -> Result<Vec<Choice>, ErrorsResolver>
     where
         CMD: Into<ShellCommand<String>>;
     fn resolve_static(
         &self,
         var: Identifier,
         choices: impl Iterator<Item = Choice>,
-    ) -> Result<Choice, ErrorsResolver>;
+    ) -> Result<Vec<Choice>, ErrorsResolver>;
     fn select_identifier(
         &self,
         identifiers: &[Identifier],
@@ -124,14 +135,14 @@ pub mod mocks {
 
     #[derive(Debug)]
     pub struct StaticResolver {
-        dynamic_res: HashMap<String, Choice>,
-        static_res: HashMap<Identifier, Choice>,
+        dynamic_res: HashMap<String, Vec<Choice>>,
+        static_res: HashMap<Identifier, Vec<Choice>>,
         identifier_to_select: Option<Identifier>,
     }
     impl StaticResolver {
         pub const fn new(
-            dynamic_res: HashMap<String, Choice>,
-            static_res: HashMap<Identifier, Choice>,
+            dynamic_res: HashMap<String, Vec<Choice>>,
+            static_res: HashMap<Identifier, Vec<Choice>>,
             identifier_to_select: Option<Identifier>,
         ) -> Self {
             StaticResolver {
@@ -145,26 +156,44 @@ pub mod mocks {
         fn resolve_input(&self, var: Identifier, _: &str) -> Result<Choice, ErrorsResolver> {
             self.static_res
                 .get(&var)
+                .and_then(|e| e.first())
                 .map(|e| e.to_owned())
                 .ok_or(ErrorsResolver::NoChoiceWasAvailable(var))
         }
 
-        fn resolve_dynamic<CMD>(&self, var: Identifier, cmd: CMD) -> Result<Choice, ErrorsResolver>
+        fn resolve_dynamic<CMD>(
+            &self,
+            var: Identifier,
+            cmds: Vec<CMD>,
+        ) -> Result<Vec<Choice>, ErrorsResolver>
         where
             CMD: Into<ShellCommand<String>>,
         {
-            let sh_cmd = Into::<ShellCommand<String>>::into(cmd);
-            let query = sh_cmd.value();
-            self.dynamic_res
-                .get(query)
-                .map(|e| e.to_owned())
-                .ok_or(ErrorsResolver::NoChoiceWasAvailable(var))
+            let choices: Vec<Choice> = cmds
+                .into_iter()
+                .flat_map(|cmd| {
+                    let sh_cmd = Into::<ShellCommand<String>>::into(cmd);
+                    let query = sh_cmd.value();
+                    self.dynamic_res
+                        .iter()
+                        .find(|(key, _)| *key == query)
+                        .and_then(|(_, value)| value.first())
+                        .map(|v| v.clone())
+                })
+                .collect();
+
+            if choices.is_empty() {
+                Err(ErrorsResolver::NoChoiceWasAvailable(var))
+            } else {
+                Ok(choices)
+            }
         }
+
         fn resolve_static(
             &self,
             var: Identifier,
             _cmd: impl Iterator<Item = Choice>,
-        ) -> Result<Choice, ErrorsResolver> {
+        ) -> Result<Vec<Choice>, ErrorsResolver> {
             self.static_res
                 .get(&var)
                 .map(|c| c.to_owned())

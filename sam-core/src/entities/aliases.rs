@@ -22,7 +22,7 @@ lazy_static! {
     pub static ref VARS_NO_NS_RE: Regex = Regex::new("\\{\\{ ?(?P<vars>[a-zA-Z0-9_]+) ?\\}\\}").unwrap();
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Alias {
     #[serde(flatten)]
     name: Identifier,
@@ -60,14 +60,14 @@ impl Alias {
 
     pub fn with_choices(
         &self,
-        choices: &HashMap<Identifier, Choice>,
+        choices: &HashMap<Identifier, Vec<Choice>>,
     ) -> Result<ResolvedAlias, ErrorsResolver> {
         let res = self.substitute_for_choices(choices)?;
         Ok(ResolvedAlias {
             name: self.name.clone(),
             desc: self.desc.clone(),
             original_alias: self.alias.clone(),
-            resolved_alias: res,
+            resolved_aliases: res,
             choices: choices.clone(),
         })
     }
@@ -145,8 +145,8 @@ pub struct ResolvedAlias {
     name: Identifier,
     desc: String,
     original_alias: String,
-    resolved_alias: String,
-    choices: HashMap<Identifier, Choice>,
+    resolved_aliases: Vec<String>,
+    choices: HashMap<Identifier, Vec<Choice>>,
 }
 
 impl ResolvedAlias {
@@ -154,18 +154,23 @@ impl ResolvedAlias {
         name: Identifier,
         desc: String,
         original_alias: String,
-        resolved_alias: String,
-        choices: HashMap<Identifier, Choice>,
+        resolved_aliases: Vec<String>,
+        choices: HashMap<Identifier, Vec<Choice>>,
     ) -> Self {
         ResolvedAlias {
             name,
             desc,
             original_alias,
-            resolved_alias,
+            resolved_aliases,
             choices,
         }
     }
-    pub fn choice(&self, identifier: &Identifier) -> Option<Choice> {
+
+    pub fn commands(&self) -> &[String] {
+        self.resolved_aliases.as_slice()
+    }
+
+    pub fn choice(&self, identifier: &Identifier) -> Option<Vec<Choice>> {
         self.choices.get(identifier).map(Clone::clone)
     }
 
@@ -177,14 +182,14 @@ impl ResolvedAlias {
         &self.desc
     }
 
-    pub const fn choices(&self) -> &HashMap<Identifier, Choice> {
+    pub const fn choices(&self) -> &HashMap<Identifier, Vec<Choice>> {
         &self.choices
     }
     pub fn original_alias(&self) -> &str {
         &self.original_alias
     }
-    pub fn resolved_alias(&self) -> &str {
-        &self.resolved_alias
+    pub fn resolved_alias(&self) -> &[String] {
+        &self.resolved_aliases
     }
 }
 
@@ -210,18 +215,6 @@ impl Namespace for ResolvedAlias {
     }
 }
 
-impl Command for &ResolvedAlias {
-    fn command(&self) -> &str {
-        self.resolved_alias.as_str()
-    }
-}
-
-impl Command for ResolvedAlias {
-    fn command(&self) -> &str {
-        self.resolved_alias.as_str()
-    }
-}
-
 impl Display for ResolvedAlias {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         writeln!(
@@ -239,25 +232,32 @@ impl Display for ResolvedAlias {
             termion::style::Bold,
             termion::style::Reset,
         )?;
-        for (choice, value) in &self.choices {
-            writeln!(
+
+        for (choice, values) in &self.choices {
+            write!(
                 f,
-                "\t{}{}{} =\t{}",
+                "\t{}{}{} =\t",
                 termion::style::Bold,
                 choice,
-                termion::style::Reset,
-                value,
+                termion::style::Reset
             )?;
+            for val in values {
+                write!(f, "{} ", val)?;
+            }
+            writeln!(f, "")?;
         }
         writeln!(
             f,
-            "\n{}{}{}Executed command:{} {}",
+            "\n{}{}{}Executed commands:{}",
             termion::color::Fg(termion::color::LightCyan),
             termion::style::Bold,
             termion::style::Italic,
             termion::style::Reset,
-            self.resolved_alias
-        )
+        )?;
+        for cmd in &self.resolved_aliases {
+            writeln!(f, "\t- {}", cmd)?;
+        }
+        Ok(())
     }
 }
 
