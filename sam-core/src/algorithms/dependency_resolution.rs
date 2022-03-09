@@ -79,18 +79,17 @@ pub enum ErrorDependencyResolution {
     },
 }
 
-// TODO extract as algorithms
 pub fn choices_for_execution_sequence<'a, R: Resolver>(
     vars_col: &dyn VarsCollection,
     vars_defaults: &dyn VarsDefaultValues,
     resolver: &R,
     vars: ExecutionSequence<'a>,
-) -> std::result::Result<Vec<(Identifier, Choice)>, ErrorDependencyResolution> {
-    let mut choices: HashMap<Identifier, Choice> = HashMap::new();
+) -> std::result::Result<Vec<(Identifier, Vec<Choice>)>, ErrorDependencyResolution> {
+    let mut choices: HashMap<Identifier, Vec<Choice>> = HashMap::new();
     for var_name in vars.as_slice() {
         if let Some(var) = vars_col.get(*var_name) {
             let choice = if let Some(default) = vars_defaults.default_value(&var.name()) {
-                default.to_owned()
+                vec![default.to_owned()]
             } else {
                 choice_for_var(resolver, var, &choices)?
             };
@@ -104,7 +103,6 @@ pub fn choices_for_execution_sequence<'a, R: Resolver>(
     Ok(choices.into_iter().collect())
 }
 
-// TODO extract as algorithms
 /// will return a valid choice for the current Var using the provided VarResolver and the
 /// HashMap of choices provided.
 /// First, this function will look into the `choices` HashMap to fill values for all the dependencies of the current
@@ -112,8 +110,8 @@ pub fn choices_for_execution_sequence<'a, R: Resolver>(
 pub fn choice_for_var<'repository, R>(
     resolver: &'repository R,
     var: &'repository Var,
-    choices: &'repository HashMap<Identifier, Choice>,
-) -> std::result::Result<Choice, ErrorDependencyResolution>
+    choices: &'repository HashMap<Identifier, Vec<Choice>>,
+) -> std::result::Result<Vec<Choice>, ErrorDependencyResolution>
 where
     R: Resolver,
 {
@@ -128,17 +126,22 @@ where
 fn resolve_choice_for_var<'repository, R>(
     resolver: &'repository R,
     var: &'repository Var,
-    choices: &'repository HashMap<Identifier, Choice>,
-) -> std::result::Result<Choice, ErrorsResolver>
+    choices: &'repository HashMap<Identifier, Vec<Choice>>,
+) -> std::result::Result<Vec<Choice>, ErrorsResolver>
 where
     R: Resolver,
 {
     if var.is_command() {
-        let command = var.substitute_for_choices(choices)?;
-        resolver.resolve_dynamic(var.name(), ShellCommand::new(command))
+        let command: Vec<ShellCommand<String>> = var
+            .substitute_for_choices(choices)?
+            .iter()
+            .map(Clone::clone)
+            .map(ShellCommand::new)
+            .collect();
+        resolver.resolve_dynamic(var.name(), command)
     } else if var.is_input() {
         let prompt = var.prompt().unwrap_or("no provided prompt");
-        resolver.resolve_input(var.name(), prompt)
+        resolver.resolve_input(var.name(), prompt).map(|c| vec![c])
     } else {
         resolver.resolve_static(var.name(), var.choices().into_iter())
     }
@@ -184,8 +187,8 @@ mod tests {
     #[test]
     fn test_resolve() {
         let choices = hashmap! {
-            VAR_DIRECTORY_NAME.clone() => VAR_DIRECTORY_CHOICE_1.clone(),
-            VAR_PATTERN_NAME.clone() => VAR_PATTERN_CHOICE_2.clone(),
+            VAR_DIRECTORY_NAME.clone() => vec![VAR_DIRECTORY_CHOICE_1.clone()],
+            VAR_PATTERN_NAME.clone() => vec![VAR_PATTERN_CHOICE_2.clone()],
         };
         let command_final = format!(
             "ls -l {} |grep -v {}",
@@ -194,21 +197,24 @@ mod tests {
         );
         let choice_final = Choice::from_value("final_value");
         let dynamic_res = hashmap![
-            command_final => choice_final.clone(),
+            command_final => vec![choice_final.clone()],
         ];
         let static_res = hashmap![
-            VAR_DIRECTORY_NAME.clone() => VAR_DIRECTORY_CHOICE_1.clone(),
-            VAR_PATTERN_NAME.clone() => VAR_PATTERN_CHOICE_2.clone(),
+            VAR_DIRECTORY_NAME.clone() => vec![VAR_DIRECTORY_CHOICE_1.clone()],
+            VAR_PATTERN_NAME.clone() => vec![VAR_PATTERN_CHOICE_2.clone()],
         ];
         let resolver = StaticResolver::new(dynamic_res, static_res, None);
         let var1 = VAR_LISTING.clone();
         let ret_var1 = resolve_choice_for_var(&resolver, &var1, &choices);
         assert!(ret_var1.is_ok());
-        assert_eq!(ret_var1.unwrap(), choice_final);
+        assert_eq!(*ret_var1.unwrap().first().unwrap(), choice_final);
         let var2 = VAR_PATTERN.clone();
         let ret_var2 = resolve_choice_for_var(&resolver, &var2, &choices);
         assert!(ret_var2.is_ok());
-        assert_eq!(ret_var2.unwrap(), VAR_PATTERN_CHOICE_2.clone());
+        assert_eq!(
+            *ret_var2.unwrap().first().unwrap(),
+            VAR_PATTERN_CHOICE_2.clone()
+        );
     }
 
     #[test]
@@ -239,11 +245,11 @@ mod tests {
             VAR_PATTERN_CHOICE_2.value()
         );
         let dynamic_res = hashmap![
-            command_final => choice_final.clone(),
+            command_final => vec![choice_final.clone()],
         ];
         let static_res = hashmap![
-            VAR_DIRECTORY_NAME.clone() => VAR_DIRECTORY_CHOICE_1.clone(),
-            VAR_PATTERN_NAME.clone() => VAR_PATTERN_CHOICE_2.clone(),
+            VAR_DIRECTORY_NAME.clone() => vec![ VAR_DIRECTORY_CHOICE_1.clone()],
+            VAR_PATTERN_NAME.clone() => vec![VAR_PATTERN_CHOICE_2.clone()],
         ];
         let resolver = StaticResolver::new(dynamic_res, static_res, None);
         let full = vec![
@@ -257,9 +263,12 @@ mod tests {
         let res = choices_for_execution_sequence(&repo, &defaults, &resolver, seq);
         assert!(res.is_ok());
         let mut expected = vec![
-            (VAR_PATTERN_NAME.clone(), VAR_PATTERN_CHOICE_2.clone()),
-            (VAR_LISTING_NAME.clone(), choice_final),
-            (VAR_DIRECTORY_NAME.clone(), VAR_DIRECTORY_CHOICE_1.clone()),
+            (VAR_PATTERN_NAME.clone(), vec![VAR_PATTERN_CHOICE_2.clone()]),
+            (VAR_LISTING_NAME.clone(), vec![choice_final]),
+            (
+                VAR_DIRECTORY_NAME.clone(),
+                vec![VAR_DIRECTORY_CHOICE_1.clone()],
+            ),
         ];
         let mut result = res.unwrap();
         result.sort();

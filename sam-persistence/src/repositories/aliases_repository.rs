@@ -16,7 +16,7 @@ lazy_static! {
     static ref ALIASESRE: Regex = Regex::new("(?P<alias>\\[\\[ ?[a-zA-Z0-9_:]+ ?\\]\\])").unwrap();
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AliasesRepository {
     aliases: HashMap<Identifier, Alias>,
 }
