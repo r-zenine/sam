@@ -13,20 +13,36 @@ pub struct ModalView<V: Value> {
     state: ViewState<V>,
     ui: UIModal<V>,
     events: Keys<Stdin>,
+    has_options: bool,
+    allow_multi_select: bool,
+}
+
+impl<V: Value> Drop for ModalView<V> {
+    fn drop(&mut self) {
+        self.ui.suspend_raw_mode();
+    }
 }
 
 impl<V: Value> ModalView<V> {
-    pub fn new(list: Vec<V>, options: Vec<OptionToggle>) -> Self {
+    pub fn new(list: Vec<V>, options: Vec<OptionToggle>, allow_multi_select: bool) -> Self {
+        let has_options = !options.is_empty();
         let state = ViewState::<V>::new(list, options);
         let ui = UIModal::<V>::new().expect("Can't initialize the ui");
         let events = std::io::stdin().keys();
-        ModalView { state, events, ui }
+        ModalView {
+            state,
+            events,
+            ui,
+            has_options,
+            allow_multi_select,
+        }
     }
 
     pub fn run(mut self) -> Option<ViewResponse<V>> {
         self.ui.draw(&self.state);
         if let Some(event) = self.next_event() {
             if event == Event::AppClosed {
+                self.ui.suspend_raw_mode();
                 return None;
             }
             let status = self.state.update(&event);
@@ -40,18 +56,19 @@ impl<V: Value> ModalView<V> {
             self.run()
         }
     }
+
     pub fn next_event(&mut self) -> Option<Event> {
         self.events
             .next()
             .transpose()
-            .map(|ev| ev.and_then(Self::key_transformer))
+            .map(|ev| ev.and_then(|evt| self.key_transformer(evt)))
             .expect("Can't read")
     }
 
-    fn key_transformer(key: Key) -> Option<Event> {
+    fn key_transformer(&self, key: Key) -> Option<Event> {
         match key {
             Key::Backspace | Key::Delete => Some(Event::Backspace),
-            Key::Esc => Some(Event::ToggleViewMode),
+            Key::Esc if self.has_options => Some(Event::ToggleViewMode),
 
             Key::Up => Some(Event::Up),
             Key::Down => Some(Event::Down),
@@ -61,8 +78,8 @@ impl<V: Value> ModalView<V> {
 
             Key::Ctrl('c') => Some(Event::AppClosed),
 
-            Key::Ctrl('s') => Some(Event::Mark),
-            Key::Ctrl('a') => Some(Event::MarkAll),
+            Key::Ctrl('s') if self.allow_multi_select => Some(Event::Mark),
+            Key::Ctrl('a') if self.allow_multi_select => Some(Event::MarkAll),
 
             Key::Char('\n') => Some(Event::Entr),
             Key::Char(c) => Some(Event::InputChar(c)),
@@ -71,6 +88,7 @@ impl<V: Value> ModalView<V> {
             | Key::Right
             | Key::Home
             | Key::End
+            | Key::Esc
             | Key::PageUp
             | Key::PageDown
             | Key::BackTab

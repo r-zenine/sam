@@ -115,8 +115,8 @@ impl<V: Value> ListState<V> {
         filters
     }
 
-    pub fn marked_values(self) -> HashSet<V> {
-        self.marked_values
+    pub fn marked_values(&self) -> HashSet<V> {
+        self.marked_values.clone()
     }
 
     fn update_display_and_highlight(&mut self) {

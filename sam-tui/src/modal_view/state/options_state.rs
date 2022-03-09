@@ -23,7 +23,7 @@ impl OptionsState {
         }
     }
 
-    pub fn active(self) -> impl Iterator<Item = OptionToggle> {
-        self.options.into_iter().filter(|e| e.active)
+    pub fn active(&self) -> impl Iterator<Item = OptionToggle> {
+        self.options.clone().into_iter().filter(|e| e.active)
     }
 }
