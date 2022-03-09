@@ -17,7 +17,7 @@ fn main() {
             active: true,
         },
     ];
-    let controller = ModalView::new(initial_list, initial_options);
+    let controller = ModalView::new(initial_list, initial_options, true);
     let response = controller.run();
     println!("Response: {:?}", response);
 }

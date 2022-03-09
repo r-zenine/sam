@@ -28,7 +28,7 @@ impl<'a> UIInsertMode<'a> {
 
         let chunk_list_input = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(95), Constraint::Min(5)].as_ref())
+            .constraints([Constraint::Percentage(92), Constraint::Min(8)].as_ref())
             .split(chunks[0]);
 
         Self {

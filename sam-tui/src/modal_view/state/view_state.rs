@@ -108,7 +108,7 @@ impl<V: Value> ViewState<V> {
         }
     }
 
-    pub fn response(self) -> ViewResponse<V> {
+    pub fn response(&self) -> ViewResponse<V> {
         ViewResponse {
             marked_values: self.list.marked_values(),
             selected_options: self.options.active().collect(),
