@@ -168,10 +168,9 @@ impl<'a> Resolver for UserInterfaceV2 {
                 let choices_ref = &self.choices.borrow();
 
                 let items: Vec<ChoiceElement<'_>> = choices
-                    .clone()
                     .into_iter()
                     .map(|choice| {
-                        ChoiceElement::from(choice, &alias, &choices_ref, &self.execution_sequence)
+                        ChoiceElement::from(choice, &alias, choices_ref, &self.execution_sequence)
                     })
                     .collect();
                 // TODO fix prompt
@@ -243,24 +242,26 @@ impl<'a> Value for AliasElement<'a> {
     }
 
     fn preview(&self) -> String {
-        use std::fmt::Write;
         let mut output = String::new();
 
-        write!(&mut output, "Name:\t{}\n\n", self.alias.name(),);
-        write!(output, "Description:\n{}\n\n", self.alias.desc());
-        write!(output, "Alias:\n\n{}\n", self.alias.command(),);
+        output.push_str(&format!(
+            "Name:\t{}\n\nDescription:\n{}\n\nAlias:\n\n{}\n",
+            self.alias.name(),
+            self.alias.desc(),
+            self.alias.command(),
+        ));
 
         if !self.execution_sequence.is_empty() {
-            write!(output, "\nDependencies:\n",);
+            output.push_str("\nDependencies:\n");
             for id in &self.execution_sequence {
-                writeln!(output, "- {}", id);
+                output.push_str(&format!("- {}", id));
             }
         }
 
         if !self.choices.is_empty() {
-            write!(output, "\nCurrent Choices:\n",);
+            output.push_str("\nCurrent Choices:\n");
             for (id, choice) in self.choices.iter() {
-                writeln!(output, "- {}\t= {:?}", id, choice);
+                output.push_str(&format!("- {}\t= {:?}", id, choice));
             }
         }
         output
@@ -329,24 +330,26 @@ impl<'a> Value for ChoiceElement<'a> {
     }
 
     fn preview(&self) -> String {
-        use std::fmt::Write;
         let mut output = String::new();
 
-        write!(&mut output, "Name:\t{}\n\n", self.alias.name(),);
-        write!(output, "Description:\n{}\n\n", self.alias.desc());
-        write!(output, "Alias:\n\n{}\n", self.alias.command(),);
+        output.push_str(&format!(
+            "Name:\t{}\n\nDescription:\n{}\n\nAlias:\n\n{}\n",
+            self.alias.name(),
+            self.alias.desc(),
+            self.alias.command(),
+        ));
 
         if !self.execution_sequence.is_empty() {
-            write!(output, "\nDependencies:\n",);
+            output.push_str("\nDependencies:\n");
             for id in self.execution_sequence {
-                writeln!(output, "- {}", id);
+                output.push_str(&format!("- {}", id));
             }
         }
 
         if !self.choices.is_empty() {
-            write!(output, "\nCurrent Choices:\n",);
+            output.push_str("\nCurrent Choices:\n");
             for (id, choice) in self.choices.iter() {
-                writeln!(output, "- {}\t= {:?}", id, choice);
+                output.push_str(&format!("- {}\t= {:?}", id, choice));
             }
         }
         output

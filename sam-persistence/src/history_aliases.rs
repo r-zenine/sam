@@ -82,9 +82,9 @@ mod tests {
             Identifier::with_namespace("alias", Some("ns")),
             String::from("desc"),
             String::from("echo {{var}}"),
-            String::from("echo choice"),
+            vec![String::from("echo choice")],
             maplit::hashmap! {
-                Identifier::new("var") => Choice::new("choice", None),
+                Identifier::new("var") => vec![Choice::new("choice", None)],
             },
         );
         hist.put(test.clone()).expect("The put should succeed");

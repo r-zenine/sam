@@ -6,7 +6,6 @@ use crate::entities::aliases::{Alias, ResolvedAlias};
 use crate::entities::choices::Choice;
 use crate::entities::dependencies::{ErrorsResolver, Resolver};
 use crate::entities::identifiers::Identifier;
-use core::panic;
 use std::cell::RefCell;
 // TODO get rid of this import
 use std::collections::HashMap;
