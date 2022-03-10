@@ -244,7 +244,7 @@ impl Display for ResolvedAlias {
             for val in values {
                 write!(f, "{} ", val)?;
             }
-            writeln!(f, "")?;
+            writeln!(f)?;
         }
         writeln!(
             f,

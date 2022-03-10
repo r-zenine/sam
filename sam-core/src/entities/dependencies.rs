@@ -19,7 +19,7 @@ pub trait Dependencies: Command {
                 for choice in choices_for_dep {
                     let out = command
                         .iter()
-                        .map(|cmd| substitute_choice(&cmd, &dep, choice.value()));
+                        .map(|cmd| substitute_choice(cmd, &dep, choice.value()));
                     new_commands.extend(out);
                 }
             } else {
@@ -178,7 +178,7 @@ pub mod mocks {
                         .iter()
                         .find(|(key, _)| *key == query)
                         .and_then(|(_, value)| value.first())
-                        .map(|v| v.clone())
+                        .cloned()
                 })
                 .collect();
 
