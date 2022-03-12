@@ -9,5 +9,5 @@ edition = "2021"
 sam-core = { path="../sam-core" }
 sam-persistence = { path="../sam-persistence" }
 thiserror = "1.0.30"
-serde = { version = "1.0.130", features = ["derive"] }
-serde_yaml = "0.8.21"
+serde = { version = "1.0.136", features = ["derive"] }
+serde_yaml = "0.8.23"

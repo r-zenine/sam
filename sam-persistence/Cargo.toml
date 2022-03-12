@@ -9,10 +9,10 @@ edition = "2021"
 sam-utils = {path="../sam-utils"}
 sam-core = {path="../sam-core"}
 thiserror = "1.0.30"
-serde = { version = "1.0.130", features = ["derive"] }
+serde = { version = "1.0.136", features = ["derive"] }
 lazy_static = "1.4.0"
 rustbreak = { version = "2.0.0", features = ["ron_enc"] }
-regex = "1.5.4"
+regex = "1.5.5"
 maplit = "1.0.2"
 
 [dev-dependencies]
