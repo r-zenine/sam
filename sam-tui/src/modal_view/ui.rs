@@ -1,6 +1,7 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::io::Stdout;
 use std::marker::PhantomData;
+use std::time::SystemTime;
 use termion::raw::{IntoRawMode, RawTerminal};
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
@@ -13,8 +14,11 @@ use super::theme::UITheme;
 use super::ui_insert_mode::{ListItems, UIInsertMode};
 use super::ui_options_mode::UIOptionsMode;
 
+const MIN_TIME_TO_REFRESH_IN_MS: u128 = 50;
+
 pub struct UIModal<V: Value> {
     raw_terminal: RefCell<RawTerminal<Stdout>>,
+    last_update: Cell<Option<SystemTime>>,
 
     theme: UITheme,
     _marker: PhantomData<V>,
@@ -25,6 +29,7 @@ impl<V: Value> UIModal<V> {
         let raw_stdout = std::io::stdout().into_raw_mode()?;
         Ok(UIModal {
             raw_terminal: RefCell::new(raw_stdout),
+            last_update: Cell::new(None),
             theme: UITheme::default(),
             _marker: PhantomData::default(),
         })
@@ -45,24 +50,43 @@ impl<V: Value> UIModal<V> {
         let backend = TermionBackend::new(stdout);
         let mut terminal = Terminal::new(backend).expect("can't setup terminal");
 
-        terminal
-            .draw(|f| {
-                match state.current_mod {
-                    super::state::ViewMode::OptionsMode => {
-                        let options_mode_view = UIOptionsMode::new(&self.theme);
-                        options_mode_view.draw(f, &state.options)
-                    }
-                    super::state::ViewMode::InsertMode => {
-                        let insert_mode_view = UIInsertMode::new(f.size(), &self.theme);
-                        insert_mode_view.draw(
-                            f,
-                            ListItems::from(state),
-                            state.search_filter(),
-                            state.preview().unwrap_or_default().as_str(),
-                        )
-                    }
-                };
-            })
-            .expect("Can't draw");
+        if self.enough_time_since_last_refresh() {
+            terminal
+                .draw(|f| {
+                    match state.current_mod {
+                        super::state::ViewMode::OptionsMode => {
+                            let options_mode_view = UIOptionsMode::new(&self.theme);
+                            options_mode_view.draw(f, &state.options)
+                        }
+                        super::state::ViewMode::InsertMode => {
+                            let insert_mode_view = UIInsertMode::new(f.size(), &self.theme);
+                            insert_mode_view.draw(
+                                f,
+                                ListItems::from(state),
+                                state.search_filter(),
+                                state.preview().unwrap_or_default().as_str(),
+                            )
+                        }
+                    };
+                })
+                .expect("Can't draw");
+        }
+    }
+
+    fn enough_time_since_last_refresh(&self) -> bool {
+        let now = SystemTime::now();
+        if let Some(last_time) = self.last_update.get() {
+            if last_time.elapsed().expect("can't access clock").as_millis()
+                >= MIN_TIME_TO_REFRESH_IN_MS
+            {
+                self.last_update.replace(Some(now));
+                true
+            } else {
+                false
+            }
+        } else {
+            self.last_update.replace(Some(now));
+            return true;
+        }
     }
 }
