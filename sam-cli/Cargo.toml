@@ -14,11 +14,11 @@ sam-utils = {path="../sam-utils"}
 sam-tui = {path="../sam-tui"}
 sam-readers = {path="../sam-readers"}
 sam-persistence = {path="../sam-persistence"}
-clap = "2.33.3"
+clap = "2.34.0"
 thiserror = "1.0.30"
 termion = "1.5.6"
 toml = "0.5.8"
-serde = { version = "1.0.130", features = ["derive"] }
+serde = { version = "1.0.136", features = ["derive"] }
 dirs = "4.0.0"
 
 [dev-dependencies]

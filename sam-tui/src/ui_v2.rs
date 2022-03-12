@@ -63,16 +63,10 @@ impl<'a> UserInterfaceV2 {
 }
 #[derive(Debug, Error)]
 pub enum ErrorsUIV2 {
-    #[error("could not configure the user interface because\n-> {0}")]
-    SkimConfig(String),
-    #[error("could not initialize the user interface because\n-> {0}")]
-    SkimSend(String),
     #[error("no selection was provided")]
     CallsResolveWithUndefinedAlias,
     #[error("tried to choose with undifined alias")]
     EmptySelection,
-    #[error("the program was aborted")]
-    SkimAborted,
     #[error("initialisation of UI failed")]
     InitError(Box<dyn std::error::Error>),
     #[error("an unexpected error happend while filling the preview window {0}")]
@@ -254,7 +248,7 @@ impl<'a> Value for AliasElement<'a> {
         if !self.execution_sequence.is_empty() {
             output.push_str("\nDependencies:\n");
             for id in &self.execution_sequence {
-                output.push_str(&format!("- {}", id));
+                output.push_str(&format!("- {}\n", id));
             }
         }
 
@@ -342,7 +336,7 @@ impl<'a> Value for ChoiceElement<'a> {
         if !self.execution_sequence.is_empty() {
             output.push_str("\nDependencies:\n");
             for id in self.execution_sequence {
-                output.push_str(&format!("- {}", id));
+                output.push_str(&format!("- {}\n", id));
             }
         }
 
