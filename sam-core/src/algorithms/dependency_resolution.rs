@@ -24,7 +24,7 @@ pub trait VarsDefaultValues {
 pub fn execution_sequence_for_dependencies<Deps: Dependencies>(
     vars: &dyn VarsCollection,
     dep: Deps,
-) -> std::result::Result<ExecutionSequence<'_>, ErrorDependencyResolution> {
+) -> std::result::Result<ExecutionSequence, ErrorDependencyResolution> {
     let mut already_seen = HashSet::new();
     let mut already_inserted = HashSet::new();
     let mut candidates = dep.dependencies();
@@ -79,15 +79,15 @@ pub enum ErrorDependencyResolution {
     },
 }
 
-pub fn choices_for_execution_sequence<'a, R: Resolver>(
+pub fn choices_for_execution_sequence<R: Resolver>(
     vars_col: &dyn VarsCollection,
     vars_defaults: &dyn VarsDefaultValues,
     resolver: &R,
-    vars: ExecutionSequence<'a>,
+    vars: ExecutionSequence,
 ) -> std::result::Result<Vec<(Identifier, Vec<Choice>)>, ErrorDependencyResolution> {
     let mut choices: HashMap<Identifier, Vec<Choice>> = HashMap::new();
     for var_name in vars.as_slice() {
-        if let Some(var) = vars_col.get(*var_name) {
+        if let Some(var) = vars_col.get(var_name) {
             let choice = if let Some(default) = vars_defaults.default_value(&var.name()) {
                 vec![default.to_owned()]
             } else {
@@ -138,12 +138,12 @@ where
             .map(Clone::clone)
             .map(ShellCommand::new)
             .collect();
-        resolver.resolve_dynamic(var.name(), command)
+        resolver.resolve_dynamic(var, command)
     } else if var.is_input() {
         let prompt = var.prompt().unwrap_or("no provided prompt");
-        resolver.resolve_input(var.name(), prompt).map(|c| vec![c])
+        resolver.resolve_input(var, prompt).map(|c| vec![c])
     } else {
-        resolver.resolve_static(var.name(), var.choices().into_iter())
+        resolver.resolve_static(var, var.choices().into_iter())
     }
 }
 

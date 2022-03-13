@@ -7,6 +7,8 @@ use std::collections::HashMap;
 use std::error;
 use thiserror::Error;
 
+use super::vars::Var;
+
 pub trait Dependencies: Command {
     fn substitute_for_choices(
         &self,
@@ -55,15 +57,17 @@ fn substitute_choice(origin: &str, dependency: &Identifier, choice: &str) -> Str
 }
 
 #[derive(Debug)]
-pub struct ExecutionSequence<'repository> {
-    inner: Vec<&'repository Identifier>,
+pub struct ExecutionSequence {
+    inner: Vec<Identifier>,
 }
 
-impl<'repository> ExecutionSequence<'repository> {
-    pub fn new(inner: Vec<&'repository Identifier>) -> Self {
-        ExecutionSequence { inner }
+impl ExecutionSequence {
+    pub fn new(inner: Vec<&Identifier>) -> Self {
+        ExecutionSequence {
+            inner: inner.into_iter().cloned().collect(),
+        }
     }
-    pub fn identifiers(&'repository self) -> Vec<Identifier> {
+    pub fn identifiers(&self) -> Vec<Identifier> {
         let mut rep: Vec<Identifier> = Vec::with_capacity(self.inner.len());
         for e in self.inner.clone() {
             rep.push(e.clone());
@@ -71,30 +75,26 @@ impl<'repository> ExecutionSequence<'repository> {
         rep
     }
 
-    pub fn as_slice(&'repository self) -> &[&'repository Identifier] {
+    pub fn as_slice(&self) -> &[Identifier] {
         self.inner.as_slice()
     }
 }
 
-impl<'repository> AsRef<[&'repository Identifier]> for ExecutionSequence<'repository> {
-    fn as_ref(&self) -> &[&'repository Identifier] {
+impl AsRef<[Identifier]> for ExecutionSequence {
+    fn as_ref(&self) -> &[Identifier] {
         self.inner.as_slice()
     }
 }
 
 pub trait Resolver {
-    fn resolve_input(&self, var: Identifier, prompt: &str) -> Result<Choice, ErrorsResolver>;
+    fn resolve_input(&self, var: &Var, prompt: &str) -> Result<Choice, ErrorsResolver>;
     // TODO make cmd a string
-    fn resolve_dynamic<CMD>(
-        &self,
-        var: Identifier,
-        cmd: Vec<CMD>,
-    ) -> Result<Vec<Choice>, ErrorsResolver>
+    fn resolve_dynamic<CMD>(&self, var: &Var, cmd: Vec<CMD>) -> Result<Vec<Choice>, ErrorsResolver>
     where
         CMD: Into<ShellCommand<String>>;
     fn resolve_static(
         &self,
-        var: Identifier,
+        var: &Var,
         choices: impl Iterator<Item = Choice>,
     ) -> Result<Vec<Choice>, ErrorsResolver>;
     fn select_identifier(
@@ -131,6 +131,7 @@ pub mod mocks {
     use crate::entities::choices::Choice;
     use crate::entities::identifiers::Identifier;
     use crate::entities::processes::ShellCommand;
+    use crate::entities::vars::Var;
     use std::collections::HashMap;
 
     #[derive(Debug)]
@@ -153,17 +154,17 @@ pub mod mocks {
         }
     }
     impl Resolver for StaticResolver {
-        fn resolve_input(&self, var: Identifier, _: &str) -> Result<Choice, ErrorsResolver> {
+        fn resolve_input(&self, var: &Var, _: &str) -> Result<Choice, ErrorsResolver> {
             self.static_res
-                .get(&var)
+                .get(&var.name())
                 .and_then(|e| e.first())
                 .map(|e| e.to_owned())
-                .ok_or(ErrorsResolver::NoChoiceWasAvailable(var))
+                .ok_or(ErrorsResolver::NoChoiceWasAvailable(var.name()))
         }
 
         fn resolve_dynamic<CMD>(
             &self,
-            var: Identifier,
+            var: &Var,
             cmds: Vec<CMD>,
         ) -> Result<Vec<Choice>, ErrorsResolver>
         where
@@ -183,7 +184,7 @@ pub mod mocks {
                 .collect();
 
             if choices.is_empty() {
-                Err(ErrorsResolver::NoChoiceWasAvailable(var))
+                Err(ErrorsResolver::NoChoiceWasAvailable(var.name()))
             } else {
                 Ok(choices)
             }
@@ -191,13 +192,13 @@ pub mod mocks {
 
         fn resolve_static(
             &self,
-            var: Identifier,
+            var: &Var,
             _cmd: impl Iterator<Item = Choice>,
         ) -> Result<Vec<Choice>, ErrorsResolver> {
             self.static_res
-                .get(&var)
+                .get(&var.name())
                 .map(|c| c.to_owned())
-                .ok_or(ErrorsResolver::NoChoiceWasSelected(var))
+                .ok_or(ErrorsResolver::NoChoiceWasSelected(var.name()))
         }
         fn select_identifier(
             &self,
