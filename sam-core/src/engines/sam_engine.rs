@@ -1,10 +1,10 @@
+use crate::algorithms::resolver::{ErrorsResolver, Resolver};
 use crate::algorithms::{
     choices_for_execution_sequence, execution_sequence_for_dependencies, ErrorDependencyResolution,
     VarsCollection, VarsDefaultValues,
 };
 use crate::entities::aliases::{Alias, ResolvedAlias};
 use crate::entities::choices::Choice;
-use crate::entities::dependencies::{ErrorsResolver, Resolver};
 use crate::entities::identifiers::Identifier;
 use std::cell::RefCell;
 // TODO get rid of this import
@@ -243,9 +243,8 @@ mod tests {
     use std::{collections::HashMap, rc::Rc};
 
     use crate::algorithms::mocks::{VarsCollectionMock, VarsDefaultValuesMock};
-    use crate::entities::{
-        choices::Choice, dependencies::mocks::StaticResolver, identifiers::Identifier,
-    };
+    use crate::algorithms::mocks::StaticResolver;
+    use crate::entities::{choices::Choice, identifiers::Identifier};
     use maplit::hashmap;
 
     use crate::engines::mocks::{InMemoryHistory, LogExecutor, SilentLogger};

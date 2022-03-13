@@ -1,7 +1,6 @@
 use crate::entities::choices::Choice;
 use crate::entities::commands::Command;
 use crate::entities::dependencies::Dependencies;
-use crate::entities::dependencies::ErrorsResolver;
 use crate::entities::identifiers::Identifier;
 use crate::entities::namespaces::Namespace;
 use crate::entities::namespaces::NamespaceUpdater;
@@ -13,6 +12,8 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::fmt::Formatter;
+
+use super::dependencies::ErrorsDependencies;
 
 lazy_static! {
     // matches the following patters :
@@ -61,7 +62,7 @@ impl Alias {
     pub fn with_choices(
         &self,
         choices: &HashMap<Identifier, Vec<Choice>>,
-    ) -> Result<ResolvedAlias, ErrorsResolver> {
+    ) -> Result<ResolvedAlias, ErrorsDependencies> {
         let res = self.substitute_for_choices(choices)?;
         Ok(ResolvedAlias {
             name: self.name.clone(),

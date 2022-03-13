@@ -6,11 +6,13 @@ use std::{
 use crate::entities::{
     choices::Choice,
     commands::Command,
-    dependencies::{Dependencies, ErrorsResolver, ExecutionSequence, Resolver},
+    dependencies::{Dependencies, ExecutionSequence},
     identifiers::{Identifier, Identifiers},
     processes::ShellCommand,
     vars::Var,
 };
+
+use crate::algorithms::resolver::{ErrorsResolver, Resolver};
 use thiserror::Error;
 
 pub trait VarsCollection {
@@ -177,9 +179,9 @@ mod tests {
         VarsCollectionMock, VarsDefaultValuesMock,
     };
     use crate::algorithms::dependency_resolution::resolve_choice_for_var;
+    use crate::algorithms::mocks::StaticResolver;
     use crate::algorithms::{choices_for_execution_sequence, execution_sequence_for_dependencies};
     use crate::entities::choices::Choice;
-    use crate::entities::dependencies::mocks::StaticResolver;
     use crate::entities::identifiers::fixtures::*;
     use crate::entities::vars::fixtures::*;
     use maplit::hashmap;
