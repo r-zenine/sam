@@ -148,7 +148,7 @@ impl Eq for Var {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entities::dependencies::ErrorsResolver;
+    use crate::entities::dependencies::ErrorsDependencies;
     use crate::entities::identifiers::fixtures::*;
     use crate::entities::vars::fixtures::*;
     use maplit::hashmap;
@@ -203,10 +203,9 @@ mod tests {
         let r2 = var.substitute_for_choices(&missing_choices);
         assert!(r2.is_err());
         match r2.unwrap_err() {
-            ErrorsResolver::NoChoiceWasAvailable(name) => {
+            ErrorsDependencies::MissingChoicesForVar(name) => {
                 assert_eq!(name, VAR_DIRECTORY_NAME.clone())
             }
-            _ => unreachable!(),
         }
     }
 }
