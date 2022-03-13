@@ -6,6 +6,7 @@ use sam_core::entities::commands::Command;
 use sam_core::entities::dependencies::{ErrorsResolver, Resolver};
 use sam_core::entities::identifiers::Identifier;
 use sam_core::entities::processes::ShellCommand;
+use sam_core::entities::vars::Var;
 use sam_persistence::repositories::{AliasesRepository, VarsRepository};
 use sam_readers::read_choices;
 use sam_utils::fsutils::ErrorsFS;
@@ -76,23 +77,23 @@ pub enum ErrorsUIV2 {
 }
 
 impl<'a> Resolver for UserInterfaceV2 {
-    fn resolve_input(&self, var: Identifier, prompt: &str) -> Result<Choice, ErrorsResolver> {
+    fn resolve_input(&self, var: &Var, prompt: &str) -> Result<Choice, ErrorsResolver> {
         let mut buffer = String::new();
         println!(
             "Please provide an input for variable {}.\n{} :",
-            &var, prompt
+            &var.name(),
+            prompt
         );
         match std::io::stdin().read_line(&mut buffer) {
             Ok(_) => Ok(Choice::new(buffer.replace('\n', ""), None)),
-            Err(err) => Err(ErrorsResolver::NoInputWasProvided(var, err.to_string())),
+            Err(err) => Err(ErrorsResolver::NoInputWasProvided(
+                var.name(),
+                err.to_string(),
+            )),
         }
     }
 
-    fn resolve_dynamic<CMD>(
-        &self,
-        var: Identifier,
-        cmd: Vec<CMD>,
-    ) -> Result<Vec<Choice>, ErrorsResolver>
+    fn resolve_dynamic<CMD>(&self, var: &Var, cmd: Vec<CMD>) -> Result<Vec<Choice>, ErrorsResolver>
     where
         CMD: Into<ShellCommand<String>>,
     {
@@ -101,7 +102,7 @@ impl<'a> Resolver for UserInterfaceV2 {
             let sh_cmd: ShellCommand<String> = cm.into();
             let cmd_key = sh_cmd
                 .replace_env_vars_in_command(&self.env_variables)
-                .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), Box::new(e)))?;
+                .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), Box::new(e)))?;
             let cache_entry = self.cache.get(cmd_key.value());
             let (stdout_output, _) = if let Ok(Some(out)) = cache_entry {
                 (out.as_bytes().to_owned(), vec![])
@@ -110,29 +111,29 @@ impl<'a> Resolver for UserInterfaceV2 {
                 to_run.envs(&self.env_variables);
                 let output = to_run
                     .output()
-                    .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), e.into()))?;
+                    .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), e.into()))?;
                 if output.status.code() == Some(0) && output.stderr.is_empty() {
                     self.cache
                         .put(
-                            &var.to_string(),
+                            &var.name().to_string(),
                             cmd_key.value(),
                             &String::from_utf8_lossy(output.stdout.as_slice()).to_owned(),
                         )
                         .map_err(|e| {
-                            ErrorsResolver::DynamicResolveFailure(var.clone(), Box::new(e))
+                            ErrorsResolver::DynamicResolveFailure(var.name(), Box::new(e))
                         })?;
                 }
                 (output.stdout, output.stderr)
             };
 
             let choices = read_choices(stdout_output.as_slice())
-                .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.clone(), e.into()))?;
+                .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), e.into()))?;
             choices_out.extend(choices);
         }
         if choices_out.is_empty() {
             // TODO fixme
             Err(ErrorsResolver::DynamicResolveEmpty(
-                var,
+                var.name(),
                 String::new(),
                 String::new(),
             ))
@@ -143,13 +144,13 @@ impl<'a> Resolver for UserInterfaceV2 {
 
     fn resolve_static<'b>(
         &'b self,
-        var: Identifier,
+        var: &Var,
         cmd: impl Iterator<Item = Choice>,
     ) -> Result<Vec<Choice>, ErrorsResolver> {
         let choices: Vec<Choice> = cmd.collect();
 
         if choices.is_empty() {
-            return Err(ErrorsResolver::NoChoiceWasAvailable(var));
+            return Err(ErrorsResolver::NoChoiceWasAvailable(var.name()));
         }
 
         if choices.len() == 1 {
@@ -171,12 +172,12 @@ impl<'a> Resolver for UserInterfaceV2 {
                 let prompt = format!("please make a choices for variable:\t{}", var.name());
                 let choice: Vec<Choice> = self
                     .choose(items, &prompt, false)
-                    .map_err(|_e| ErrorsResolver::NoChoiceWasSelected(var.clone()))
+                    .map_err(|_e| ErrorsResolver::NoChoiceWasSelected(var.name()))
                     .map(|chosen| chosen.into_iter().map(|e| e.choice).collect())?;
                 choice
             };
             let mut mp = self.choices.borrow_mut();
-            (*mp).insert(var, choice.clone());
+            (*mp).insert(var.name(), choice.clone());
             Ok(choice)
         } else {
             Err(ErrorsResolver::IdentifierSelectionInvalid(Box::new(
