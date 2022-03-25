@@ -10,11 +10,11 @@ pub use dependency_resolution::VarsDefaultValues;
 
 #[cfg(test)]
 pub mod mocks {
-    use super::dependency_resolution;
-    use crate::entities::choices::Choice;
+    use super::{dependency_resolution, resolver::ResolverContext};
     use crate::entities::identifiers::Identifier;
     use crate::entities::processes::ShellCommand;
     use crate::entities::vars::Var;
+    use crate::entities::{aliases::AliasAndDependencies, choices::Choice};
     pub use dependency_resolution::mocks::*;
     use std::collections::HashMap;
 
@@ -40,7 +40,12 @@ pub mod mocks {
         }
     }
     impl Resolver for StaticResolver {
-        fn resolve_input(&self, var: &Var, _: &str) -> Result<Choice, ErrorsResolver> {
+        fn resolve_input(
+            &self,
+            var: &Var,
+            _: &str,
+            _ctx: &ResolverContext,
+        ) -> Result<Choice, ErrorsResolver> {
             self.static_res
                 .get(&var.name())
                 .and_then(|e| e.first())
@@ -52,6 +57,7 @@ pub mod mocks {
             &self,
             var: &Var,
             cmds: Vec<CMD>,
+            _ctx: &ResolverContext,
         ) -> Result<Vec<Choice>, ErrorsResolver>
         where
             CMD: Into<ShellCommand<String>>,
@@ -80,6 +86,7 @@ pub mod mocks {
             &self,
             var: &Var,
             _cmd: impl Iterator<Item = Choice>,
+            _ctx: &ResolverContext,
         ) -> Result<Vec<Choice>, ErrorsResolver> {
             self.static_res
                 .get(&var.name())
@@ -88,13 +95,13 @@ pub mod mocks {
         }
         fn select_identifier(
             &self,
-            _: &[Identifier],
-            _: Option<&[&str]>,
+            _: &[AliasAndDependencies],
             _: &str,
-        ) -> Result<Identifier, ErrorsResolver> {
-            self.identifier_to_select
-                .clone()
-                .ok_or(ErrorsResolver::IdentifierSelectionEmpty())
+        ) -> Result<AliasAndDependencies, ErrorsResolver> {
+            todo!();
+            /* self.identifier_to_select
+            .clone()
+            .ok_or(ErrorsResolver::IdentifierSelectionEmpty()) */
         }
     }
 }

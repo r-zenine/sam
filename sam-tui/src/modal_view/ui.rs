@@ -14,7 +14,7 @@ use super::theme::UITheme;
 use super::ui_insert_mode::{ListItems, UIInsertMode};
 use super::ui_options_mode::UIOptionsMode;
 
-const MIN_TIME_TO_REFRESH_IN_MS: u128 = 50;
+const MIN_TIME_TO_REFRESH_IN_MS: u128 = 75;
 
 pub struct UIModal<V: Value> {
     raw_terminal: RefCell<RawTerminal<Stdout>>,

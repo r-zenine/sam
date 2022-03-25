@@ -2,7 +2,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use sam_core::engines::{AliasCollection, ErrorsAliasCollection};
 use sam_core::entities::aliases::Alias;
-use sam_core::entities::dependencies::ErrorsResolver;
+use sam_core::entities::dependencies::ErrorsDependencies;
 use sam_core::entities::identifiers::Identifier;
 use std::collections::HashMap;
 use std::ops::Range;
@@ -90,12 +90,9 @@ impl AliasCollection for AliasesRepository {
             .get(id)
             .ok_or_else(|| ErrorsAliasCollection::AliasInvalidSelection(id.clone()))
     }
-    fn identifiers(&self) -> Vec<Identifier> {
-        self.aliases.values().map(Alias::identifier).collect()
-    }
 
-    fn descriptions(&self) -> Vec<&str> {
-        self.aliases.values().map(Alias::desc).collect()
+    fn aliases(&self) -> Vec<&Alias> {
+        self.aliases.values().collect()
     }
 }
 
@@ -104,7 +101,7 @@ pub enum ErrorsAliasesRepository {
     #[error("Alias '{0}' has a missing dependency: '{1}'")]
     MissingDependencies(Identifier, Identifier),
     #[error("Alias selection failed because \n-> {0}")]
-    AliasSelectionFailure(#[from] ErrorsResolver),
+    AliasSelectionFailure(#[from] ErrorsDependencies),
     #[error("Invalid alias selected {0}")]
     AliasInvalidSelection(Identifier),
 }

@@ -342,6 +342,7 @@ dependencies = [
  "serde",
  "termion",
  "thiserror",
+ "tmux_interface",
  "toml",
 ]
 
@@ -522,6 +523,12 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "tmux_interface"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "994f52fd871ec97d0c84c28fcaa717d63636ca1459c4dafb17a97114f3687ab0"
 
 [[package]]
 name = "toml"

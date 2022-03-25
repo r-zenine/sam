@@ -2,7 +2,7 @@ use sam_core::algorithms::{VarsCollection, VarsDefaultValues};
 use sam_core::engines::VarsDefaultValuesSetter;
 use sam_core::entities::choices::Choice;
 use sam_core::entities::commands::Command;
-use sam_core::entities::dependencies::ErrorsResolver;
+use sam_core::entities::dependencies::ErrorsDependencies;
 use sam_core::entities::identifiers::{Identifier, Identifiers};
 use sam_core::entities::vars::Var;
 use std::collections::{HashMap, HashSet};
@@ -91,7 +91,7 @@ pub enum ErrorsVarsRepository {
     #[error("no choices available for var {var_name}\n-> {error}")]
     NoChoiceForVar {
         var_name: Identifier,
-        error: ErrorsResolver,
+        error: ErrorsDependencies,
     },
 }
 

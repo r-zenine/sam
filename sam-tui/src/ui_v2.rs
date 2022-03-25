@@ -1,17 +1,13 @@
-use sam_core::algorithms::execution_sequence_for_dependencies;
-use sam_core::engines::AliasCollection;
-use sam_core::entities::aliases::Alias;
+use sam_core::algorithms::resolver::ErrorsResolver;
+use sam_core::algorithms::resolver::Resolver;
+use sam_core::algorithms::resolver::ResolverContext;
+use sam_core::entities::aliases::AliasAndDependencies;
 use sam_core::entities::choices::Choice;
 use sam_core::entities::commands::Command;
-use sam_core::entities::dependencies::{ErrorsResolver, Resolver};
-use sam_core::entities::identifiers::Identifier;
 use sam_core::entities::processes::ShellCommand;
 use sam_core::entities::vars::Var;
-use sam_persistence::repositories::{AliasesRepository, VarsRepository};
 use sam_readers::read_choices;
 use sam_utils::fsutils::ErrorsFS;
-use std::borrow::Cow;
-use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
 use thiserror::Error;
@@ -21,31 +17,15 @@ use sam_persistence::VarsCache;
 use crate::modal_view::{ModalView, Value};
 
 pub struct UserInterfaceV2 {
-    selected_alias: RefCell<Option<Alias>>,
-    choices: RefCell<HashMap<Identifier, Vec<Choice>>>,
-
-    alias_repository: AliasesRepository,
-    vars_repository: VarsRepository,
-    execution_sequence: Vec<Identifier>,
     env_variables: HashMap<String, String>,
     cache: Box<dyn VarsCache>,
 }
 
 impl<'a> UserInterfaceV2 {
-    pub fn new(
-        alias_repository: AliasesRepository,
-        vars_repository: VarsRepository,
-        variables: HashMap<String, String>,
-        cache: Box<dyn VarsCache>,
-    ) -> UserInterfaceV2 {
+    pub fn new(variables: HashMap<String, String>, cache: Box<dyn VarsCache>) -> UserInterfaceV2 {
         UserInterfaceV2 {
-            selected_alias: RefCell::default(),
-            execution_sequence: Vec::default(),
-            choices: RefCell::default(),
             env_variables: variables,
             cache,
-            alias_repository,
-            vars_repository,
         }
     }
 
@@ -77,7 +57,12 @@ pub enum ErrorsUIV2 {
 }
 
 impl<'a> Resolver for UserInterfaceV2 {
-    fn resolve_input(&self, var: &Var, prompt: &str) -> Result<Choice, ErrorsResolver> {
+    fn resolve_input(
+        &self,
+        var: &Var,
+        prompt: &str,
+        _ctx: &ResolverContext,
+    ) -> Result<Choice, ErrorsResolver> {
         let mut buffer = String::new();
         println!(
             "Please provide an input for variable {}.\n{} :",
@@ -93,7 +78,12 @@ impl<'a> Resolver for UserInterfaceV2 {
         }
     }
 
-    fn resolve_dynamic<CMD>(&self, var: &Var, cmd: Vec<CMD>) -> Result<Vec<Choice>, ErrorsResolver>
+    fn resolve_dynamic<CMD>(
+        &self,
+        var: &Var,
+        cmd: Vec<CMD>,
+        _ctx: &ResolverContext,
+    ) -> Result<Vec<Choice>, ErrorsResolver>
     where
         CMD: Into<ShellCommand<String>>,
     {
@@ -138,7 +128,7 @@ impl<'a> Resolver for UserInterfaceV2 {
                 String::new(),
             ))
         } else {
-            self.resolve_static(var, choices_out.into_iter())
+            self.resolve_static(var, choices_out.into_iter(), _ctx)
         }
     }
 
@@ -146,6 +136,7 @@ impl<'a> Resolver for UserInterfaceV2 {
         &'b self,
         var: &Var,
         cmd: impl Iterator<Item = Choice>,
+        _ctx: &ResolverContext,
     ) -> Result<Vec<Choice>, ErrorsResolver> {
         let choices: Vec<Choice> = cmd.collect();
 
@@ -157,83 +148,62 @@ impl<'a> Resolver for UserInterfaceV2 {
             return Ok(choices);
         }
 
-        let alias_o = self.selected_alias.clone().take();
-        if let Some(alias) = alias_o {
-            let choice = {
-                let choices_ref = &self.choices.borrow();
-
-                let items: Vec<ChoiceElement<'_>> = choices
-                    .into_iter()
-                    .map(|choice| {
-                        ChoiceElement::from(choice, &alias, choices_ref, &self.execution_sequence)
-                    })
-                    .collect();
-                // TODO fix prompt
-                let prompt = format!("please make a choices for variable:\t{}", var.name());
-                let choice: Vec<Choice> = self
-                    .choose(items, &prompt, false)
-                    .map_err(|_e| ErrorsResolver::NoChoiceWasSelected(var.name()))
-                    .map(|chosen| chosen.into_iter().map(|e| e.choice).collect())?;
-                choice
-            };
-            let mut mp = self.choices.borrow_mut();
-            (*mp).insert(var.name(), choice.clone());
-            Ok(choice)
-        } else {
-            Err(ErrorsResolver::IdentifierSelectionInvalid(Box::new(
-                ErrorsUIV2::CallsResolveWithUndefinedAlias,
-            )))
-        }
+        let choice = {
+            let items: Vec<ChoiceElement<'_>> = choices
+                .into_iter()
+                .map(|choice| ChoiceElement::from(choice, _ctx))
+                .collect();
+            // TODO fix prompt
+            let prompt = format!("please make a choices for variable:\t{}", var.name());
+            let choice: Vec<Choice> = self
+                .choose(items, &prompt, false)
+                .map_err(|_e| ErrorsResolver::NoChoiceWasSelected(var.name()))
+                .map(|chosen| chosen.into_iter().map(|e| e.choice).collect())?;
+            choice
+        };
+        Ok(choice)
     }
 
     fn select_identifier<'b>(
         &'b self,
-        identifiers: &[Identifier],
-        _descriptions: Option<&[&str]>,
+        identifiers: &[AliasAndDependencies],
         prompt: &str,
-    ) -> Result<Identifier, ErrorsResolver> {
-        let choices_clone = self.choices.borrow();
-        let items: Vec<AliasElement<'_>> = identifiers
-            .iter()
-            .flat_map(|identifier| self.alias_repository.get(identifier).ok())
-            .map(|alias| AliasElement::from_alias(alias, &choices_clone, &self.vars_repository))
+    ) -> Result<AliasAndDependencies, ErrorsResolver> {
+        let items: Vec<AliasElement> = identifiers
+            .into_iter()
+            .map(|identifier| AliasElement(identifier.clone()))
             .collect();
         let alias = self
             .choose(items, prompt, false)
             .map_err(|e| ErrorsResolver::IdentifierSelectionInvalid(Box::new(e)))?
             .iter()
             .next()
-            .map(|ae| ae.alias.clone());
-        self.selected_alias.replace(alias.clone());
+            .map(|ae| ae.0.clone());
+
         alias
-            .map(|a| a.identifier())
+            .map(|a| a)
             .ok_or(ErrorsResolver::IdentifierSelectionEmpty())
     }
 }
 
 #[derive(Clone, Debug)]
-struct AliasElement<'a> {
-    alias: &'a Alias,
-    full_name: Cow<'a, str>,
-    choices: &'a HashMap<Identifier, Vec<Choice>>,
-    execution_sequence: Vec<Identifier>,
-}
+struct AliasElement(AliasAndDependencies);
 
-impl<'a> PartialEq for AliasElement<'a> {
+impl PartialEq for AliasElement {
     fn eq(&self, other: &Self) -> bool {
-        self.alias == other.alias
+        self.0.alias == other.0.alias
     }
 }
 
-impl<'a> Eq for AliasElement<'a> {}
-impl std::hash::Hash for AliasElement<'_> {
+impl Eq for AliasElement {}
+impl std::hash::Hash for AliasElement {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.alias.full_name().hash(state)
+        self.0.alias.full_name().hash(state)
     }
 }
-impl<'a> Value for AliasElement<'a> {
+impl Value for AliasElement {
     fn text(&self) -> &str {
-        &self.full_name
+        &self.0.full_name
     }
 
     fn preview(&self) -> String {
@@ -241,71 +211,34 @@ impl<'a> Value for AliasElement<'a> {
 
         output.push_str(&format!(
             "Name:\t{}\n\nDescription:\n{}\n\nAlias:\n\n{}\n",
-            self.alias.name(),
-            self.alias.desc(),
-            self.alias.command(),
+            self.0.alias.name(),
+            self.0.alias.desc(),
+            self.0.alias.command(),
         ));
 
-        if !self.execution_sequence.is_empty() {
+        if !self.0.dependencies.is_empty() {
             output.push_str("\nDependencies:\n");
-            for id in &self.execution_sequence {
+            for id in &self.0.dependencies {
                 output.push_str(&format!("- {}\n", id));
             }
         }
 
-        if !self.choices.is_empty() {
-            output.push_str("\nCurrent Choices:\n");
-            for (id, choice) in self.choices.iter() {
-                output.push_str(&format!("- {}\t= {:?}", id, choice));
-            }
-        }
         output
-    }
-}
-
-impl<'a> AliasElement<'a> {
-    fn from_alias(
-        alias: &'a Alias,
-        choices: &'a HashMap<Identifier, Vec<Choice>>,
-        vars_repository: &'a VarsRepository,
-    ) -> Self {
-        let execution_sequence = execution_sequence_for_dependencies(vars_repository, alias)
-            // TODO fixme
-            .map(|e| e.identifiers())
-            .map_err(|err| ErrorsUIV2::InitError(Box::new(err)))
-            .expect("only valid aliases should be used here");
-        let full_name = alias.full_name();
-
-        AliasElement {
-            alias,
-            choices,
-            execution_sequence,
-            full_name,
-        }
     }
 }
 
 #[derive(Clone, Debug)]
 struct ChoiceElement<'a> {
-    alias: &'a Alias,
-    choices: &'a HashMap<Identifier, Vec<Choice>>,
-    execution_sequence: &'a [Identifier],
+    resolver_context: &'a ResolverContext,
     choice: Choice,
     text: String,
 }
 
 impl<'a> ChoiceElement<'a> {
-    pub fn from(
-        choice: Choice,
-        alias: &'a Alias,
-        choices: &'a HashMap<Identifier, Vec<Choice>>,
-        execution_sequence: &'a [Identifier],
-    ) -> Self {
-        let text = format!("{}\t{}", choice.value(), choice.desc().unwrap_or_default());
+    pub fn from(choice: Choice, ctx: &'a ResolverContext) -> Self {
+        let text = format!("{}    {}", choice.value(), choice.desc().unwrap_or_default());
         ChoiceElement {
-            alias,
-            choices,
-            execution_sequence,
+            resolver_context: ctx,
             choice,
             text,
         }
@@ -329,21 +262,21 @@ impl<'a> Value for ChoiceElement<'a> {
 
         output.push_str(&format!(
             "Name:\t{}\n\nDescription:\n{}\n\nAlias:\n\n{}\n",
-            self.alias.name(),
-            self.alias.desc(),
-            self.alias.command(),
+            self.resolver_context.alias.name(),
+            self.resolver_context.alias.desc(),
+            self.resolver_context.alias.command(),
         ));
 
-        if !self.execution_sequence.is_empty() {
+        if !self.resolver_context.execution_sequence.is_empty() {
             output.push_str("\nDependencies:\n");
-            for id in self.execution_sequence {
+            for id in &self.resolver_context.execution_sequence {
                 output.push_str(&format!("- {}\n", id));
             }
         }
 
-        if !self.choices.is_empty() {
+        if !self.resolver_context.choices.is_empty() {
             output.push_str("\nCurrent Choices:\n");
-            for (id, choice) in self.choices.iter() {
+            for (id, choice) in self.resolver_context.choices.iter() {
                 output.push_str(&format!("- {}\t= {:?}", id, choice));
             }
         }

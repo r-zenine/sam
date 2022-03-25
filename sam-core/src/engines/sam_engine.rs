@@ -3,7 +3,7 @@ use crate::algorithms::{
     choices_for_execution_sequence, execution_sequence_for_dependencies, ErrorDependencyResolution,
     VarsCollection, VarsDefaultValues,
 };
-use crate::entities::aliases::{Alias, ResolvedAlias};
+use crate::entities::aliases::{Alias, AliasAndDependencies, ResolvedAlias};
 use crate::entities::choices::Choice;
 use crate::entities::identifiers::Identifier;
 use std::cell::RefCell;
@@ -23,17 +23,25 @@ pub trait AliasCollection {
     fn select_alias<R: Resolver>(
         &self,
         r: &R,
+        vars: &dyn VarsCollection,
         prompt: &str,
     ) -> std::result::Result<&Alias, ErrorsAliasCollection> {
-        let identifiers = self.identifiers();
-        let descriptions = self.descriptions();
-        let selection = r.select_identifier(&identifiers, Some(&descriptions), prompt)?;
-        self.get(&selection)
+        let mut qualified_aliases = vec![];
+        for dep in self.aliases() {
+            let exec_seq = execution_sequence_for_dependencies(vars, dep)?;
+            let q_alias = AliasAndDependencies {
+                alias: dep.clone(),
+                full_name: dep.full_name().to_string(),
+                dependencies: exec_seq.identifiers(),
+            };
+            qualified_aliases.push(q_alias);
+        }
+        let selection = r.select_identifier(&qualified_aliases, prompt)?;
+        self.get(&selection.alias.identifier())
     }
 
     fn get(&self, id: &Identifier) -> std::result::Result<&Alias, ErrorsAliasCollection>;
-    fn identifiers(&self) -> Vec<Identifier>;
-    fn descriptions(&self) -> Vec<&str>;
+    fn aliases(&self) -> Vec<&Alias>;
 }
 
 #[derive(Debug, Error)]
@@ -42,6 +50,8 @@ pub enum ErrorsAliasCollection {
     AliasSelectionFailure(#[from] ErrorsResolver),
     #[error("Invalid alias selected {0}")]
     AliasInvalidSelection(Identifier),
+    #[error("Can't figure out dependencies for alias")]
+    AliasDependencyResolution(#[from] ErrorDependencyResolution),
 }
 
 // Changes:
@@ -102,7 +112,9 @@ impl<
     }
 
     fn choose_and_execute_alias(&self) -> Result<i32> {
-        let id = self.aliases.select_alias(&self.resolver, PROMPT)?;
+        let id = self
+            .aliases
+            .select_alias(&self.resolver, &self.vars, PROMPT)?;
         self.run_alias(id)
     }
 
@@ -113,11 +125,15 @@ impl<
 
     fn run_alias(&self, alias: &Alias) -> Result<i32> {
         let exec_seq = execution_sequence_for_dependencies(&self.vars, alias)?;
-        let choices: HashMap<Identifier, Vec<Choice>> =
-            choices_for_execution_sequence(&self.vars, &self.defaults, &self.resolver, exec_seq)?
-                .into_iter()
-                .collect();
-
+        let choices: HashMap<Identifier, Vec<Choice>> = choices_for_execution_sequence(
+            alias,
+            &self.vars,
+            &self.defaults,
+            &self.resolver,
+            exec_seq,
+        )?
+        .into_iter()
+        .collect();
         let final_alias = alias.with_choices(&choices).unwrap();
         self.history.borrow_mut().put(final_alias.clone())?;
         // TODO fixme later
@@ -147,39 +163,6 @@ impl<
         }
         Ok(0)
     }
-
-    /* fn modify_then_execute_last_executed_alias(&mut self) -> Result<i32> {
-        let resolved_alias_o = self.history.borrow().get_last()?;
-        if let Some(resolved_alias) = resolved_alias_o {
-            let original_alias = Alias::from(resolved_alias.clone());
-            let exec_seq = execution_sequence_for_dependencies(&self.vars, original_alias.clone())?;
-            let identifiers = exec_seq.identifiers();
-            if !identifiers.is_empty() {
-                let selected_var = self.resolver.select_identifier(
-                    &identifiers,
-                    None,
-                    "Select the variable to override:",
-                )?;
-
-                let var_position = identifiers
-                    .iter()
-                    .position(|x| x == &selected_var)
-                    .unwrap_or_default();
-
-                let new_defaults: HashMap<Identifier, Vec<Choice>> = identifiers
-                    .into_iter()
-                    .skip(var_position + 1)
-                    .flat_map(|e| resolved_alias.choice(&e).map(|choice| (e, choice)))
-                    .collect();
-
-                self.defaults.set_defaults(&new_defaults);
-            }
-            self.execute_alias(&original_alias.identifier())
-        } else {
-            println!("history empty");
-            Ok(0)
-        }
-    } */
 
     fn execute_last_executed_alias(&self) -> Result<i32> {
         let resolved_alias_o = self.history.borrow().get_last()?;
@@ -242,8 +225,8 @@ mod tests {
     use std::cell::RefCell;
     use std::{collections::HashMap, rc::Rc};
 
-    use crate::algorithms::mocks::{VarsCollectionMock, VarsDefaultValuesMock};
     use crate::algorithms::mocks::StaticResolver;
+    use crate::algorithms::mocks::{VarsCollectionMock, VarsDefaultValuesMock};
     use crate::entities::{choices::Choice, identifiers::Identifier};
     use maplit::hashmap;
 
@@ -442,12 +425,8 @@ mod mocks {
                 .ok_or_else(|| ErrorsAliasCollection::AliasInvalidSelection(id.clone()))
         }
 
-        fn identifiers(&self) -> Vec<Identifier> {
-            self.aliases.values().map(Alias::identifier).collect()
-        }
-
-        fn descriptions(&self) -> Vec<&str> {
-            self.aliases.values().map(Alias::desc).collect()
+        fn aliases(&self) -> Vec<&Alias> {
+            self.aliases.values().collect()
         }
     }
 }
