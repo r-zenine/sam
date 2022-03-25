@@ -141,6 +141,13 @@ impl Command for Alias {
 impl Dependencies for &Alias {}
 impl Dependencies for Alias {}
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct AliasAndDependencies {
+    pub alias: Alias,
+    pub full_name: String,
+    pub dependencies: Vec<Identifier>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ResolvedAlias {
     name: Identifier,

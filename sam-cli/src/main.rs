@@ -3,7 +3,6 @@ use crate::config_engine::ErrorsConfigEngine;
 use crate::environment::ErrorEnvironment;
 use cache_engine::ErrorCacheEngine;
 use cli::SubCommand;
-use preview_engine::ErrorsPreviewEngine;
 use sam_core::engines::ErrorSamEngine;
 use std::collections::HashMap;
 use thiserror::Error;
@@ -15,7 +14,6 @@ mod config_engine;
 mod environment;
 mod executors;
 mod logger;
-mod preview_engine;
 
 fn main() {
     match run() {
@@ -44,7 +42,6 @@ fn run_command(sub_command: SubCommand, env: environment::Environment) -> Result
         SubCommand::SamCommand(s) => Ok(env.sam_engine().run(s)?),
         SubCommand::CacheCommand(s) => Ok(env.cache_engine().run(s)?),
         SubCommand::ConfigCheck(s) => Ok(env.config_engine().run(s)?),
-        SubCommand::PreviewCommand(s) => Ok(env.preview_engine().run(s)?),
     }
 }
 
@@ -64,6 +61,4 @@ pub enum ErrorMain {
     CacheCommand(#[from] ErrorCacheEngine),
     #[error("{0}")]
     ConfigError(#[from] ErrorsConfigEngine),
-    #[error("{0}")]
-    PreviewEngine(#[from] ErrorsPreviewEngine),
 }

@@ -3,7 +3,6 @@ use crate::config::AppSettings;
 use crate::config_engine::ConfigEngine;
 use crate::executors::{DryExecutor, ShellExecutor};
 use crate::logger::{SilentLogger, StdErrLogger};
-use crate::preview_engine::PreviewEngine;
 use sam_core::engines::{SamEngine, SamExecutor, SamLogger, VarsDefaultValuesSetter};
 use sam_persistence::repositories::{
     AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
@@ -43,8 +42,6 @@ impl Environment {
         };
 
         let resolver = UserInterfaceV2::new(
-            self.aliases.clone(),
-            self.vars.clone(),
             self.env_variables.clone(),
             self.cache,
         );
@@ -58,15 +55,6 @@ impl Environment {
             env_variables: self.env_variables,
             history: self.history,
             executor,
-        }
-    }
-
-    pub fn preview_engine(self) -> PreviewEngine {
-        PreviewEngine {
-            aliases: self.aliases,
-            vars: self.vars,
-            output: Box::new(std::io::stdout()),
-            defaults: self.config.defaults,
         }
     }
 

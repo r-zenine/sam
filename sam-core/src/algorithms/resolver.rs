@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use crate::entities::aliases::{Alias, AliasAndDependencies};
 use crate::entities::choices::Choice;
 use crate::entities::dependencies::ErrorsDependencies;
 use crate::entities::identifiers::Identifier;
@@ -5,23 +8,41 @@ use crate::entities::processes::ShellCommand;
 use crate::entities::vars::Var;
 use thiserror::Error;
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResolverContext {
+    pub alias: Alias,
+    pub full_name: String,
+    pub choices: HashMap<Identifier, Vec<Choice>>,
+    pub execution_sequence: Vec<Identifier>,
+}
+
 pub trait Resolver {
-    fn resolve_input(&self, var: &Var, prompt: &str) -> Result<Choice, ErrorsResolver>;
+    fn resolve_input(
+        &self,
+        var: &Var,
+        prompt: &str,
+        ctx: &ResolverContext,
+    ) -> Result<Choice, ErrorsResolver>;
     // TODO make cmd a string
-    fn resolve_dynamic<CMD>(&self, var: &Var, cmd: Vec<CMD>) -> Result<Vec<Choice>, ErrorsResolver>
+    fn resolve_dynamic<CMD>(
+        &self,
+        var: &Var,
+        cmd: Vec<CMD>,
+        ctx: &ResolverContext,
+    ) -> Result<Vec<Choice>, ErrorsResolver>
     where
         CMD: Into<ShellCommand<String>>;
     fn resolve_static(
         &self,
         var: &Var,
         choices: impl Iterator<Item = Choice>,
+        ctx: &ResolverContext,
     ) -> Result<Vec<Choice>, ErrorsResolver>;
     fn select_identifier(
         &self,
-        identifiers: &[Identifier],
-        descriptions: Option<&[&str]>,
+        identifiers: &[AliasAndDependencies],
         prmpt: &str,
-    ) -> Result<Identifier, ErrorsResolver>;
+    ) -> Result<AliasAndDependencies, ErrorsResolver>;
 }
 
 #[derive(Debug, Error)]
