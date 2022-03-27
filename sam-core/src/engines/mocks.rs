@@ -1,9 +1,4 @@
-use crate::algorithms::resolver::{ErrorsResolver, Resolver};
 use crate::entities::aliases::{Alias, ResolvedAlias};
-use crate::entities::choices::Choice;
-use crate::entities::identifiers::Identifier;
-use crate::entities::processes::ShellCommand;
-use crate::entities::vars::Var;
 use std::fmt::Display;
 use std::{cell::RefCell, collections::HashMap};
 

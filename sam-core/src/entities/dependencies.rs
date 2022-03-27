@@ -1,13 +1,10 @@
 use crate::entities::choices::Choice;
 use crate::entities::commands::Command;
 use crate::entities::identifiers::Identifier;
-use crate::entities::processes::ShellCommand;
 use regex::Regex;
 use std::collections::HashMap;
-use std::error;
 use thiserror::Error;
 
-use super::vars::Var;
 
 pub trait Dependencies: Command {
     fn substitute_for_choices(

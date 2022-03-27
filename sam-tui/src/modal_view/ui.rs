@@ -86,7 +86,7 @@ impl<V: Value> UIModal<V> {
             }
         } else {
             self.last_update.replace(Some(now));
-            return true;
+            true
         }
     }
 }

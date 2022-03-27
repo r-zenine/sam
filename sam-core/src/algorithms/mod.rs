@@ -24,18 +24,15 @@ pub mod mocks {
     pub struct StaticResolver {
         dynamic_res: HashMap<String, Vec<Choice>>,
         static_res: HashMap<Identifier, Vec<Choice>>,
-        identifier_to_select: Option<Identifier>,
     }
     impl StaticResolver {
         pub const fn new(
             dynamic_res: HashMap<String, Vec<Choice>>,
             static_res: HashMap<Identifier, Vec<Choice>>,
-            identifier_to_select: Option<Identifier>,
         ) -> Self {
             StaticResolver {
                 dynamic_res,
                 static_res,
-                identifier_to_select,
             }
         }
     }
@@ -50,7 +47,7 @@ pub mod mocks {
                 .get(&var.name())
                 .and_then(|e| e.first())
                 .map(|e| e.to_owned())
-                .ok_or(ErrorsResolver::NoChoiceWasAvailable(var.name()))
+                .ok_or_else(|| ErrorsResolver::NoChoiceWasAvailable(var.name()))
         }
 
         fn resolve_dynamic<CMD>(
@@ -91,7 +88,7 @@ pub mod mocks {
             self.static_res
                 .get(&var.name())
                 .map(|c| c.to_owned())
-                .ok_or(ErrorsResolver::NoChoiceWasSelected(var.name()))
+                .ok_or_else(|| ErrorsResolver::NoChoiceWasSelected(var.name()))
         }
         fn select_identifier(
             &self,
