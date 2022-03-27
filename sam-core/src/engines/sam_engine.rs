@@ -251,7 +251,12 @@ mod tests {
 
         let executor = Rc::new(LogExecutor::default());
         let selected_identifier = Identifier::new("alias_1");
-        let mut engine = make_engine(dynamic_res, static_res, executor.clone());
+        let mut engine = make_engine(
+            Some(selected_identifier.clone()),
+            dynamic_res,
+            static_res,
+            executor.clone(),
+        );
         engine
             .run(SamCommand::ChooseAndExecuteAlias)
             .expect("Should not return an error");
@@ -295,7 +300,7 @@ mod tests {
         };
 
         let executor = Rc::new(LogExecutor::default());
-        let mut engine = make_engine(dynamic_res, static_res, executor.clone());
+        let mut engine = make_engine(None, dynamic_res, static_res, executor.clone());
         engine
             .run(SamCommand::ExecuteAlias {
                 alias: chosen_alias,
@@ -324,6 +329,7 @@ mod tests {
     }
 
     fn make_engine(
+        identifier_to_select: Option<Identifier>,
         dynamic_res: HashMap<String, Vec<Choice>>,
         static_res: HashMap<Identifier, Vec<Choice>>,
         executor: Rc<dyn SamExecutor>,
@@ -332,7 +338,7 @@ mod tests {
         let history = RefCell::new(Box::new(InMemoryHistory::default()));
         let logger = Rc::new(SilentLogger {});
         let sam_data = fixtures::multi_namespace_aliases_and_vars();
-        let resolver = StaticResolver::new(dynamic_res, static_res);
+        let resolver = StaticResolver::new(identifier_to_select, dynamic_res, static_res);
         SamEngine {
             resolver,
             aliases: sam_data.aliases,
