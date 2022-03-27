@@ -1,6 +1,7 @@
 use sam_core::algorithms::resolver::ErrorsResolver;
 use sam_core::algorithms::resolver::Resolver;
 use sam_core::algorithms::resolver::ResolverContext;
+
 use sam_core::entities::aliases::AliasAndDependencies;
 use sam_core::entities::choices::Choice;
 use sam_core::entities::commands::Command;
@@ -9,6 +10,7 @@ use sam_core::entities::vars::Var;
 use sam_readers::read_choices;
 use sam_utils::fsutils::ErrorsFS;
 use std::collections::{HashMap, HashSet};
+
 
 use thiserror::Error;
 
@@ -170,7 +172,7 @@ impl<'a> Resolver for UserInterfaceV2 {
         prompt: &str,
     ) -> Result<AliasAndDependencies, ErrorsResolver> {
         let items: Vec<AliasElement> = identifiers
-            .into_iter()
+            .iter()
             .map(|identifier| AliasElement(identifier.clone()))
             .collect();
         let alias = self
@@ -179,10 +181,7 @@ impl<'a> Resolver for UserInterfaceV2 {
             .iter()
             .next()
             .map(|ae| ae.0.clone());
-
-        alias
-            .map(|a| a)
-            .ok_or(ErrorsResolver::IdentifierSelectionEmpty())
+        alias.ok_or(ErrorsResolver::IdentifierSelectionEmpty())
     }
 }
 
@@ -236,7 +235,11 @@ struct ChoiceElement<'a> {
 
 impl<'a> ChoiceElement<'a> {
     pub fn from(choice: Choice, ctx: &'a ResolverContext) -> Self {
-        let text = format!("{}    {}", choice.value(), choice.desc().unwrap_or_default());
+        let text = format!(
+            "{}    {}",
+            choice.value(),
+            choice.desc().unwrap_or_default()
+        );
         ChoiceElement {
             resolver_context: ctx,
             choice,

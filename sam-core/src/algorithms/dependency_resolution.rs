@@ -191,6 +191,7 @@ mod tests {
     };
     use crate::algorithms::dependency_resolution::resolve_choice_for_var;
     use crate::algorithms::mocks::StaticResolver;
+    use crate::algorithms::resolver::ResolverContext;
     use crate::algorithms::{choices_for_execution_sequence, execution_sequence_for_dependencies};
     use crate::entities::choices::Choice;
     use crate::entities::identifiers::fixtures::*;
@@ -216,14 +217,20 @@ mod tests {
             VAR_DIRECTORY_NAME.clone() => vec![VAR_DIRECTORY_CHOICE_1.clone()],
             VAR_PATTERN_NAME.clone() => vec![VAR_PATTERN_CHOICE_2.clone()],
         ];
-        let resolver = StaticResolver::new(dynamic_res, static_res, None);
+        let resolver = StaticResolver::new(dynamic_res, static_res);
         let var1 = VAR_LISTING.clone();
-        let alias = crate::entities::aliases::fixtures::ALIAS_GREP_DIR;
-        let ret_var1 = resolve_choice_for_var(&resolver, &var1, &choices);
+        let alias = crate::entities::aliases::fixtures::ALIAS_GREP_DIR.clone();
+        let ctx = ResolverContext {
+            alias: alias.clone(),
+            full_name: alias.full_name().to_string(),
+            choices: choices.clone(),
+            execution_sequence: vec![],
+        };
+        let ret_var1 = resolve_choice_for_var(&resolver, &var1, &choices, &ctx);
         assert!(ret_var1.is_ok());
         assert_eq!(*ret_var1.unwrap().first().unwrap(), choice_final);
         let var2 = VAR_PATTERN.clone();
-        let ret_var2 = resolve_choice_for_var(&resolver, &var2, &choices);
+        let ret_var2 = resolve_choice_for_var(&resolver, &var2, &choices, &ctx);
         assert!(ret_var2.is_ok());
         assert_eq!(
             *ret_var2.unwrap().first().unwrap(),
@@ -266,7 +273,7 @@ mod tests {
             VAR_DIRECTORY_NAME.clone() => vec![ VAR_DIRECTORY_CHOICE_1.clone()],
             VAR_PATTERN_NAME.clone() => vec![VAR_PATTERN_CHOICE_2.clone()],
         ];
-        let resolver = StaticResolver::new(dynamic_res, static_res, None);
+        let resolver = StaticResolver::new(dynamic_res, static_res);
         let full = vec![
             VAR_DIRECTORY.clone(),
             VAR_LISTING.clone(),
@@ -276,7 +283,7 @@ mod tests {
         let defaults = VarsDefaultValuesMock::default();
         let alias = &crate::entities::aliases::fixtures::ALIAS_GREP_DIR;
         let seq = execution_sequence_for_dependencies(&repo, VAR_USE_LISTING.clone()).unwrap();
-        let res = choices_for_execution_sequence(&alias, &repo, &defaults, &resolver, seq);
+        let res = choices_for_execution_sequence(alias, &repo, &defaults, &resolver, seq);
         assert!(res.is_ok());
         let mut expected = vec![
             (VAR_PATTERN_NAME.clone(), vec![VAR_PATTERN_CHOICE_2.clone()]),

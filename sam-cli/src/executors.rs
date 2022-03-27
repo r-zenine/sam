@@ -3,6 +3,21 @@ use std::collections::HashMap;
 use sam_core::engines::{ErrorSamEngine, SamExecutor};
 use sam_core::entities::{aliases::ResolvedAlias, processes::ShellCommand};
 
+pub struct TmuxExecutor {}
+
+impl SamExecutor for TmuxExecutor {
+    fn execute_resolved_alias(
+        &self,
+        _alias: &ResolvedAlias,
+        _env_variables: &HashMap<String, String>,
+
+    ) -> Result<i32, ErrorSamEngine> {
+        // Create an new page for each command that has to be run in the
+        // ResolvedAlias
+        Ok(2)
+    }
+}
+
 pub struct ShellExecutor {}
 
 impl SamExecutor for ShellExecutor {
