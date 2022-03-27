@@ -22,15 +22,18 @@ pub mod mocks {
 
     #[derive(Debug)]
     pub struct StaticResolver {
+        identifier_to_select: Option<Identifier>,
         dynamic_res: HashMap<String, Vec<Choice>>,
         static_res: HashMap<Identifier, Vec<Choice>>,
     }
     impl StaticResolver {
         pub const fn new(
+            identifier_to_select: Option<Identifier>,
             dynamic_res: HashMap<String, Vec<Choice>>,
             static_res: HashMap<Identifier, Vec<Choice>>,
         ) -> Self {
             StaticResolver {
+                identifier_to_select,
                 dynamic_res,
                 static_res,
             }
@@ -92,13 +95,17 @@ pub mod mocks {
         }
         fn select_identifier(
             &self,
-            _: &[AliasAndDependencies],
+            aliases: &[AliasAndDependencies],
             _: &str,
         ) -> Result<AliasAndDependencies, ErrorsResolver> {
-            todo!();
-            /* self.identifier_to_select
-            .clone()
-            .ok_or(ErrorsResolver::IdentifierSelectionEmpty()) */
+            if let Some(id_to_select) = &self.identifier_to_select {
+                for alias in aliases {
+                    if alias.alias.identifier() == id_to_select {
+                        return Ok(alias.to_owned());
+                    }
+                }
+            }
+            Err(ErrorsResolver::IdentifierSelectionEmpty())
         }
     }
 }

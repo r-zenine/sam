@@ -217,9 +217,9 @@ mod tests {
             VAR_DIRECTORY_NAME.clone() => vec![VAR_DIRECTORY_CHOICE_1.clone()],
             VAR_PATTERN_NAME.clone() => vec![VAR_PATTERN_CHOICE_2.clone()],
         ];
-        let resolver = StaticResolver::new(dynamic_res, static_res);
         let var1 = VAR_LISTING.clone();
         let alias = crate::entities::aliases::fixtures::ALIAS_GREP_DIR.clone();
+        let resolver = StaticResolver::new(Some(alias.identifier()), dynamic_res, static_res);
         let ctx = ResolverContext {
             alias: alias.clone(),
             full_name: alias.full_name().to_string(),
@@ -273,7 +273,7 @@ mod tests {
             VAR_DIRECTORY_NAME.clone() => vec![ VAR_DIRECTORY_CHOICE_1.clone()],
             VAR_PATTERN_NAME.clone() => vec![VAR_PATTERN_CHOICE_2.clone()],
         ];
-        let resolver = StaticResolver::new(dynamic_res, static_res);
+        let resolver = StaticResolver::new(None, dynamic_res, static_res);
         let full = vec![
             VAR_DIRECTORY.clone(),
             VAR_LISTING.clone(),
