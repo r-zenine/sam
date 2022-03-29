@@ -5,7 +5,6 @@ use regex::Regex;
 use std::collections::HashMap;
 use thiserror::Error;
 
-
 pub trait Dependencies: Command {
     fn substitute_for_choices(
         &self,
@@ -82,8 +81,6 @@ impl AsRef<[Identifier]> for ExecutionSequence {
         self.inner.as_slice()
     }
 }
-
-
 
 #[derive(Debug, Error)]
 pub enum ErrorsDependencies {
