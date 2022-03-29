@@ -266,8 +266,6 @@ mod tests {
         assert_eq!(request.unwrap(), expected_cli_request);
     }
 
-   
-
     #[test]
     fn no_subcommand() {
         let app = app_init();
