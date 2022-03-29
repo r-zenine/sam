@@ -41,10 +41,7 @@ impl Environment {
             Rc::new(ShellExecutor {})
         };
 
-        let resolver = UserInterfaceV2::new(
-            self.env_variables.clone(),
-            self.cache,
-        );
+        let resolver = UserInterfaceV2::new(self.env_variables.clone(), self.cache);
 
         SamEngine {
             resolver,

@@ -11,7 +11,6 @@ use sam_readers::read_choices;
 use sam_utils::fsutils::ErrorsFS;
 use std::collections::{HashMap, HashSet};
 
-
 use thiserror::Error;
 
 use sam_persistence::VarsCache;

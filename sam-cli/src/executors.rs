@@ -10,7 +10,6 @@ impl SamExecutor for TmuxExecutor {
         &self,
         _alias: &ResolvedAlias,
         _env_variables: &HashMap<String, String>,
-
     ) -> Result<i32, ErrorSamEngine> {
         // Create an new page for each command that has to be run in the
         // ResolvedAlias
