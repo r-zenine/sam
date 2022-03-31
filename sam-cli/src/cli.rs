@@ -1,5 +1,6 @@
 use crate::cache_engine::CacheCommand;
 use crate::config_engine::ConfigCommand;
+use crate::history_engine::HistoryCommand;
 use crate::HashMap;
 use clap::{App, Arg, ArgMatches, Values};
 use sam_core::engines::SamCommand;
@@ -31,6 +32,7 @@ const ABOUT_SUB_ALIAS: &str = "run's a provided alias";
 #[derive(Clone, Debug, PartialEq)]
 pub enum SubCommand {
     SamCommand(SamCommand),
+    HistoryCommand(HistoryCommand),
     CacheCommand(CacheCommand),
     ConfigCheck(ConfigCommand),
 }
@@ -104,7 +106,7 @@ fn app_init() -> App<'static, 'static> {
         .arg(arg_choices.clone())
         .about(ABOUT_SUB_RUN);
 
-    let subc_display_history = App::new("history").about(ABOUT_SUB_SHOW_HISTORY);
+    let subc_interract_history = App::new("history").about(ABOUT_SUB_SHOW_HISTORY);
     let subc_display_last = App::new("show-last").alias("!").about(ABOUT_SUB_SHOW_LAST);
     let subc_rerun_last = App::new("run-last").alias("%").about(ABOUT_SUB_RUN_LAST);
     let subc_modify_run_last = App::new("modify-run-last")
@@ -133,7 +135,7 @@ fn app_init() -> App<'static, 'static> {
         .subcommand(subc_display_last)
         .subcommand(subc_rerun_last)
         .subcommand(subc_modify_run_last)
-        .subcommand(subc_display_history)
+        .subcommand(subc_interract_history)
         .subcommand(App::new("check-config").about(ABOUT_SUB_CHECK_CONFIG))
         .subcommand(App::new("cache-clear").about(ABOUT_SUB_CACHE_CLEAR))
         .subcommand(App::new("cache-keys").about(ABOUT_SUB_CACHE_KEYS))
@@ -154,13 +156,12 @@ where
             let alias = parse_alias(e.value_of("alias"))?;
             SubCommand::SamCommand(SamCommand::ExecuteAlias { alias })
         }
-
         ("show-last", Some(_)) => SubCommand::SamCommand(SamCommand::DisplayLastExecutedAlias),
         ("run-last", Some(_)) => SubCommand::SamCommand(SamCommand::ExecuteLastExecutedAlias),
         ("modify-run-last", Some(_)) => {
             SubCommand::SamCommand(SamCommand::ModifyThenExecuteLastAlias)
         }
-        ("history", Some(_)) => SubCommand::SamCommand(SamCommand::DisplayHistory),
+        ("history", Some(_)) => SubCommand::HistoryCommand(HistoryCommand::InterractWithHistory),
         ("check-config", Some(_)) => SubCommand::ConfigCheck(ConfigCommand::All),
         ("cache-clear", Some(_)) => SubCommand::CacheCommand(CacheCommand::Clear),
         ("cache-keys", Some(_)) => SubCommand::CacheCommand(CacheCommand::PrintKeys),
@@ -177,7 +178,7 @@ pub fn read_cli_request() -> Result<CLIRequest, CLIError> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct DefaultChoices(pub HashMap<Identifier, Choice>);
+pub struct DefaultChoices(pub HashMap<Identifier, Vec<Choice>>);
 
 impl TryFrom<Option<Values<'_>>> for DefaultChoices {
     type Error = CLIError;
@@ -186,7 +187,7 @@ impl TryFrom<Option<Values<'_>>> for DefaultChoices {
         if let Some(values) = values_o {
             for value in values {
                 let (id, choice) = parse_choice(value)?;
-                default_h.insert(id, choice);
+                default_h.insert(id, vec![choice]);
             }
         }
         Ok(DefaultChoices(default_h))
@@ -257,8 +258,8 @@ mod tests {
                 silent: false,
                 no_cache: false,
                 default_choices: DefaultChoices(hashmap! {
-                Identifier::with_namespace("some_choice", Some("some_ns")) => Choice::from_value("value"),
-                Identifier::with_namespace("some_other_choice", Some("some_ns")) => Choice::from_value("value2"),
+                Identifier::with_namespace("some_choice", Some("some_ns")) => vec![Choice::from_value("value")],
+                Identifier::with_namespace("some_other_choice", Some("some_ns")) => vec![Choice::from_value("value2")],
                                 }),
             },
         };
@@ -282,8 +283,8 @@ mod tests {
                 silent: false,
                 no_cache: false,
                 default_choices: DefaultChoices(hashmap! {
-                Identifier::with_namespace("some_choice", Some("some_ns")) => Choice::from_value("value"),
-                Identifier::with_namespace("some_other_choice", Some("some_ns")) => Choice::from_value("value2"),
+                Identifier::with_namespace("some_choice", Some("some_ns")) => vec![Choice::from_value("value")],
+                Identifier::with_namespace("some_other_choice", Some("some_ns")) => vec![Choice::from_value("value2")],
                                 }),
             },
         };
@@ -307,8 +308,8 @@ mod tests {
                 silent: false,
                 no_cache: false,
                 default_choices: DefaultChoices(hashmap! {
-                Identifier::with_namespace("some_choice", Some("some_ns")) => Choice::from_value("value"),
-                Identifier::with_namespace("some_other_choice", Some("some_ns")) => Choice::from_value("value2"),
+                Identifier::with_namespace("some_choice", Some("some_ns")) => vec![Choice::from_value("value")],
+                Identifier::with_namespace("some_other_choice", Some("some_ns")) => vec![Choice::from_value("value2")],
                                 }),
             },
         };

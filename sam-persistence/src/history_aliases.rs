@@ -9,7 +9,7 @@ use sam_core::{
 
 use crate::sequential_state::{ErrorSequentialState, SequentialState};
 
-#[derive()]
+#[derive(Clone)]
 pub struct AliasHistory {
     state: SequentialState<HistoryEntry>,
     pwd: PathBuf,
@@ -29,6 +29,10 @@ impl AliasHistory {
         let state = SequentialState::new(path.into(), max_size)?;
         let pwd = std::env::current_dir().expect("can't figure out local directory");
         Ok(AliasHistory { state, pwd })
+    }
+
+    pub fn entries(&self) -> Result<impl Iterator<Item = HistoryEntry>, ErrorAliasHistory> {
+        Ok(self.state.entries()?)
     }
 }
 
@@ -58,10 +62,10 @@ impl SamHistory for AliasHistory {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct HistoryEntry {
-    r: ResolvedAlias,
-    pwd: String,
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct HistoryEntry {
+    pub r: ResolvedAlias,
+    pub pwd: String,
 }
 
 #[cfg(test)]

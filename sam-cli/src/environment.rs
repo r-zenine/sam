@@ -2,6 +2,7 @@ use crate::cache_engine::CacheEngine;
 use crate::config::AppSettings;
 use crate::config_engine::ConfigEngine;
 use crate::executors::{DryExecutor, ShellExecutor};
+use crate::history_engine::HistoryEngine;
 use crate::logger::{SilentLogger, StdErrLogger};
 use sam_core::engines::{SamEngine, SamExecutor, SamLogger, VarsDefaultValuesSetter};
 use sam_persistence::repositories::{
@@ -27,7 +28,7 @@ pub struct Environment {
     pub logger: Rc<dyn SamLogger>,
     pub env_variables: HashMap<String, String>,
     pub config: AppSettings,
-    pub history: RefCell<Box<dyn sam_core::engines::SamHistory>>,
+    pub history: AliasHistory,
     pub cache: Box<dyn VarsCache>,
 }
 
@@ -50,7 +51,7 @@ impl Environment {
             defaults: self.vars,
             logger: self.logger,
             env_variables: self.env_variables,
-            history: self.history,
+            history: RefCell::new(Box::new(self.history)),
             executor,
         }
     }
@@ -62,6 +63,16 @@ impl Environment {
         }
     }
 
+    pub fn history_engine(
+        self,
+    ) -> HistoryEngine<UserInterfaceV2, AliasesRepository, VarsRepository, VarsRepository> {
+        let history = self.history.clone();
+        let sam_engine = self.sam_engine();
+        HistoryEngine {
+            sam_engine,
+            history,
+        }
+    }
     // Clippy is making a false positive on this one
     #[allow(clippy::missing_const_for_fn)]
     pub fn config_engine(self) -> ConfigEngine {
@@ -79,9 +90,7 @@ pub fn from_settings(config: AppSettings) -> Result<Environment> {
     } else {
         Box::new(NoopVarsCache {})
     };
-    let history: RefCell<Box<dyn sam_core::engines::SamHistory>> = RefCell::new(Box::new(
-        AliasHistory::new(config.history_file(), Some(1000))?,
-    ));
+    let history = AliasHistory::new(config.history_file(), Some(1000))?;
 
     let logger = logger_instance(config.silent);
 

@@ -32,7 +32,7 @@ pub struct AppSettings {
     #[serde(skip)]
     pub no_cache: bool,
     #[serde(skip)]
-    pub defaults: HashMap<Identifier, Choice>,
+    pub defaults: HashMap<Identifier, Vec<Choice>>,
 }
 
 type Result<T> = std::result::Result<T, ErrorsSettings>;

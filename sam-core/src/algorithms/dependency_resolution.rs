@@ -168,7 +168,7 @@ pub mod mocks {
     use super::{VarsCollection, VarsDefaultValues};
 
     #[derive(Default)]
-    pub struct VarsDefaultValuesMock(pub HashMap<Identifier, Choice>);
+    pub struct VarsDefaultValuesMock(pub HashMap<Identifier, Vec<Choice>>);
     #[derive(Default)]
     pub struct VarsCollectionMock(pub HashMap<Identifier, Var>);
 
@@ -179,7 +179,7 @@ pub mod mocks {
     }
     impl VarsDefaultValues for VarsDefaultValuesMock {
         fn default_value(&self, id: &Identifier) -> Option<&Choice> {
-            self.0.get(id)
+            self.0.get(id).and_then(|v| v.first())
         }
     }
 }
