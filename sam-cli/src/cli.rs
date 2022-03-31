@@ -17,11 +17,8 @@ const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
 const ABOUT: &str = "sam lets you difine custom aliases and search them using fuzzy search.";
 const ABOUT_SUB_RUN: &str = "let's you select and alias then run it";
-const ABOUT_SUB_SHOW_LAST: &str = "shows the last command that was run, shortcut is `sam !`";
 const ABOUT_SUB_SHOW_HISTORY: &str = "displays the last commands that you ran";
 const ABOUT_SUB_RUN_LAST: &str = "runs the last command that was run again. shortcut is `sam %`";
-const ABOUT_SUB_MODIFY_RUN_LAST: &str =
-    "runs the last command that was run again. shortcut is `sam $`";
 const ABOUT_SUB_CHECK_CONFIG: &str = "checks your configuration files";
 const ABOUT_SUB_CACHE_CLEAR: &str = "clears the cache for vars 'from_command' outputs";
 const ABOUT_SUB_CACHE_KEYS: &str = "lists all the cache keys";
@@ -107,12 +104,7 @@ fn app_init() -> App<'static, 'static> {
         .about(ABOUT_SUB_RUN);
 
     let subc_interract_history = App::new("history").about(ABOUT_SUB_SHOW_HISTORY);
-    let subc_display_last = App::new("show-last").alias("!").about(ABOUT_SUB_SHOW_LAST);
     let subc_rerun_last = App::new("run-last").alias("%").about(ABOUT_SUB_RUN_LAST);
-    let subc_modify_run_last = App::new("modify-run-last")
-        .alias("$")
-        .about(ABOUT_SUB_MODIFY_RUN_LAST);
-
     let subc_alias = App::new("alias")
         .arg(
             Arg::with_name("alias")
@@ -122,6 +114,7 @@ fn app_init() -> App<'static, 'static> {
         )
         .arg(arg_choices.clone())
         .about(ABOUT_SUB_ALIAS);
+
     App::new("sam")
         .version(VERSION)
         .author(AUTHORS)
@@ -132,9 +125,7 @@ fn app_init() -> App<'static, 'static> {
         .arg(arg_choices.clone())
         .subcommand(subc_run)
         .subcommand(subc_alias)
-        .subcommand(subc_display_last)
         .subcommand(subc_rerun_last)
-        .subcommand(subc_modify_run_last)
         .subcommand(subc_interract_history)
         .subcommand(App::new("check-config").about(ABOUT_SUB_CHECK_CONFIG))
         .subcommand(App::new("cache-clear").about(ABOUT_SUB_CACHE_CLEAR))
@@ -156,11 +147,7 @@ where
             let alias = parse_alias(e.value_of("alias"))?;
             SubCommand::SamCommand(SamCommand::ExecuteAlias { alias })
         }
-        ("show-last", Some(_)) => SubCommand::SamCommand(SamCommand::DisplayLastExecutedAlias),
         ("run-last", Some(_)) => SubCommand::SamCommand(SamCommand::ExecuteLastExecutedAlias),
-        ("modify-run-last", Some(_)) => {
-            SubCommand::SamCommand(SamCommand::ModifyThenExecuteLastAlias)
-        }
         ("history", Some(_)) => SubCommand::HistoryCommand(HistoryCommand::InterractWithHistory),
         ("check-config", Some(_)) => SubCommand::ConfigCheck(ConfigCommand::All),
         ("cache-clear", Some(_)) => SubCommand::CacheCommand(CacheCommand::Clear),

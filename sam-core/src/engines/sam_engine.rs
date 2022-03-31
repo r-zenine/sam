@@ -71,10 +71,7 @@ pub enum SamCommand {
     ExecuteAlias { alias: Identifier },
     // These 4 should be merged into 1
     // single command that will depend on the SamEngine
-    DisplayLastExecutedAlias,
     ExecuteLastExecutedAlias,
-    ModifyThenExecuteLastAlias,
-    DisplayHistory,
 }
 
 // TODO Rename to UseCaseAliasExec
@@ -107,11 +104,7 @@ impl<
         match command {
             ChooseAndExecuteAlias => self.choose_and_execute_alias(),
             ExecuteAlias { alias } => self.execute_alias(&alias),
-            DisplayLastExecutedAlias => self.display_last_executed_alias(),
             ExecuteLastExecutedAlias => self.execute_last_executed_alias(),
-            // TODO fixme later
-            ModifyThenExecuteLastAlias => Ok(1),
-            DisplayHistory => self.display_history(),
         }
     }
 
@@ -145,28 +138,6 @@ impl<
         self.history.borrow_mut().put(final_alias.clone())?;
         self.executor
             .execute_resolved_alias(&final_alias, &self.env_variables)
-    }
-
-    fn display_last_executed_alias(&self) -> Result<i32> {
-        let resolved_alias_o = self.history.borrow().get_last()?;
-        if let Some(alias) = resolved_alias_o {
-            println!("Alias: {}", &alias.name());
-            println!("Commands:\n=========\n");
-            for cmd in alias.commands() {
-                println!("\t- {}\n", cmd);
-            }
-        }
-        Ok(0)
-    }
-
-    fn display_history(&self) -> Result<i32> {
-        let resolved_alias_o = self.history.borrow().get_last_n(10)?;
-        for alias in resolved_alias_o {
-            println!("\n=============\n");
-            print!("{}", alias);
-            print!("\n=============\n");
-        }
-        Ok(0)
     }
 
     fn execute_last_executed_alias(&self) -> Result<i32> {
