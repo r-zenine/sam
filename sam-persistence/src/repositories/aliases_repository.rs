@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 use regex::Regex;
-use sam_core::engines::{AliasCollection, ErrorsAliasCollection};
+use sam_core::engines::AliasCollection;
 use sam_core::entities::aliases::Alias;
 use sam_core::entities::dependencies::ErrorsDependencies;
 use sam_core::entities::identifiers::Identifier;
@@ -85,10 +85,8 @@ impl AliasesRepository {
 }
 
 impl AliasCollection for AliasesRepository {
-    fn get(&self, id: &Identifier) -> Result<&Alias, ErrorsAliasCollection> {
-        self.aliases
-            .get(id)
-            .ok_or_else(|| ErrorsAliasCollection::AliasInvalidSelection(id.clone()))
+    fn get(&self, id: &Identifier) -> Option<&Alias> {
+        self.aliases.get(id)
     }
 
     fn aliases(&self) -> Vec<&Alias> {

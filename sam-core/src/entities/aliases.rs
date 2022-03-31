@@ -225,45 +225,19 @@ impl Namespace for ResolvedAlias {
 
 impl Display for ResolvedAlias {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        writeln!(
-            f,
-            "{}{}Alias:{} {}",
-            termion::color::Fg(termion::color::LightCyan),
-            termion::style::Bold,
-            termion::style::Reset,
-            self.name,
-        )?;
-        writeln!(
-            f,
-            "{}{}Choices:{}\n",
-            termion::color::Fg(termion::color::LightCyan),
-            termion::style::Bold,
-            termion::style::Reset,
-        )?;
+        writeln!(f, "Alias: {}\n", self.name,)?;
+        writeln!(f, "Choices:",)?;
 
         for (choice, values) in &self.choices {
-            write!(
-                f,
-                "\t{}{}{} =\t",
-                termion::style::Bold,
-                choice,
-                termion::style::Reset
-            )?;
+            write!(f, " - {} = ", choice,)?;
             for val in values {
                 write!(f, "{} ", val)?;
             }
             writeln!(f)?;
         }
-        writeln!(
-            f,
-            "\n{}{}{}Executed commands:{}",
-            termion::color::Fg(termion::color::LightCyan),
-            termion::style::Bold,
-            termion::style::Italic,
-            termion::style::Reset,
-        )?;
+        writeln!(f, "\nExecuted commands:",)?;
         for cmd in &self.resolved_aliases {
-            writeln!(f, "\t- {}", cmd)?;
+            writeln!(f, " - {}", cmd)?;
         }
         Ok(())
     }
@@ -272,7 +246,7 @@ impl Display for ResolvedAlias {
 #[allow(clippy::from_over_into)]
 impl<'a> Into<String> for &'a Alias {
     fn into(self) -> String {
-        format!("{}\t{}", &self.name, &self.desc)
+        format!("{} {}", &self.name, &self.desc)
     }
 }
 

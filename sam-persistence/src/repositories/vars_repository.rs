@@ -11,7 +11,7 @@ use thiserror::Error;
 #[derive(Debug, Default, Clone)]
 pub struct VarsRepository {
     vars: HashSet<Var>,
-    defaults: HashMap<Identifier, Choice>,
+    defaults: HashMap<Identifier, Vec<Choice>>,
 }
 
 impl VarsRepository {
@@ -27,7 +27,7 @@ impl VarsRepository {
 
     pub fn with_defaults(
         value: impl Iterator<Item = Var>,
-        defaults: HashMap<Identifier, Choice>,
+        defaults: HashMap<Identifier, Vec<Choice>>,
     ) -> Self {
         let vars: HashSet<Var> = value.collect();
         VarsRepository { vars, defaults }
@@ -59,7 +59,7 @@ impl VarsRepository {
 }
 
 impl VarsDefaultValuesSetter for VarsRepository {
-    fn set_defaults(&mut self, defaults: &HashMap<Identifier, Choice>) {
+    fn set_defaults(&mut self, defaults: &HashMap<Identifier, Vec<Choice>>) {
         let mut identifiers = vec![];
         for key in defaults.keys() {
             if !self.vars.contains(key) {
@@ -72,7 +72,7 @@ impl VarsDefaultValuesSetter for VarsRepository {
 
 impl VarsDefaultValues for VarsRepository {
     fn default_value(&self, id: &Identifier) -> Option<&Choice> {
-        self.defaults.get(id)
+        self.defaults.get(id).and_then(|v| v.first())
     }
 }
 

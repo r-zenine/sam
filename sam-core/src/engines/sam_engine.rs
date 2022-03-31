@@ -16,7 +16,7 @@ use thiserror::Error;
 const PROMPT: &str = "Choose an alias to run > ";
 
 pub trait VarsDefaultValuesSetter {
-    fn set_defaults(&mut self, defaults: &HashMap<Identifier, Choice>);
+    fn set_defaults(&mut self, defaults: &HashMap<Identifier, Vec<Choice>>);
 }
 
 pub trait AliasCollection {
@@ -37,10 +37,12 @@ pub trait AliasCollection {
             qualified_aliases.push(q_alias);
         }
         let selection = r.select_identifier(&qualified_aliases, prompt)?;
-        self.get(&selection.alias.identifier())
+        self.get(&selection.alias.identifier()).ok_or_else(|| {
+            ErrorsAliasCollection::AliasInvalidSelection(selection.alias.identifier())
+        })
     }
 
-    fn get(&self, id: &Identifier) -> std::result::Result<&Alias, ErrorsAliasCollection>;
+    fn get(&self, id: &Identifier) -> Option<&Alias>;
     fn aliases(&self) -> Vec<&Alias>;
 }
 
@@ -67,6 +69,8 @@ pub enum ErrorsAliasCollection {
 pub enum SamCommand {
     ChooseAndExecuteAlias,
     ExecuteAlias { alias: Identifier },
+    // These 4 should be merged into 1
+    // single command that will depend on the SamEngine
     DisplayLastExecutedAlias,
     ExecuteLastExecutedAlias,
     ModifyThenExecuteLastAlias,
@@ -119,7 +123,10 @@ impl<
     }
 
     fn execute_alias(&self, alias_id: &Identifier) -> Result<i32> {
-        let alias = self.aliases.get(alias_id)?;
+        let alias = self
+            .aliases
+            .get(alias_id)
+            .ok_or_else(|| ErrorsAliasCollection::AliasInvalidSelection(alias_id.clone()))?;
         self.run_alias(alias)
     }
 
@@ -355,7 +362,7 @@ mod tests {
 #[cfg(test)]
 mod mocks {
     use crate::algorithms::mocks::VarsDefaultValuesMock;
-    use crate::engines::{AliasCollection, ErrorsAliasCollection};
+    use crate::engines::AliasCollection;
     use crate::entities::aliases::Alias;
     use crate::entities::aliases::ResolvedAlias;
     use crate::entities::choices::Choice;
@@ -367,7 +374,7 @@ mod mocks {
     use super::{SamHistory, VarsDefaultValuesSetter};
 
     impl VarsDefaultValuesSetter for VarsDefaultValuesMock {
-        fn set_defaults(&mut self, defaults: &HashMap<Identifier, Choice>) {
+        fn set_defaults(&mut self, defaults: &HashMap<Identifier, Vec<Choice>>) {
             for (key, value) in defaults {
                 self.0.insert(key.clone(), value.clone());
             }
@@ -417,10 +424,8 @@ mod mocks {
     }
 
     impl AliasCollection for StaticAliasRepository {
-        fn get(&self, id: &Identifier) -> std::result::Result<&Alias, ErrorsAliasCollection> {
-            self.aliases
-                .get(id)
-                .ok_or_else(|| ErrorsAliasCollection::AliasInvalidSelection(id.clone()))
+        fn get(&self, id: &Identifier) -> Option<&Alias> {
+            self.aliases.get(id)
         }
 
         fn aliases(&self) -> Vec<&Alias> {

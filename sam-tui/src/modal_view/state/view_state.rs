@@ -122,6 +122,12 @@ pub struct ViewResponse<V: Value> {
     pub selected_options: Vec<OptionToggle>,
 }
 
+impl<V: Value> ViewResponse<V> {
+    pub fn values(self) -> impl Iterator<Item = V> {
+        self.marked_values.into_iter()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::modal_view::state::mocks::MockValue;
