@@ -182,6 +182,8 @@ pub type Result<T> = std::result::Result<T, ErrorSamEngine>;
 pub enum ErrorSamEngine {
     #[error("could not return an exit code.")]
     ExitCode,
+    #[error("could not run commands because {0}")]
+    ExecutorFailure(Box<dyn std::error::Error>),
     #[error("the requested alias was not found")]
     InvalidAliasSelection,
     #[error("could not resolve the dependency because\n-> {0}")]
