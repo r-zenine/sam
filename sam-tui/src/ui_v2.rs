@@ -157,7 +157,7 @@ impl<'a> Resolver for UserInterfaceV2 {
             // TODO fix prompt
             let prompt = format!("please make a choices for variable:\t{}", var.name());
             let choice: Vec<Choice> = self
-                .choose(items, &prompt, false)
+                .choose(items, &prompt, true)
                 .map_err(|_e| ErrorsResolver::NoChoiceWasSelected(var.name()))
                 .map(|chosen| chosen.into_iter().map(|e| e.choice).collect())?;
             choice
