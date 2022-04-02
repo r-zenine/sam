@@ -319,7 +319,7 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
 name = "sam-cli"
-version = "0.17.2"
+version = "0.17.1"
 dependencies = [
  "clap",
  "dirs",
@@ -339,7 +339,7 @@ dependencies = [
 
 [[package]]
 name = "sam-core"
-version = "0.17.2"
+version = "0.17.1"
 dependencies = [
  "comma",
  "lazy_static",
@@ -354,7 +354,7 @@ dependencies = [
 
 [[package]]
 name = "sam-persistence"
-version = "0.17.2"
+version = "0.17.1"
 dependencies = [
  "lazy_static",
  "maplit",
@@ -368,7 +368,7 @@ dependencies = [
 
 [[package]]
 name = "sam-readers"
-version = "0.17.2"
+version = "0.17.1"
 dependencies = [
  "sam-core",
  "sam-persistence",
@@ -379,7 +379,7 @@ dependencies = [
 
 [[package]]
 name = "sam-terminals"
-version = "0.1.0"
+version = "0.17.1"
 dependencies = [
  "thiserror",
  "tmux_interface",
@@ -387,7 +387,7 @@ dependencies = [
 
 [[package]]
 name = "sam-tui"
-version = "0.17.2"
+version = "0.17.1"
 dependencies = [
  "fzy-rs",
  "sam-core",
@@ -401,7 +401,7 @@ dependencies = [
 
 [[package]]
 name = "sam-utils"
-version = "0.17.2"
+version = "0.17.1"
 dependencies = [
  "dirs",
  "rand",
