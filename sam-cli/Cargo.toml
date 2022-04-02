@@ -14,6 +14,7 @@ sam-utils = {path="../sam-utils"}
 sam-tui = {path="../sam-tui"}
 sam-readers = {path="../sam-readers"}
 sam-persistence = {path="../sam-persistence"}
+sam-terminals = {path="../sam-terminals"}
 clap = "2.34.0"
 thiserror = "1.0.30"
 termion = "1.5.6"

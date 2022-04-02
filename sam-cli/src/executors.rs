@@ -1,19 +1,73 @@
 use std::collections::HashMap;
+use std::env;
+use std::rc::Rc;
 
 use sam_core::engines::{ErrorSamEngine, SamExecutor};
 use sam_core::entities::{aliases::ResolvedAlias, processes::ShellCommand};
+use sam_terminals::tmux::{Tmux, TmuxError};
 
-pub struct TmuxExecutor {}
+pub fn make_executor(dry: bool) -> Result<Rc<dyn SamExecutor>, Box<dyn std::error::Error>> {
+    if dry {
+        Ok(Rc::new(DryExecutor {}))
+    } else if env::var("TMUX").is_ok() {
+        let executor = TmuxExecutor::with_current_session()?;
+        Ok(Rc::new(executor))
+    } else {
+        Ok(Rc::new(ShellExecutor {}))
+    }
+}
+
+pub struct TmuxExecutor {
+    current_session: String,
+    windows: Vec<String>,
+}
+
+impl TmuxExecutor {
+    fn with_current_session() -> Result<Self, TmuxError> {
+        let current_session = Tmux::current_session_name()?;
+        let windows = Tmux::with_session(current_session.clone()).list_windows()?;
+        Ok(TmuxExecutor {
+            current_session,
+            windows,
+        })
+    }
+
+    fn window_name_for_alias(&self, alias: &ResolvedAlias) -> String {
+        let mut idx = 0;
+        let alias_name = format!("{}", alias.name()).replace(':', "_");
+        for name in &self.windows {
+            if name.starts_with(&alias_name) {
+                idx += 1
+            }
+        }
+        format!("{}-{}", alias_name, idx + 1)
+    }
+}
 
 impl SamExecutor for TmuxExecutor {
     fn execute_resolved_alias(
         &self,
-        _alias: &ResolvedAlias,
-        _env_variables: &HashMap<String, String>,
+        alias: &ResolvedAlias,
+        env_variables: &HashMap<String, String>,
     ) -> Result<i32, ErrorSamEngine> {
-        // Create an new page for each command that has to be run in the
-        // ResolvedAlias
-        Ok(2)
+        let window_name = self.window_name_for_alias(alias);
+        let directory = env::current_dir()?;
+        let t = Tmux::with_session(self.current_session.clone());
+        let commands = alias.commands();
+        if commands.len() == 1 {
+            ShellExecutor {}.execute_resolved_alias(alias, env_variables)
+        } else {
+            for cmd in alias.commands() {
+                let shcmd =
+                    ShellCommand::new(cmd.clone()).replace_env_vars_in_command(env_variables)?;
+                let command = shcmd.value();
+                t.run_command_in_new_pane(&window_name, command, directory.to_str().unwrap_or("."))
+                    .map_err(|err| ErrorSamEngine::ExecutorFailure(Box::new(err)))?;
+            }
+            t.set_layout(sam_terminals::tmux::WindowLayout::Tiled, &window_name)
+                .map_err(|err| ErrorSamEngine::ExecutorFailure(Box::new(err)))?;
+            Ok(0)
+        }
     }
 }
 
