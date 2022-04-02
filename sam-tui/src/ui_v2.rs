@@ -208,7 +208,7 @@ impl Value for AliasElement {
         let mut output = String::new();
 
         output.push_str(&format!(
-            "Name:\t{}\n\nDescription:\n{}\n\nAlias:\n\n{}\n",
+            "Name: {}\n\nDescription:\n{}\n\nAlias:\n\n{}\n",
             self.0.alias.name(),
             self.0.alias.desc(),
             self.0.alias.command(),
@@ -263,7 +263,7 @@ impl<'a> Value for ChoiceElement<'a> {
         let mut output = String::new();
 
         output.push_str(&format!(
-            "Name:\t{}\n\nDescription:\n{}\n\nAlias:\n\n{}\n",
+            "Name: {}\n\nDescription:\n{}\n\nAlias:\n\n{}\n",
             self.resolver_context.alias.name(),
             self.resolver_context.alias.desc(),
             self.resolver_context.alias.command(),
@@ -279,7 +279,7 @@ impl<'a> Value for ChoiceElement<'a> {
         if !self.resolver_context.choices.is_empty() {
             output.push_str("\nCurrent Choices:\n");
             for (id, choice) in self.resolver_context.choices.iter() {
-                output.push_str(&format!("- {}\t= {:?}", id, choice));
+                output.push_str(&format!("- {} = {:?}", id, choice));
             }
         }
         output
