@@ -1,7 +1,7 @@
 use crate::cache_engine::CacheEngine;
 use crate::config::AppSettings;
 use crate::config_engine::ConfigEngine;
-use crate::executors::{DryExecutor, ShellExecutor};
+use crate::executors::make_executor;
 use crate::history_engine::HistoryEngine;
 use crate::logger::{SilentLogger, StdErrLogger};
 use sam_core::engines::{SamEngine, SamExecutor, SamLogger, VarsDefaultValuesSetter};
@@ -36,12 +36,8 @@ impl Environment {
     pub fn sam_engine(
         self,
     ) -> SamEngine<UserInterfaceV2, AliasesRepository, VarsRepository, VarsRepository> {
-        let executor: Rc<dyn SamExecutor> = if self.config.dry {
-            Rc::new(DryExecutor {})
-        } else {
-            Rc::new(ShellExecutor {})
-        };
-
+        let executor: Rc<dyn SamExecutor> = make_executor(self.config.dry)
+            .expect("Could not initialize executors, please open a ticket");
         let resolver = UserInterfaceV2::new(self.env_variables.clone(), self.cache);
 
         SamEngine {
