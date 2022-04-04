@@ -82,55 +82,39 @@ impl<'a> Resolver for UserInterfaceV2 {
     fn resolve_dynamic<CMD>(
         &self,
         var: &Var,
-        cmd: Vec<CMD>,
+        cmd: CMD,
         _ctx: &ResolverContext,
     ) -> Result<Vec<Choice>, ErrorsResolver>
     where
         CMD: Into<ShellCommand<String>>,
     {
-        let mut choices_out = vec![];
-        for cm in cmd {
-            let sh_cmd: ShellCommand<String> = cm.into();
-            let cmd_key = sh_cmd
-                .replace_env_vars_in_command(&self.env_variables)
-                .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), Box::new(e)))?;
-            let cache_entry = self.cache.get(cmd_key.value());
-            let (stdout_output, _) = if let Ok(Some(out)) = cache_entry {
-                (out.as_bytes().to_owned(), vec![])
-            } else {
-                let mut to_run = ShellCommand::make_command(sh_cmd.clone());
-                to_run.envs(&self.env_variables);
-                let output = to_run
-                    .output()
-                    .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), e.into()))?;
-                if output.status.code() == Some(0) && output.stderr.is_empty() {
-                    self.cache
-                        .put(
-                            &var.name().to_string(),
-                            cmd_key.value(),
-                            &String::from_utf8_lossy(output.stdout.as_slice()).to_owned(),
-                        )
-                        .map_err(|e| {
-                            ErrorsResolver::DynamicResolveFailure(var.name(), Box::new(e))
-                        })?;
-                }
-                (output.stdout, output.stderr)
-            };
-
-            let choices = read_choices(stdout_output.as_slice())
-                .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), e.into()))?;
-            choices_out.extend(choices);
-        }
-        if choices_out.is_empty() {
-            // TODO fixme
-            Err(ErrorsResolver::DynamicResolveEmpty(
-                var.name(),
-                String::new(),
-                String::new(),
-            ))
+        let sh_cmd: ShellCommand<String> = cmd.into();
+        let cmd_key = sh_cmd
+            .replace_env_vars_in_command(&self.env_variables)
+            .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), Box::new(e)))?;
+        let cache_entry = self.cache.get(cmd_key.value());
+        let (stdout_output, _) = if let Ok(Some(out)) = cache_entry {
+            (out.as_bytes().to_owned(), vec![])
         } else {
-            self.resolve_static(var, choices_out.into_iter(), _ctx)
-        }
+            let mut to_run = ShellCommand::make_command(sh_cmd.clone());
+            to_run.envs(&self.env_variables);
+            let output = to_run
+                .output()
+                .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), e.into()))?;
+            if output.status.code() == Some(0) && output.stderr.is_empty() {
+                self.cache
+                    .put(
+                        &var.name().to_string(),
+                        cmd_key.value(),
+                        &String::from_utf8_lossy(output.stdout.as_slice()).to_owned(),
+                    )
+                    .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), Box::new(e)))?;
+            }
+            (output.stdout, output.stderr)
+        };
+
+        read_choices(stdout_output.as_slice())
+            .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), e.into()))
     }
 
     fn resolve_static<'b>(

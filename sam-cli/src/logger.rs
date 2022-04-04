@@ -20,7 +20,7 @@ impl SamLogger for StdErrLogger {
         );
     }
     fn command(&self, var: &dyn Display, cmd: &dyn AsRef<str>) {
-        eprintln!(
+        println!(
             "{}{}[SAM][ var = '{}' ]{} Running: '{}'",
             termion::color::Fg(termion::color::Green),
             termion::style::Bold,
@@ -30,7 +30,7 @@ impl SamLogger for StdErrLogger {
         );
     }
     fn choice(&self, var: &dyn Display, choice: &dyn Display) {
-        eprintln!(
+        println!(
             "{}{}[SAM][ var = '{}' ]{} Choice was: '{}'",
             termion::color::Fg(termion::color::Green),
             termion::style::Bold,
@@ -40,7 +40,7 @@ impl SamLogger for StdErrLogger {
         );
     }
     fn alias(&self, alias: &Alias) {
-        eprintln!(
+        println!(
             "{}{}[SAM][ alias = '{}::{}' ]{}",
             termion::color::Fg(termion::color::Green),
             termion::style::Bold,

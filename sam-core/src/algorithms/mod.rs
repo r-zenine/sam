@@ -56,29 +56,25 @@ pub mod mocks {
         fn resolve_dynamic<CMD>(
             &self,
             var: &Var,
-            cmds: Vec<CMD>,
+            cmd: CMD,
             _ctx: &ResolverContext,
         ) -> Result<Vec<Choice>, ErrorsResolver>
         where
             CMD: Into<ShellCommand<String>>,
         {
-            let choices: Vec<Choice> = cmds
-                .into_iter()
-                .flat_map(|cmd| {
-                    let sh_cmd = Into::<ShellCommand<String>>::into(cmd);
-                    let query = sh_cmd.value();
-                    self.dynamic_res
-                        .iter()
-                        .find(|(key, _)| *key == query)
-                        .and_then(|(_, value)| value.first())
-                        .cloned()
-                })
-                .collect();
+            let sh_cmd = Into::<ShellCommand<String>>::into(cmd);
+            let query = sh_cmd.value();
+            let choices = self
+                .dynamic_res
+                .iter()
+                .find(|(key, _)| *key == query)
+                .and_then(|(_, value)| value.first())
+                .cloned();
 
-            if choices.is_empty() {
-                Err(ErrorsResolver::NoChoiceWasAvailable(var.name()))
+            if let Some(choic) = choices {
+                Ok(vec![choic])
             } else {
-                Ok(choices)
+                Err(ErrorsResolver::NoChoiceWasAvailable(var.name()))
             }
         }
 

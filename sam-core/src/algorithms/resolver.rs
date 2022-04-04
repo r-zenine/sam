@@ -27,7 +27,7 @@ pub trait Resolver {
     fn resolve_dynamic<CMD>(
         &self,
         var: &Var,
-        cmd: Vec<CMD>,
+        cmd: CMD,
         ctx: &ResolverContext,
     ) -> Result<Vec<Choice>, ErrorsResolver>
     where

@@ -145,13 +145,33 @@ where
     R: Resolver,
 {
     if var.is_command() {
-        let command: Vec<ShellCommand<String>> = var
+        let mut choices_out: Vec<Choice> = vec![];
+        let mut has_one_rep = true;
+        let commands: Vec<ShellCommand<String>> = var
             .substitute_for_choices(choices)?
             .iter()
             .map(Clone::clone)
             .map(ShellCommand::new)
             .collect();
-        resolver.resolve_dynamic(var, command, ctx)
+        for command in commands {
+            let mut choices = resolver.resolve_dynamic(var, command, ctx)?;
+            has_one_rep = has_one_rep & (choices.len() == 1);
+            choices_out.append(&mut choices);
+        }
+        if choices_out.is_empty() {
+            // TODO fixme
+            Err(ErrorsResolver::DynamicResolveEmpty(
+                var.name(),
+                String::new(),
+                String::new(),
+            ))
+        } else {
+            if has_one_rep {
+                Ok(choices_out)
+            } else {
+                resolver.resolve_static(var, choices_out.into_iter(), ctx)
+            }
+        }
     } else if var.is_input() {
         let prompt = var.prompt().unwrap_or("no provided prompt");
         resolver.resolve_input(var, prompt, ctx).map(|c| vec![c])
