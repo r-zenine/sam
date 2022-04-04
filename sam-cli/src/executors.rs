@@ -79,6 +79,7 @@ impl SamExecutor for ShellExecutor {
         alias: &ResolvedAlias,
         env_variables: &HashMap<String, String>,
     ) -> Result<i32, ErrorSamEngine> {
+        println!("");
         for cmd in alias.commands() {
             let mut command: std::process::Command = ShellCommand::new(cmd).into();
             command.envs(env_variables);

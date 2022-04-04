@@ -159,7 +159,6 @@ where
             choices_out.append(&mut choices);
         }
         if choices_out.is_empty() {
-            // TODO fixme
             Err(ErrorsResolver::DynamicResolveEmpty(
                 var.name(),
                 String::new(),
