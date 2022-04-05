@@ -53,6 +53,7 @@ impl Tmux {
                 .start_directory(directory)
                 .shell_command(command)
                 .output();
+            println!("{:?}-> {:?}", output, command);
             Ok(output.map(|out| out.success())?)
         } else {
             let output = TmuxCommand::new()
@@ -61,6 +62,7 @@ impl Tmux {
                 .start_directory(directory)
                 .shell_command(command)
                 .output();
+            println!("{:?}-> {:?}", output, command);
             Ok(output.map(|out| out.success())?)
         }
     }

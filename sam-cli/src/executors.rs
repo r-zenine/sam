@@ -63,6 +63,8 @@ impl SamExecutor for TmuxExecutor {
                 let command = shcmd.value();
                 t.run_command_in_new_pane(&window_name, command, directory.to_str().unwrap_or("."))
                     .map_err(|err| ErrorSamEngine::ExecutorFailure(Box::new(err)))?;
+                t.set_layout(sam_terminals::tmux::WindowLayout::Tiled, &window_name)
+                    .map_err(|err| ErrorSamEngine::ExecutorFailure(Box::new(err)))?;
             }
             t.set_layout(sam_terminals::tmux::WindowLayout::Tiled, &window_name)
                 .map_err(|err| ErrorSamEngine::ExecutorFailure(Box::new(err)))?;
