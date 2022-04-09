@@ -1,7 +1,7 @@
 use sam_core::{
     algorithms::{resolver::Resolver, VarsCollection, VarsDefaultValues},
     engines::{
-        AliasCollection, ErrorSamEngine, SamCommand::ExecuteAlias, SamEngine,
+        AliasCollection, ErrorSamEngine, SamCommand::ExecuteAlias, SamEngine, SamHistory,
         VarsDefaultValuesSetter,
     },
     entities::identifiers::Identifier,
@@ -13,6 +13,7 @@ use thiserror::Error;
 #[derive(Clone, Debug, PartialEq)]
 pub enum HistoryCommand {
     InterractWithHistory,
+    ExecuteLastExecutedAlias,
 }
 
 pub struct HistoryEngine<
@@ -35,6 +36,7 @@ impl<
     pub fn run(&mut self, command: HistoryCommand) -> Result<i32> {
         match command {
             HistoryCommand::InterractWithHistory => self.interract_with_history(),
+            HistoryCommand::ExecuteLastExecutedAlias => self.execute_last_executed_alias(),
         }
     }
 
@@ -61,7 +63,20 @@ impl<
                 })?;
             }
         }
-        Ok(1)
+        Ok(0)
+    }
+
+    fn execute_last_executed_alias(&self) -> Result<i32> {
+        let resolved_alias_o = self.history.get_last()?;
+        if let Some(alias) = resolved_alias_o {
+            Ok(self
+                .sam_engine
+                .executor
+                .execute_resolved_alias(&alias, &self.sam_engine.env_variables)?)
+        } else {
+            println!("history empty");
+            Ok(0)
+        }
     }
 }
 

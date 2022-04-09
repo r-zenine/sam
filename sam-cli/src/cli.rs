@@ -147,7 +147,9 @@ where
             let alias = parse_alias(e.value_of("alias"))?;
             SubCommand::SamCommand(SamCommand::ExecuteAlias { alias })
         }
-        ("run-last", Some(_)) => SubCommand::SamCommand(SamCommand::ExecuteLastExecutedAlias),
+        ("run-last", Some(_)) => {
+            SubCommand::HistoryCommand(HistoryCommand::ExecuteLastExecutedAlias)
+        }
         ("history", Some(_)) => SubCommand::HistoryCommand(HistoryCommand::InterractWithHistory),
         ("check-config", Some(_)) => SubCommand::ConfigCheck(ConfigCommand::All),
         ("cache-clear", Some(_)) => SubCommand::CacheCommand(CacheCommand::Clear),

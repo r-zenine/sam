@@ -155,7 +155,7 @@ where
             .collect();
         for command in commands {
             let mut choices = resolver.resolve_dynamic(var, command, ctx)?;
-            has_one_rep = has_one_rep & (choices.len() == 1);
+            has_one_rep &= choices.len() == 1;
             choices_out.append(&mut choices);
         }
         if choices_out.is_empty() {
@@ -164,12 +164,10 @@ where
                 String::new(),
                 String::new(),
             ))
+        } else if has_one_rep {
+            Ok(choices_out)
         } else {
-            if has_one_rep {
-                Ok(choices_out)
-            } else {
-                resolver.resolve_static(var, choices_out.into_iter(), ctx)
-            }
+            resolver.resolve_static(var, choices_out.into_iter(), ctx)
         }
     } else if var.is_input() {
         let prompt = var.prompt().unwrap_or("no provided prompt");

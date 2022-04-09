@@ -50,6 +50,7 @@ impl SamExecutor for TmuxExecutor {
         alias: &ResolvedAlias,
         env_variables: &HashMap<String, String>,
     ) -> Result<i32, ErrorSamEngine> {
+        println!();
         let window_name = self.window_name_for_alias(alias);
         let directory = env::current_dir()?;
         let t = Tmux::with_session(self.current_session.clone());
@@ -81,7 +82,7 @@ impl SamExecutor for ShellExecutor {
         alias: &ResolvedAlias,
         env_variables: &HashMap<String, String>,
     ) -> Result<i32, ErrorSamEngine> {
-        println!("");
+        println!();
         for cmd in alias.commands() {
             let mut command: std::process::Command = ShellCommand::new(cmd).into();
             command.envs(env_variables);

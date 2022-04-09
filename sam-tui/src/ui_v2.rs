@@ -96,7 +96,7 @@ impl<'a> Resolver for UserInterfaceV2 {
         let (stdout_output, _) = if let Ok(Some(out)) = cache_entry {
             (out.as_bytes().to_owned(), vec![])
         } else {
-            let mut to_run = ShellCommand::make_command(sh_cmd.clone());
+            let mut to_run = ShellCommand::make_command(sh_cmd);
             to_run.envs(&self.env_variables);
             let output = to_run
                 .output()

@@ -69,9 +69,6 @@ pub enum ErrorsAliasCollection {
 pub enum SamCommand {
     ChooseAndExecuteAlias,
     ExecuteAlias { alias: Identifier },
-    // These 4 should be merged into 1
-    // single command that will depend on the SamEngine
-    ExecuteLastExecutedAlias,
 }
 
 // TODO Rename to UseCaseAliasExec
@@ -104,7 +101,6 @@ impl<
         match command {
             ChooseAndExecuteAlias => self.choose_and_execute_alias(),
             ExecuteAlias { alias } => self.execute_alias(&alias),
-            ExecuteLastExecutedAlias => self.execute_last_executed_alias(),
         }
     }
 
@@ -138,17 +134,6 @@ impl<
         self.history.borrow_mut().put(final_alias.clone())?;
         self.executor
             .execute_resolved_alias(&final_alias, &self.env_variables)
-    }
-
-    fn execute_last_executed_alias(&self) -> Result<i32> {
-        let resolved_alias_o = self.history.borrow().get_last()?;
-        if let Some(alias) = resolved_alias_o {
-            self.executor
-                .execute_resolved_alias(&alias, &self.env_variables)
-        } else {
-            println!("history empty");
-            Ok(0)
-        }
     }
 }
 
