@@ -1,5 +1,5 @@
 # sam
-![](demo.gif)
+[![asciicast](https://asciinema.org/a/487681.svg)](https://asciinema.org/a/487681)
 
 sam is a command line tool that allows you to define and manage 
 templates of complex command line commands and let's chose 
