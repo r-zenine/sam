@@ -3,7 +3,7 @@ use crate::config::AppSettings;
 use crate::config_engine::ConfigEngine;
 use crate::executors::make_executor;
 use crate::history_engine::HistoryEngine;
-use crate::logger::{SilentLogger, StdErrLogger};
+use crate::logger::{ErrorLogger, FileLogger, SilentLogger};
 use sam_core::engines::{SamEngine, SamExecutor, SamLogger, VarsDefaultValuesSetter};
 use sam_persistence::repositories::{
     AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
@@ -19,6 +19,7 @@ use sam_tui::{ErrorsUIV2, UserInterfaceV2};
 use sam_utils::fsutils;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::rc::Rc;
 use thiserror::Error;
 
@@ -88,7 +89,7 @@ pub fn from_settings(config: AppSettings) -> Result<Environment> {
     };
     let history = AliasHistory::new(config.history_file(), Some(1000))?;
 
-    let logger = logger_instance(config.silent);
+    let logger = logger_instance(config.silent)?;
 
     let mut aliases_vec = vec![];
     for f in config.aliases_files() {
@@ -113,12 +114,13 @@ pub fn from_settings(config: AppSettings) -> Result<Environment> {
         cache,
     })
 }
+const LOG_PATH: &str = "/tmp/sam.log";
 
-fn logger_instance(silent: bool) -> Rc<dyn SamLogger> {
+fn logger_instance(silent: bool) -> Result<Rc<dyn SamLogger>> {
     if !silent {
-        Rc::new(StdErrLogger)
+        Ok(Rc::new(FileLogger::new(&PathBuf::from(LOG_PATH))?))
     } else {
-        Rc::new(SilentLogger)
+        Ok(Rc::new(SilentLogger))
     }
 }
 
@@ -141,4 +143,6 @@ pub enum ErrorEnvironment {
     ErrAliasHistory(#[from] ErrorAliasHistory),
     #[error("could not open the vars cache because\n-> {0}")]
     CacheError(#[from] CacheError),
+    #[error("could not initialize logger -> {0}")]
+    LoggerError(#[from] ErrorLogger),
 }

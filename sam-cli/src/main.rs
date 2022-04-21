@@ -1,11 +1,13 @@
 use crate::config::{AppSettings, ErrorsSettings};
 use crate::config_engine::ErrorsConfigEngine;
 use crate::environment::ErrorEnvironment;
+use crate::logger::FileLogger;
 use cache_engine::ErrorCacheEngine;
 use cli::SubCommand;
 use history_engine::ErrorHistoryEngine;
 use sam_core::engines::ErrorSamEngine;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use thiserror::Error;
 
 mod cache_engine;
@@ -17,17 +19,15 @@ mod executors;
 mod history_engine;
 mod logger;
 
+const LOG_ERR_PATH: &str = "/tmp/sam_err.log";
+
 fn main() {
     match run() {
         Ok(i) => std::process::exit(i),
         Err(err) => {
-            println!(
-                "{}{}The application failed to run{} \n-> {}",
-                termion::color::Fg(termion::color::Red),
-                termion::style::Bold,
-                termion::style::Reset,
-                err,
-            )
+            let logger =
+                FileLogger::new(&PathBuf::from(LOG_ERR_PATH)).expect("Can't initialize logger");
+            logger.error(err);
         }
     }
 }

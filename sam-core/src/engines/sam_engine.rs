@@ -120,6 +120,7 @@ impl<
     }
 
     fn run_alias(&self, alias: &Alias) -> Result<i32> {
+        self.logger.alias(alias);
         let exec_seq = execution_sequence_for_dependencies(&self.vars, alias)?;
         let choices: HashMap<Identifier, Vec<Choice>> = choices_for_execution_sequence(
             alias,
