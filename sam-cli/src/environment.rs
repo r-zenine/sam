@@ -19,7 +19,6 @@ use sam_tui::{ErrorsUIV2, UserInterfaceV2};
 use sam_utils::fsutils;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::rc::Rc;
 use thiserror::Error;
 
@@ -114,11 +113,10 @@ pub fn from_settings(config: AppSettings) -> Result<Environment> {
         cache,
     })
 }
-const LOG_PATH: &str = "/tmp/sam.log";
 
 fn logger_instance(silent: bool) -> Result<Rc<dyn SamLogger>> {
     if !silent {
-        Ok(Rc::new(FileLogger::new(&PathBuf::from(LOG_PATH))?))
+        Ok(Rc::new(FileLogger::new()))
     } else {
         Ok(Rc::new(SilentLogger))
     }

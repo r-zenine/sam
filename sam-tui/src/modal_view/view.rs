@@ -12,6 +12,7 @@ use termion::event::Key;
 pub struct ModalView<V: Value> {
     state: ViewState<V>,
     ui: UIModal<V>,
+    init: bool,
     events: Keys<Stdin>,
     has_options: bool,
     allow_multi_select: bool,
@@ -35,11 +36,15 @@ impl<V: Value> ModalView<V> {
             ui,
             has_options,
             allow_multi_select,
+            init: false,
         }
     }
 
     pub fn run(mut self) -> Option<ViewResponse<V>> {
-        self.ui.draw(&self.state);
+        if !self.init {
+            self.ui.draw(&self.state);
+            self.init = true;
+        }
         if let Some(event) = self.next_event() {
             if event == Event::AppClosed {
                 self.ui.suspend_raw_mode();

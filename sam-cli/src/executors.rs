@@ -5,14 +5,17 @@ use std::rc::Rc;
 use sam_core::engines::{ErrorSamEngine, SamExecutor};
 use sam_core::entities::{aliases::ResolvedAlias, processes::ShellCommand};
 use sam_terminals::tmux::{Tmux, TmuxError};
+use log::debug;
 
 pub fn make_executor(dry: bool) -> Result<Rc<dyn SamExecutor>, Box<dyn std::error::Error>> {
     if dry {
         Ok(Rc::new(DryExecutor {}))
     } else if env::var("TMUX").is_ok() {
+        debug!("running inside tmux, using TmuxExecutor");
         let executor = TmuxExecutor::with_current_session()?;
         Ok(Rc::new(executor))
     } else {
+        debug!("no tmux detected, using ShellExecutor");
         Ok(Rc::new(ShellExecutor {}))
     }
 }
@@ -63,6 +66,7 @@ impl SamExecutor for TmuxExecutor {
                 let shcmd =
                     ShellCommand::new(cmd.clone()).replace_env_vars_in_command(env_variables)?;
                 let command = shcmd.value();
+                debug!("execute_resolved_alias: running command {:?}", cmd);
                 t.run_command_in_new_pane(&window_name, command, directory.to_str().unwrap_or("."))
                     .map_err(|err| ErrorSamEngine::ExecutorFailure(Box::new(err)))?;
                 t.set_layout(sam_terminals::tmux::WindowLayout::Tiled, &window_name)

@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 
 tmux_interface = { version = "0.2.1", features = ["tmux_2_9a"]}
-thiserror = "1.0.30"
+thiserror = "1.0.31"
+log = "0.4.16"

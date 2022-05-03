@@ -40,6 +40,10 @@ impl<V: Value> UIModal<V> {
         raw_terminal
             .suspend_raw_mode()
             .expect("Can't suspect raw mode");
+        // This is a workaround because on my machine I can't get 
+        // stdin and stdout to work after I suspend raw mode
+        eprintln!("");
+        println!("");
     }
 }
 

@@ -2,6 +2,7 @@ use std::{fmt::Display, io::BufRead};
 
 use thiserror::Error;
 use tmux_interface::{self, TmuxCommand};
+use log::debug;
 
 pub struct Tmux {
     target_session: String,
@@ -46,6 +47,7 @@ impl Tmux {
         directory: &str,
     ) -> Result<bool, TmuxError> {
         if self.list_windows()?.iter().any(|e| *e == target_window) {
+            debug!("target window {:?} was found!", target_window);
             let output = TmuxCommand::new()
                 .split_window()
                 .target_window(target_window)
@@ -53,14 +55,19 @@ impl Tmux {
                 .start_directory(directory)
                 .shell_command(command)
                 .output();
+            debug!("executed command {:?} and got output {:?}", command, output);
+
             Ok(output.map(|out| out.success())?)
         } else {
+            debug!("target window {:?} was not found! creating it", target_window);
             let output = TmuxCommand::new()
                 .new_window()
                 .window_name(target_window)
                 .start_directory(directory)
                 .shell_command(command)
                 .output();
+            debug!("executed command {:?} and got output {:?}", command, output);
+
             Ok(output.map(|out| out.success())?)
         }
     }
