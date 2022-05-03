@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::env;
 use std::rc::Rc;
 
+use log::debug;
 use sam_core::engines::{ErrorSamEngine, SamExecutor};
 use sam_core::entities::{aliases::ResolvedAlias, processes::ShellCommand};
 use sam_terminals::tmux::{Tmux, TmuxError};
-use log::debug;
 
 pub fn make_executor(dry: bool) -> Result<Rc<dyn SamExecutor>, Box<dyn std::error::Error>> {
     if dry {

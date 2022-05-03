@@ -51,9 +51,7 @@ fn run_command(sub_command: SubCommand, env: environment::Environment) -> Result
 
 fn init_logger() -> Result<LoggerHandle> {
     Ok(Logger::try_with_env()?
-        .log_to_file(
-            FileSpec::default()
-        )
+        .log_to_file(FileSpec::default())
         .write_mode(WriteMode::BufferAndFlush)
         .use_utc()
         .start()?)

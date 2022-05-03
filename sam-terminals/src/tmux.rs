@@ -1,8 +1,8 @@
 use std::{fmt::Display, io::BufRead};
 
+use log::debug;
 use thiserror::Error;
 use tmux_interface::{self, TmuxCommand};
-use log::debug;
 
 pub struct Tmux {
     target_session: String,
@@ -59,7 +59,10 @@ impl Tmux {
 
             Ok(output.map(|out| out.success())?)
         } else {
-            debug!("target window {:?} was not found! creating it", target_window);
+            debug!(
+                "target window {:?} was not found! creating it",
+                target_window
+            );
             let output = TmuxCommand::new()
                 .new_window()
                 .window_name(target_window)
