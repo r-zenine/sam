@@ -33,12 +33,23 @@ where
     }
 }
 
+use lazy_static::lazy_static;
+use regex::Regex;
+
+lazy_static! {
+    static ref ENVVARRE: Regex = Regex::new(r#"\$\{(?P<var>[a-zA-Z0-9_]+)\}"#).unwrap();
+}
+
 impl ShellCommand<String> {
     pub fn replace_env_vars_in_command(
         &self,
         variables: &HashMap<String, String>,
     ) -> std::io::Result<ShellCommand<String>> {
-        let command_escaped = shellwords::escape(self.command.as_str());
+        let replace_pattern = format!("$$$var");
+        let sanitized = ENVVARRE
+            .replace_all(&self.command.as_str(), replace_pattern.as_str())
+            .to_string();
+        let command_escaped = shellwords::escape(&sanitized);
         let s = format!("echo \"{}\"|envsubst", command_escaped);
         let shell_cmd = ShellCommand::<String>::new(s);
         let mut cmd: Command = shell_cmd.into();
@@ -71,5 +82,24 @@ where
             command.current_dir(dir);
         }
         command
+    }
+}
+
+#[cfg(test)] 
+mod tests {
+    use super::ShellCommand;
+
+    #[test]
+    fn test_replace_env_vars_in_command(){
+        let command = ShellCommand::new(String::from("echo $SOME_VAR"));
+        let vars = maplit::hashmap!{ String::from("SOME_VAR") => String::from("toto") };
+        let output = command.replace_env_vars_in_command(&vars).expect("could not replace env vars");
+        assert_eq!(output.value(), "echo toto");
+
+        let command = ShellCommand::new(String::from("echo ${SOME_VAR}"));
+        let vars = maplit::hashmap!{ String::from("SOME_VAR") => String::from("toto") };
+        let output = command.replace_env_vars_in_command(&vars).expect("could not replace env vars");
+        assert_eq!(output.value(), "echo toto");
+
     }
 }
