@@ -45,9 +45,9 @@ impl ShellCommand<String> {
         &self,
         variables: &HashMap<String, String>,
     ) -> std::io::Result<ShellCommand<String>> {
-        let replace_pattern = format!("$$$var");
+        let replace_pattern = "$$$var".to_string();
         let sanitized = ENVVARRE
-            .replace_all(&self.command.as_str(), replace_pattern.as_str())
+            .replace_all(self.command.as_str(), replace_pattern.as_str())
             .to_string();
         let command_escaped = shellwords::escape(&sanitized);
         let s = format!("echo \"{}\"|envsubst", command_escaped);
@@ -85,21 +85,24 @@ where
     }
 }
 
-#[cfg(test)] 
+#[cfg(test)]
 mod tests {
     use super::ShellCommand;
 
     #[test]
-    fn test_replace_env_vars_in_command(){
+    fn test_replace_env_vars_in_command() {
         let command = ShellCommand::new(String::from("echo $SOME_VAR"));
-        let vars = maplit::hashmap!{ String::from("SOME_VAR") => String::from("toto") };
-        let output = command.replace_env_vars_in_command(&vars).expect("could not replace env vars");
+        let vars = maplit::hashmap! { String::from("SOME_VAR") => String::from("toto") };
+        let output = command
+            .replace_env_vars_in_command(&vars)
+            .expect("could not replace env vars");
         assert_eq!(output.value(), "echo toto");
 
         let command = ShellCommand::new(String::from("echo ${SOME_VAR}"));
-        let vars = maplit::hashmap!{ String::from("SOME_VAR") => String::from("toto") };
-        let output = command.replace_env_vars_in_command(&vars).expect("could not replace env vars");
+        let vars = maplit::hashmap! { String::from("SOME_VAR") => String::from("toto") };
+        let output = command
+            .replace_env_vars_in_command(&vars)
+            .expect("could not replace env vars");
         assert_eq!(output.value(), "echo toto");
-
     }
 }
