@@ -12,7 +12,6 @@ pub use dependency_resolution::VarsDefaultValues;
 pub mod mocks {
     use super::{dependency_resolution, resolver::ResolverContext};
     use crate::entities::identifiers::Identifier;
-    use crate::entities::processes::ShellCommand;
     use crate::entities::vars::Var;
     use crate::entities::{aliases::AliasAndDependencies, choices::Choice};
     pub use dependency_resolution::mocks::*;
@@ -53,21 +52,16 @@ pub mod mocks {
                 .ok_or_else(|| ErrorsResolver::NoChoiceWasAvailable(var.name()))
         }
 
-        fn resolve_dynamic<CMD>(
+        fn resolve_dynamic(
             &self,
             var: &Var,
-            cmd: CMD,
+            cmd: String,
             _ctx: &ResolverContext,
-        ) -> Result<Vec<Choice>, ErrorsResolver>
-        where
-            CMD: Into<ShellCommand<String>>,
-        {
-            let sh_cmd = Into::<ShellCommand<String>>::into(cmd);
-            let query = sh_cmd.value();
+        ) -> Result<Vec<Choice>, ErrorsResolver> {
             let choices = self
                 .dynamic_res
                 .iter()
-                .find(|(key, _)| *key == query)
+                .find(|(key, _)| *key == &cmd)
                 .and_then(|(_, value)| value.first())
                 .cloned();
 

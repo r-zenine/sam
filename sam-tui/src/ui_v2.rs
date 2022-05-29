@@ -5,9 +5,9 @@ use sam_core::algorithms::resolver::ResolverContext;
 use sam_core::entities::aliases::AliasAndDependencies;
 use sam_core::entities::choices::Choice;
 use sam_core::entities::commands::Command;
-use sam_core::entities::processes::ShellCommand;
 use sam_core::entities::vars::Var;
 use sam_readers::read_choices;
+use sam_terminals::processes::ShellCommand;
 use sam_utils::fsutils::ErrorsFS;
 use std::collections::{HashMap, HashSet};
 
@@ -79,15 +79,12 @@ impl<'a> Resolver for UserInterfaceV2 {
         }
     }
 
-    fn resolve_dynamic<CMD>(
+    fn resolve_dynamic(
         &self,
         var: &Var,
-        cmd: CMD,
+        cmd: String,
         _ctx: &ResolverContext,
-    ) -> Result<Vec<Choice>, ErrorsResolver>
-    where
-        CMD: Into<ShellCommand<String>>,
-    {
+    ) -> Result<Vec<Choice>, ErrorsResolver> {
         let sh_cmd: ShellCommand<String> = cmd.into();
         let cmd_key = sh_cmd
             .replace_env_vars_in_command(&self.env_variables)
@@ -138,8 +135,7 @@ impl<'a> Resolver for UserInterfaceV2 {
                 .into_iter()
                 .map(|choice| ChoiceElement::from(choice, _ctx))
                 .collect();
-            // TODO fix prompt
-            let prompt = format!("please make a choices for variable:\t{}", var.name());
+            let prompt = format!("please make a choices for variable: {}", var.name());
             let choice: Vec<Choice> = self
                 .choose(items, &prompt, true)
                 .map_err(|_e| ErrorsResolver::NoChoiceWasSelected(var.name()))

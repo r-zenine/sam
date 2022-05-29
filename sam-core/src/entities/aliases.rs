@@ -4,7 +4,6 @@ use crate::entities::dependencies::Dependencies;
 use crate::entities::identifiers::Identifier;
 use crate::entities::namespaces::Namespace;
 use crate::entities::namespaces::NamespaceUpdater;
-use crate::entities::processes::ShellCommand;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -247,14 +246,6 @@ impl Display for ResolvedAlias {
 impl<'a> Into<String> for &'a Alias {
     fn into(self) -> String {
         format!("{} {}", &self.name, &self.desc)
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl Into<ShellCommand<String>> for Alias {
-    // todo: implement command parsing logic to support pipes and logical symbols etc....
-    fn into(self) -> ShellCommand<String> {
-        ShellCommand::new(self.alias)
     }
 }
 

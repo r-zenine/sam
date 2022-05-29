@@ -10,6 +10,7 @@ sam-core = {path="../sam-core"}
 sam-persistence = {path="../sam-persistence"}
 sam-utils = {path="../sam-utils"}
 sam-readers = {path="../sam-readers"}
+sam-terminals = {path="../sam-terminals"}
 thiserror = "1.0.30"
 tui = { version = "0.17", default-features = false, features = ["termion"] }
 fzy-rs = "0.1.0"

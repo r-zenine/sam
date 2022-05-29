@@ -9,7 +9,6 @@ use crate::entities::{
     commands::Command,
     dependencies::{Dependencies, ExecutionSequence},
     identifiers::{Identifier, Identifiers},
-    processes::ShellCommand,
     vars::Var,
 };
 
@@ -147,11 +146,10 @@ where
     if var.is_command() {
         let mut choices_out: Vec<Choice> = vec![];
         let mut has_one_rep = true;
-        let commands: Vec<ShellCommand<String>> = var
+        let commands: Vec<String> = var
             .substitute_for_choices(choices)?
             .iter()
             .map(Clone::clone)
-            .map(ShellCommand::new)
             .collect();
         for command in commands {
             let mut choices = resolver.resolve_dynamic(var, command, ctx)?;

@@ -84,7 +84,6 @@ pub struct SamEngine<
     pub defaults: DV,
     pub logger: Rc<dyn SamLogger>,
     pub history: RefCell<Box<dyn SamHistory>>,
-    // TODO this should be handled elsewhere, most likely in the executor
     pub env_variables: HashMap<String, String>,
     pub executor: Rc<dyn SamExecutor>,
 }
@@ -234,7 +233,6 @@ mod tests {
         assert_eq!(resolved_alias.name(), &selected_identifier);
         assert!(resolved_alias.choice(&variable_1).is_some());
 
-        // TODO fixme
         assert_eq!(resolved_alias.choices().len(), 2);
         assert_eq!(
             *resolved_alias.choice(&variable_1).unwrap().first().unwrap(),

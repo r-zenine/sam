@@ -16,7 +16,6 @@ lazy_static! {
     static ref SUBCMD_NESTED_RE: Regex = Regex::new("[\"']+(?P<sub_nest>[^'\"]+)[\"']+").unwrap();
 }
 
-// TODO extract from core
 pub trait Command: Namespace {
     // Returns a string representation of a command
     fn command(&self) -> &str;

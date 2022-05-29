@@ -7,6 +7,13 @@ edition = "2021"
 
 [dependencies]
 
+sam-core = {path="../sam-core"}
 tmux_interface = { version = "0.2.1", features = ["tmux_2_9a"]}
 thiserror = "1.0.31"
 log = "0.4.16"
+shellwords = "1.1.0"
+lazy_static = "1.4.0"
+regex = "1.5.5"
+
+[dev-dependencies]
+maplit = "1.0.2"

@@ -4,5 +4,4 @@ pub mod commands;
 pub mod dependencies;
 pub mod identifiers;
 pub mod namespaces;
-pub mod processes;
 pub mod vars;

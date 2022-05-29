@@ -372,7 +372,7 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
 name = "sam-cli"
-version = "1.2.1"
+version = "1.2.2"
 dependencies = [
  "clap",
  "dirs",
@@ -394,7 +394,7 @@ dependencies = [
 
 [[package]]
 name = "sam-core"
-version = "1.2.1"
+version = "1.2.2"
 dependencies = [
  "comma",
  "lazy_static",
@@ -402,14 +402,12 @@ dependencies = [
  "regex",
  "serde",
  "serde_yaml",
- "shellwords",
- "termion",
  "thiserror",
 ]
 
 [[package]]
 name = "sam-persistence"
-version = "1.2.1"
+version = "1.2.2"
 dependencies = [
  "lazy_static",
  "maplit",
@@ -423,7 +421,7 @@ dependencies = [
 
 [[package]]
 name = "sam-readers"
-version = "1.2.1"
+version = "1.2.2"
 dependencies = [
  "sam-core",
  "sam-persistence",
@@ -434,21 +432,27 @@ dependencies = [
 
 [[package]]
 name = "sam-terminals"
-version = "1.2.1"
+version = "1.2.2"
 dependencies = [
+ "lazy_static",
  "log",
+ "maplit",
+ "regex",
+ "sam-core",
+ "shellwords",
  "thiserror",
  "tmux_interface",
 ]
 
 [[package]]
 name = "sam-tui"
-version = "1.2.1"
+version = "1.2.2"
 dependencies = [
  "fzy-rs",
  "sam-core",
  "sam-persistence",
  "sam-readers",
+ "sam-terminals",
  "sam-utils",
  "termion",
  "thiserror",
@@ -457,7 +461,7 @@ dependencies = [
 
 [[package]]
 name = "sam-utils"
-version = "1.2.1"
+version = "1.2.2"
 dependencies = [
  "dirs",
  "rand",

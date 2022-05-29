@@ -4,7 +4,6 @@ use crate::entities::aliases::{Alias, AliasAndDependencies};
 use crate::entities::choices::Choice;
 use crate::entities::dependencies::ErrorsDependencies;
 use crate::entities::identifiers::Identifier;
-use crate::entities::processes::ShellCommand;
 use crate::entities::vars::Var;
 use thiserror::Error;
 
@@ -23,15 +22,12 @@ pub trait Resolver {
         prompt: &str,
         ctx: &ResolverContext,
     ) -> Result<Choice, ErrorsResolver>;
-    // TODO make cmd a string
-    fn resolve_dynamic<CMD>(
+    fn resolve_dynamic(
         &self,
         var: &Var,
-        cmd: CMD,
+        cmd: String,
         ctx: &ResolverContext,
-    ) -> Result<Vec<Choice>, ErrorsResolver>
-    where
-        CMD: Into<ShellCommand<String>>;
+    ) -> Result<Vec<Choice>, ErrorsResolver>;
     fn resolve_static(
         &self,
         var: &Var,
@@ -54,7 +50,7 @@ pub enum ErrorsResolver {
     #[error("an error happened when gathering choices for identifier {0}\n-> {1}")]
     DynamicResolveFailure(Identifier, Box<dyn std::error::Error>),
     #[error(
-        "gathering choices for {0} failed because the command\n   {}{}{1}{} \n   returned empty content on stdout. stderr content was \n {2}", termion::color::Fg(termion::color::Cyan), termion::style::Bold, termion::style::Reset
+        "gathering choices for {0} failed because the command\n   {1} \n   returned empty content on stdout. stderr content was \n {2}", 
     )]
     DynamicResolveEmpty(Identifier, String, String),
     #[error("no choice was selected for var {0}")]
