@@ -19,6 +19,7 @@ const ABOUT: &str = "sam lets you difine custom aliases and search them using fu
 const ABOUT_SUB_RUN: &str = "let's you select and alias then run it";
 const ABOUT_SUB_SHOW_HISTORY: &str = "displays the last commands that you ran";
 const ABOUT_SUB_RUN_LAST: &str = "runs the last command that was run again. shortcut is `sam %`";
+const ABOUT_SUB_SHOW_LAST: &str = "runs the last command that was run again. shortcut is `sam s`";
 const ABOUT_SUB_CHECK_CONFIG: &str = "checks your configuration files";
 const ABOUT_SUB_CACHE_CLEAR: &str = "clears the cache for vars 'from_command' outputs";
 const ABOUT_SUB_CACHE_KEYS: &str = "lists all the cache keys";
@@ -105,6 +106,7 @@ fn app_init() -> App<'static, 'static> {
 
     let subc_interract_history = App::new("history").about(ABOUT_SUB_SHOW_HISTORY);
     let subc_rerun_last = App::new("run-last").alias("%").about(ABOUT_SUB_RUN_LAST);
+    let subc_show_last = App::new("show-last").alias("s").about(ABOUT_SUB_SHOW_LAST);
     let subc_alias = App::new("alias")
         .arg(
             Arg::with_name("alias")
@@ -126,6 +128,7 @@ fn app_init() -> App<'static, 'static> {
         .subcommand(subc_run)
         .subcommand(subc_alias)
         .subcommand(subc_rerun_last)
+        .subcommand(subc_show_last)
         .subcommand(subc_interract_history)
         .subcommand(App::new("check-config").about(ABOUT_SUB_CHECK_CONFIG))
         .subcommand(App::new("cache-clear").about(ABOUT_SUB_CACHE_CLEAR))
@@ -149,6 +152,9 @@ where
         }
         ("run-last", Some(_)) => {
             SubCommand::HistoryCommand(HistoryCommand::ExecuteLastExecutedAlias)
+        }
+        ("show-last", Some(_)) => {
+            SubCommand::HistoryCommand(HistoryCommand::DisplayLastExecutedAlias)
         }
         ("history", Some(_)) => SubCommand::HistoryCommand(HistoryCommand::InterractWithHistory),
         ("check-config", Some(_)) => SubCommand::ConfigCheck(ConfigCommand::All),

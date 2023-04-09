@@ -14,6 +14,7 @@ use thiserror::Error;
 pub enum HistoryCommand {
     InterractWithHistory,
     ExecuteLastExecutedAlias,
+    DisplayLastExecutedAlias,
 }
 
 pub struct HistoryEngine<
@@ -37,6 +38,7 @@ impl<
         match command {
             HistoryCommand::InterractWithHistory => self.interract_with_history(),
             HistoryCommand::ExecuteLastExecutedAlias => self.execute_last_executed_alias(),
+            HistoryCommand::DisplayLastExecutedAlias => self.display_last_executed_alias(),
         }
     }
 
@@ -73,6 +75,19 @@ impl<
                 .sam_engine
                 .executor
                 .execute_resolved_alias(&alias, &self.sam_engine.env_variables)?)
+        } else {
+            println!("history empty");
+            Ok(0)
+        }
+    }
+
+    fn display_last_executed_alias(&self) -> Result<i32> {
+        let resolved_alias_o = self.history.get_last()?;
+        if let Some(alias) = resolved_alias_o {
+            for cmd in alias.commands() {
+                println!("{}", cmd);
+            }
+            Ok(0)
         } else {
             println!("history empty");
             Ok(0)
