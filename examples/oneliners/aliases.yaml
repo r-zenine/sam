@@ -2,7 +2,7 @@
   desc: list current directory. 
   alias: "cd {{docker::directory}} && {{kubernetes::pager}} {{docker::file}}"
 
-- name: echo $HOME
+- name: echo_HOME
   desc: prints home directory
   alias: "[[docker::echo_input]] && echo $HOME"
 
