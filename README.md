@@ -1,5 +1,9 @@
 # sam
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fr-zenine%2Fsam.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fr-zenine%2Fsam?ref=badge_shield)
+
 [![asciicast](https://asciinema.org/a/487681.svg)](https://asciinema.org/a/487681)
+
 
 sam is a command line tool that allows you to define and manage 
 templates of complex command line commands and let's chose 
@@ -140,9 +144,14 @@ In your `vars_file`, you can define variables. Variables can either have a stati
   from_command: ls -1 {{ directory }}
 ```
 
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fr-zenine%2Fsam.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fr-zenine%2Fsam?ref=badge_large)
+
 ## Keybindings 
 
 while selecting choices for variables, you can use 
 
 * Ctrl-s to select multiple values
 * Ctrl-a to select all values
+
