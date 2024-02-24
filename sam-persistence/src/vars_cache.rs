@@ -9,7 +9,12 @@ use crate::associative_state::AssociativeStateWithTTL;
 use crate::associative_state::ErrorAssociativeState;
 
 pub trait VarsCache {
-    fn put(&self, command: &dyn AsRef<str>, output: &dyn AsRef<str>) -> Result<(), CacheError>;
+    fn put(
+        &self,
+        name: &dyn AsRef<str>,
+        command: &dyn AsRef<str>,
+        output: &dyn AsRef<str>,
+    ) -> Result<(), CacheError>;
     fn get(&self, command: &dyn AsRef<str>) -> Result<Option<String>, CacheError>;
 }
 
@@ -18,8 +23,9 @@ pub struct RustBreakCache {
     state: AssociativeStateWithTTL<CacheEntry>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct CacheEntry {
+    pub name: String,
     pub command: String,
     pub output: String,
 }
@@ -35,6 +41,10 @@ impl RustBreakCache {
         Ok(self.state.entries()?.map(|(_, v)| v))
     }
 
+    pub fn delete(&self, key: &str) -> Result<Option<CacheEntry>, CacheError> {
+        Ok(self.state.delete(key)?)
+    }
+
     pub fn clear_cache(&self) -> Result<(), CacheError> {
         for (key, _) in self.state.entries()? {
             self.state.delete(key)?;
@@ -44,9 +54,15 @@ impl RustBreakCache {
 }
 
 impl VarsCache for RustBreakCache {
-    fn put(&self, command: &dyn AsRef<str>, output: &dyn AsRef<str>) -> Result<(), CacheError> {
+    fn put(
+        &self,
+        name: &dyn AsRef<str>,
+        command: &dyn AsRef<str>,
+        output: &dyn AsRef<str>,
+    ) -> Result<(), CacheError> {
         let key = command.as_ref().to_string();
         let entry = CacheEntry {
+            name: name.as_ref().to_string(),
             command: key.clone(),
             output: output.as_ref().to_string(),
         };
@@ -62,7 +78,12 @@ impl VarsCache for RustBreakCache {
 pub struct NoopVarsCache {}
 
 impl VarsCache for NoopVarsCache {
-    fn put(&self, _command: &dyn AsRef<str>, _output: &dyn AsRef<str>) -> Result<(), CacheError> {
+    fn put(
+        &self,
+        _name: &dyn AsRef<str>,
+        _command: &dyn AsRef<str>,
+        _output: &dyn AsRef<str>,
+    ) -> Result<(), CacheError> {
         Ok(())
     }
     fn get(&self, _command: &dyn AsRef<str>) -> Result<Option<String>, CacheError> {
@@ -92,7 +113,11 @@ mod tests {
         let ttl = Duration::from_secs(90);
         let cache = RustBreakCache::with_ttl(&tmp_dir.path, &ttl).expect("Can't open cache");
         cache
-            .put(&String::from("command"), &String::from("output"))
+            .put(
+                &String::from("name"),
+                &String::from("command"),
+                &String::from("output"),
+            )
             .expect("can't write in rustbreak cache");
 
         let cache2 = RustBreakCache::with_ttl(&tmp_dir.path, &ttl).expect("Can't open cache");
@@ -104,7 +129,11 @@ mod tests {
 
         let cache = RustBreakCache::with_ttl(&tmp_dir.path, &ttl).expect("Can't open cache");
         cache
-            .put(&String::from("command2"), &String::from("output"))
+            .put(
+                &String::from("name"),
+                &String::from("command2"),
+                &String::from("output"),
+            )
             .expect("can't write in rustbreak cache");
 
         let value = cache2

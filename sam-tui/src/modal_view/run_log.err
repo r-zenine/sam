@@ -1,0 +1,115 @@
+warning: associated function is never used: `new`
+  --> sam-persistence/src/associative_state.rs:75:12
+   |
+75 |     pub fn new(p: impl AsRef<Path>) -> Result<Self, ErrorAssociativeState> {
+   |            ^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: struct is never constructed: `AssociativeStateInteractor`
+   --> sam-persistence/src/associative_state.rs:159:12
+    |
+159 | pub struct AssociativeStateInteractor<V, D> {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: associated function is never used: `new`
+   --> sam-persistence/src/associative_state.rs:165:8
+    |
+165 |     fn new(path: impl AsRef<Path>, ttl: Option<Duration>, delegate: D) -> Self {
+    |        ^^^
+
+warning: associated function is never used: `delete_entry`
+   --> sam-persistence/src/associative_state.rs:182:8
+    |
+182 |     fn delete_entry(&self) -> Result<(), Box<dyn std::error::Error>> {
+    |        ^^^^^^^^^^^^
+
+warning: associated function is never used: `update_entry`
+   --> sam-persistence/src/associative_state.rs:197:8
+    |
+197 |     fn update_entry(&self) -> Result<(), Box<dyn std::error::Error>> {
+    |        ^^^^^^^^^^^^
+
+warning: associated function is never used: `entries`
+   --> sam-persistence/src/associative_state.rs:216:8
+    |
+216 |     fn entries(&self) -> Result<impl Iterator<Item = (String, V)>, ErrorAssociativeState> {
+    |        ^^^^^^^
+
+warning: associated function is never used: `last`
+  --> sam-persistence/src/sequential_state.rs:70:12
+   |
+70 |     pub fn last(&self) -> ModResult<Option<V>> {
+   |            ^^^^
+
+warning: associated function is never used: `first`
+  --> sam-persistence/src/sequential_state.rs:76:12
+   |
+76 |     pub fn first(&self) -> ModResult<Option<V>> {
+   |            ^^^^^
+
+warning: associated function is never used: `delete`
+  --> sam-persistence/src/sequential_state.rs:88:12
+   |
+88 |     pub fn delete(&self, position: usize) -> ModResult<()> {
+   |            ^^^^^^
+
+warning: variant is never constructed: `ErrEntrySelector`
+   --> sam-persistence/src/sequential_state.rs:116:5
+    |
+116 |     ErrEntrySelector(Box<dyn std::error::Error>),
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct is never constructed: `SequentialStateInteractor`
+   --> sam-persistence/src/sequential_state.rs:119:12
+    |
+119 | pub struct SequentialStateInteractor<V, D> {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: associated function is never used: `new`
+   --> sam-persistence/src/sequential_state.rs:125:8
+    |
+125 |     fn new(path: impl AsRef<Path>, delegate: D, max_size: Option<usize>) -> Self {
+    |        ^^^
+
+warning: associated function is never used: `delete_entry`
+   --> sam-persistence/src/sequential_state.rs:142:8
+    |
+142 |     fn delete_entry(&self) -> Result<(), ErrorSeqStateInteractor> {
+    |        ^^^^^^^^^^^^
+
+warning: associated function is never used: `entries`
+   --> sam-persistence/src/sequential_state.rs:158:8
+    |
+158 |     fn entries(&self) -> Result<impl Iterator<Item = (usize, V)>, ErrorSeqStateInteractor> {
+    |        ^^^^^^^
+
+warning: `sam-persistence` (lib) generated 14 warnings
+   Compiling sam-tui v0.17.2 (/Users/ryad/workspace/sam/sam-tui)
+warning: field is never read: `description`
+   --> sam-tui/src/ui_skim.rs:126:5
+    |
+126 |     description: Option<String>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: unused `Result` that must be used
+  --> sam-tui/src/modal_view/ui_options_mode.rs:42:13
+   |
+42 |             write!(text, "➺ {} ({}) : {}\n", toggle, opt.key, opt.text);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_must_use)]` on by default
+   = note: this `Result` may be an `Err` variant, which should be handled
+   = note: this warning originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: `sam-tui` (lib) generated 2 warnings
+error[E0432]: unresolved import `sam_tui::modal_view::MockOptionToggle`
+ --> sam-tui/examples/view.rs:1:27
+  |
+1 | use sam_tui::modal_view::{MockOptionToggle, MockValue, ModalView};
+  |                           ^^^^^^^^^^^^^^^^ no `MockOptionToggle` in `modal_view`
+
+For more information about this error, try `rustc --explain E0432`.
+error: could not compile `sam-tui` due to previous error

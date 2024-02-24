@@ -1,6 +1,6 @@
 [package]
 name = "sam-tui"
-version = "0.17.2"
+version = "1.2.2"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -10,6 +10,8 @@ sam-core = {path="../sam-core"}
 sam-persistence = {path="../sam-persistence"}
 sam-utils = {path="../sam-utils"}
 sam-readers = {path="../sam-readers"}
-skim = "0.9.4"
+sam-terminals = {path="../sam-terminals"}
 thiserror = "1.0.30"
+tui = { version = "0.17", default-features = false, features = ["termion"] }
+fzy-rs = "0.1.0"
 termion = "1.5.6"

@@ -5,6 +5,8 @@ mod sequential_state;
 mod vars_cache;
 pub use history_aliases::AliasHistory;
 pub use history_aliases::ErrorAliasHistory;
+pub use history_aliases::HistoryEntry;
+pub use vars_cache::CacheEntry;
 pub use vars_cache::CacheError;
 pub use vars_cache::NoopVarsCache;
 pub use vars_cache::RustBreakCache;

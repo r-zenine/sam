@@ -9,7 +9,7 @@ use sam_core::{
 
 use crate::sequential_state::{ErrorSequentialState, SequentialState};
 
-#[derive()]
+#[derive(Clone)]
 pub struct AliasHistory {
     state: SequentialState<HistoryEntry>,
     pwd: PathBuf,
@@ -29,6 +29,10 @@ impl AliasHistory {
         let state = SequentialState::new(path.into(), max_size)?;
         let pwd = std::env::current_dir().expect("can't figure out local directory");
         Ok(AliasHistory { state, pwd })
+    }
+
+    pub fn entries(&self) -> Result<impl Iterator<Item = HistoryEntry>, ErrorAliasHistory> {
+        Ok(self.state.entries()?)
     }
 }
 
@@ -58,10 +62,10 @@ impl SamHistory for AliasHistory {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct HistoryEntry {
-    r: ResolvedAlias,
-    pwd: String,
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct HistoryEntry {
+    pub r: ResolvedAlias,
+    pub pwd: String,
 }
 
 #[cfg(test)]
@@ -82,9 +86,9 @@ mod tests {
             Identifier::with_namespace("alias", Some("ns")),
             String::from("desc"),
             String::from("echo {{var}}"),
-            String::from("echo choice"),
+            vec![String::from("echo choice")],
             maplit::hashmap! {
-                Identifier::new("var") => Choice::new("choice", None),
+                Identifier::new("var") => vec![Choice::new("choice", None)],
             },
         );
         hist.put(test.clone()).expect("The put should succeed");
@@ -94,7 +98,4 @@ mod tests {
             .expect("Expecting a value to be returned");
         assert_eq!(test, last);
     }
-
-    #[test]
-    fn test_history_get_last_n() {}
 }

@@ -1,6 +1,6 @@
 use crate::cache_engine::CacheCommand;
 use crate::config_engine::ConfigCommand;
-use crate::preview_engine::PreviewCommand;
+use crate::history_engine::HistoryCommand;
 use crate::HashMap;
 use clap::{App, Arg, ArgMatches, Values};
 use sam_core::engines::SamCommand;
@@ -17,23 +17,22 @@ const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
 const ABOUT: &str = "sam lets you difine custom aliases and search them using fuzzy search.";
 const ABOUT_SUB_RUN: &str = "let's you select and alias then run it";
-const ABOUT_SUB_SHOW_LAST: &str = "shows the last command that was run, shortcut is `sam !`";
 const ABOUT_SUB_SHOW_HISTORY: &str = "displays the last commands that you ran";
 const ABOUT_SUB_RUN_LAST: &str = "runs the last command that was run again. shortcut is `sam %`";
-const ABOUT_SUB_MODIFY_RUN_LAST: &str =
-    "runs the last command that was run again. shortcut is `sam $`";
+const ABOUT_SUB_SHOW_LAST: &str = "runs the last command that was run again. shortcut is `sam s`";
 const ABOUT_SUB_CHECK_CONFIG: &str = "checks your configuration files";
 const ABOUT_SUB_CACHE_CLEAR: &str = "clears the cache for vars 'from_command' outputs";
 const ABOUT_SUB_CACHE_KEYS: &str = "lists all the cache keys";
+const ABOUT_SUB_CACHE_DELETE: &str =
+    "explore the content of the command cache in order to delete entries";
 const ABOUT_SUB_ALIAS: &str = "run's a provided alias";
-const ABOUT_SUB_PREVIEW: &str = "Display preview of the provided alias";
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SubCommand {
     SamCommand(SamCommand),
+    HistoryCommand(HistoryCommand),
     CacheCommand(CacheCommand),
     ConfigCheck(ConfigCommand),
-    PreviewCommand(PreviewCommand),
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct CLIRequest {
@@ -65,7 +64,6 @@ impl TryFrom<ArgMatches<'_>> for CLISettings {
         let defaults_values = matches
             .values_of("choices")
             .or_else(|| defaults_extractor("alias"))
-            .or_else(|| defaults_extractor("preview"))
             .or_else(|| defaults_extractor("run"));
 
         let default_choices = DefaultChoices::try_from(defaults_values)?;
@@ -106,13 +104,9 @@ fn app_init() -> App<'static, 'static> {
         .arg(arg_choices.clone())
         .about(ABOUT_SUB_RUN);
 
-    let subc_display_history = App::new("history").about(ABOUT_SUB_SHOW_HISTORY);
-    let subc_display_last = App::new("show-last").alias("!").about(ABOUT_SUB_SHOW_LAST);
+    let subc_interract_history = App::new("history").about(ABOUT_SUB_SHOW_HISTORY);
     let subc_rerun_last = App::new("run-last").alias("%").about(ABOUT_SUB_RUN_LAST);
-    let subc_modify_run_last = App::new("modify-run-last")
-        .alias("$")
-        .about(ABOUT_SUB_MODIFY_RUN_LAST);
-
+    let subc_show_last = App::new("show-last").alias("s").about(ABOUT_SUB_SHOW_LAST);
     let subc_alias = App::new("alias")
         .arg(
             Arg::with_name("alias")
@@ -122,15 +116,6 @@ fn app_init() -> App<'static, 'static> {
         )
         .arg(arg_choices.clone())
         .about(ABOUT_SUB_ALIAS);
-    let subc_preview = App::new("preview")
-        .arg(
-            Arg::with_name("alias")
-                .help("the alias to preview.")
-                .required(true)
-                .index(1),
-        )
-        .arg(arg_choices.clone())
-        .about(ABOUT_SUB_PREVIEW);
 
     App::new("sam")
         .version(VERSION)
@@ -142,14 +127,13 @@ fn app_init() -> App<'static, 'static> {
         .arg(arg_choices.clone())
         .subcommand(subc_run)
         .subcommand(subc_alias)
-        .subcommand(subc_preview)
-        .subcommand(subc_display_last)
         .subcommand(subc_rerun_last)
-        .subcommand(subc_modify_run_last)
-        .subcommand(subc_display_history)
+        .subcommand(subc_show_last)
+        .subcommand(subc_interract_history)
         .subcommand(App::new("check-config").about(ABOUT_SUB_CHECK_CONFIG))
         .subcommand(App::new("cache-clear").about(ABOUT_SUB_CACHE_CLEAR))
         .subcommand(App::new("cache-keys").about(ABOUT_SUB_CACHE_KEYS))
+        .subcommand(App::new("cache-keys-delete").about(ABOUT_SUB_CACHE_DELETE))
 }
 
 fn make_cli_request<'a, T, I>(app: App<'a, 'a>, args: I) -> Result<CLIRequest, CLIError>
@@ -166,19 +150,18 @@ where
             let alias = parse_alias(e.value_of("alias"))?;
             SubCommand::SamCommand(SamCommand::ExecuteAlias { alias })
         }
-        ("preview", Some(e)) => {
-            let alias_id = parse_alias(e.value_of("alias"))?;
-            SubCommand::PreviewCommand(PreviewCommand::PreviewAlias { alias_id })
+        ("run-last", Some(_)) => {
+            SubCommand::HistoryCommand(HistoryCommand::ExecuteLastExecutedAlias)
         }
-        ("show-last", Some(_)) => SubCommand::SamCommand(SamCommand::DisplayLastExecutedAlias),
-        ("run-last", Some(_)) => SubCommand::SamCommand(SamCommand::ExecuteLastExecutedAlias),
-        ("modify-run-last", Some(_)) => {
-            SubCommand::SamCommand(SamCommand::ModifyThenExecuteLastAlias)
+        ("show-last", Some(_)) => {
+            SubCommand::HistoryCommand(HistoryCommand::DisplayLastExecutedAlias)
         }
-        ("history", Some(_)) => SubCommand::SamCommand(SamCommand::DisplayHistory),
+        ("history", Some(_)) => SubCommand::HistoryCommand(HistoryCommand::InterractWithHistory),
         ("check-config", Some(_)) => SubCommand::ConfigCheck(ConfigCommand::All),
         ("cache-clear", Some(_)) => SubCommand::CacheCommand(CacheCommand::Clear),
         ("cache-keys", Some(_)) => SubCommand::CacheCommand(CacheCommand::PrintKeys),
+        ("cache-keys-delete", Some(_)) => SubCommand::CacheCommand(CacheCommand::DeleteEntries),
+
         (&_, _) => SubCommand::SamCommand(SamCommand::ChooseAndExecuteAlias),
     };
     Ok(CLIRequest { command, settings })
@@ -190,7 +173,7 @@ pub fn read_cli_request() -> Result<CLIRequest, CLIError> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct DefaultChoices(pub HashMap<Identifier, Choice>);
+pub struct DefaultChoices(pub HashMap<Identifier, Vec<Choice>>);
 
 impl TryFrom<Option<Values<'_>>> for DefaultChoices {
     type Error = CLIError;
@@ -199,7 +182,7 @@ impl TryFrom<Option<Values<'_>>> for DefaultChoices {
         if let Some(values) = values_o {
             for value in values {
                 let (id, choice) = parse_choice(value)?;
-                default_h.insert(id, choice);
+                default_h.insert(id, vec![choice]);
             }
         }
         Ok(DefaultChoices(default_h))
@@ -242,7 +225,7 @@ pub enum CLIError {
 #[cfg(test)]
 mod tests {
 
-    use crate::{cli::DefaultChoices, preview_engine::PreviewCommand};
+    use crate::cli::DefaultChoices;
     use maplit::hashmap;
     use sam_core::entities::{choices::Choice, identifiers::Identifier};
 
@@ -270,37 +253,8 @@ mod tests {
                 silent: false,
                 no_cache: false,
                 default_choices: DefaultChoices(hashmap! {
-                Identifier::with_namespace("some_choice", Some("some_ns")) => Choice::from_value("value"),
-                Identifier::with_namespace("some_other_choice", Some("some_ns")) => Choice::from_value("value2"),
-                                }),
-            },
-        };
-
-        assert_eq!(request.unwrap(), expected_cli_request);
-    }
-
-    #[test]
-    fn preview_subcommand() {
-        let app = app_init();
-        let test_string = &[
-            "sam",
-            "preview",
-            "some_namespace::some_alias",
-            "-csome_ns::some_choice=value",
-            "-csome_ns::some_other_choice=value2",
-        ];
-        let request = make_cli_request(app, test_string);
-        let expected_cli_request = CLIRequest {
-            command: SubCommand::PreviewCommand(PreviewCommand::PreviewAlias {
-                alias_id: Identifier::with_namespace("some_alias", Some("some_namespace")),
-            }),
-            settings: CLISettings {
-                dry: false,
-                silent: false,
-                no_cache: false,
-                default_choices: DefaultChoices(hashmap! {
-                Identifier::with_namespace("some_choice", Some("some_ns")) => Choice::from_value("value"),
-                Identifier::with_namespace("some_other_choice", Some("some_ns")) => Choice::from_value("value2"),
+                Identifier::with_namespace("some_choice", Some("some_ns")) => vec![Choice::from_value("value")],
+                Identifier::with_namespace("some_other_choice", Some("some_ns")) => vec![Choice::from_value("value2")],
                                 }),
             },
         };
@@ -324,8 +278,8 @@ mod tests {
                 silent: false,
                 no_cache: false,
                 default_choices: DefaultChoices(hashmap! {
-                Identifier::with_namespace("some_choice", Some("some_ns")) => Choice::from_value("value"),
-                Identifier::with_namespace("some_other_choice", Some("some_ns")) => Choice::from_value("value2"),
+                Identifier::with_namespace("some_choice", Some("some_ns")) => vec![Choice::from_value("value")],
+                Identifier::with_namespace("some_other_choice", Some("some_ns")) => vec![Choice::from_value("value2")],
                                 }),
             },
         };
@@ -349,8 +303,8 @@ mod tests {
                 silent: false,
                 no_cache: false,
                 default_choices: DefaultChoices(hashmap! {
-                Identifier::with_namespace("some_choice", Some("some_ns")) => Choice::from_value("value"),
-                Identifier::with_namespace("some_other_choice", Some("some_ns")) => Choice::from_value("value2"),
+                Identifier::with_namespace("some_choice", Some("some_ns")) => vec![Choice::from_value("value")],
+                Identifier::with_namespace("some_other_choice", Some("some_ns")) => vec![Choice::from_value("value2")],
                                 }),
             },
         };

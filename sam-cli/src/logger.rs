@@ -1,53 +1,52 @@
+use log::info;
 use sam_core::entities::aliases::Alias;
-use std::fmt::Display;
+use std::{fmt::Display, path::PathBuf};
+
+use thiserror::Error;
 
 use sam_core::engines::SamLogger;
 
-pub struct StdErrLogger;
-impl SamLogger for StdErrLogger {
+#[derive(Debug)]
+pub struct FileLogger {}
+
+#[derive(Debug, Error)]
+pub enum ErrorLogger {
+    #[error("Logging directly under / is not supported")]
+    NoLogsUnderRoot(PathBuf),
+    #[error("provided filepath `{0}` is read only")]
+    FileIsReadOnly(PathBuf),
+    #[error("I/O error: {0}")]
+    IoError(#[from] std::io::Error),
+}
+impl FileLogger {
+    pub fn new() -> Self {
+        FileLogger {}
+    }
+}
+
+impl SamLogger for FileLogger {
     fn final_command(&self, alias: &Alias, fc: &dyn Display) {
-        println!(
-            "{}{}[SAM][ alias='{}::{}']{} Running final command: {}{}'{}'{}",
-            termion::color::Fg(termion::color::Green),
-            termion::style::Bold,
+        info!(
+            "[SAM][ alias='{}::{}'] Running final command: '{}'",
             alias.namespace().unwrap_or_default(),
             alias.name(),
-            termion::style::Reset,
-            termion::color::Fg(termion::color::Green),
-            termion::style::Bold,
             fc,
-            termion::style::Reset,
-        );
+        )
     }
+
     fn command(&self, var: &dyn Display, cmd: &dyn AsRef<str>) {
-        eprintln!(
-            "{}{}[SAM][ var = '{}' ]{} Running: '{}'",
-            termion::color::Fg(termion::color::Green),
-            termion::style::Bold,
-            var,
-            termion::style::Reset,
-            cmd.as_ref(),
-        );
+        info!("[SAM][ var = '{}' ] Running: '{}'", var, cmd.as_ref(),)
     }
+
     fn choice(&self, var: &dyn Display, choice: &dyn Display) {
-        eprintln!(
-            "{}{}[SAM][ var = '{}' ]{} Choice was: '{}'",
-            termion::color::Fg(termion::color::Green),
-            termion::style::Bold,
-            var,
-            termion::style::Reset,
-            choice,
-        );
+        info!("[SAM][ var = '{}' ] Choice was: '{}'", var, choice)
     }
     fn alias(&self, alias: &Alias) {
-        eprintln!(
-            "{}{}[SAM][ alias = '{}::{}' ]{}",
-            termion::color::Fg(termion::color::Green),
-            termion::style::Bold,
+        info!(
+            "[SAM][ alias = '{}::{}' ]",
             alias.namespace().unwrap_or_default(),
             alias.name(),
-            termion::style::Reset,
-        );
+        )
     }
 }
 

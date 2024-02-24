@@ -4,14 +4,18 @@ use std::{
 };
 
 use crate::entities::{
+    aliases::Alias,
     choices::Choice,
     commands::Command,
-    dependencies::{Dependencies, ErrorsResolver, ExecutionSequence, Resolver},
+    dependencies::{Dependencies, ExecutionSequence},
     identifiers::{Identifier, Identifiers},
-    processes::ShellCommand,
     vars::Var,
 };
+
+use crate::algorithms::resolver::{ErrorsResolver, Resolver};
 use thiserror::Error;
+
+use super::resolver::ResolverContext;
 
 pub trait VarsCollection {
     fn get(&self, id: &Identifier) -> Option<&Var>;
@@ -24,7 +28,7 @@ pub trait VarsDefaultValues {
 pub fn execution_sequence_for_dependencies<Deps: Dependencies>(
     vars: &dyn VarsCollection,
     dep: Deps,
-) -> std::result::Result<ExecutionSequence<'_>, ErrorDependencyResolution> {
+) -> std::result::Result<ExecutionSequence, ErrorDependencyResolution> {
     let mut already_seen = HashSet::new();
     let mut already_inserted = HashSet::new();
     let mut candidates = dep.dependencies();
@@ -79,32 +83,36 @@ pub enum ErrorDependencyResolution {
     },
 }
 
-// TODO extract as algorithms
-pub fn choices_for_execution_sequence<'a, R: Resolver>(
+pub fn choices_for_execution_sequence<R: Resolver>(
+    alias: &Alias,
     vars_col: &dyn VarsCollection,
     vars_defaults: &dyn VarsDefaultValues,
     resolver: &R,
-    vars: ExecutionSequence<'a>,
-) -> std::result::Result<Vec<(Identifier, Choice)>, ErrorDependencyResolution> {
-    let mut choices: HashMap<Identifier, Choice> = HashMap::new();
+    vars: ExecutionSequence,
+) -> std::result::Result<Vec<(Identifier, Vec<Choice>)>, ErrorDependencyResolution> {
+    let mut ctx = ResolverContext {
+        alias: alias.clone(),
+        full_name: alias.full_name().to_string(),
+        choices: HashMap::new(),
+        execution_sequence: vars.identifiers(),
+    };
     for var_name in vars.as_slice() {
-        if let Some(var) = vars_col.get(*var_name) {
+        if let Some(var) = vars_col.get(var_name) {
             let choice = if let Some(default) = vars_defaults.default_value(&var.name()) {
-                default.to_owned()
+                vec![default.to_owned()]
             } else {
-                choice_for_var(resolver, var, &choices)?
+                choice_for_var(resolver, var, &ctx.choices, &ctx)?
             };
-            choices.insert(var.name(), choice);
+            ctx.choices.insert(var.name(), choice);
         } else {
             return Err(ErrorDependencyResolution::MissingDependencies(Identifiers(
                 vec![(*var_name).clone()],
             )));
         }
     }
-    Ok(choices.into_iter().collect())
+    Ok(ctx.choices.into_iter().collect())
 }
 
-// TODO extract as algorithms
 /// will return a valid choice for the current Var using the provided VarResolver and the
 /// HashMap of choices provided.
 /// First, this function will look into the `choices` HashMap to fill values for all the dependencies of the current
@@ -112,12 +120,13 @@ pub fn choices_for_execution_sequence<'a, R: Resolver>(
 pub fn choice_for_var<'repository, R>(
     resolver: &'repository R,
     var: &'repository Var,
-    choices: &'repository HashMap<Identifier, Choice>,
-) -> std::result::Result<Choice, ErrorDependencyResolution>
+    choices: &'repository HashMap<Identifier, Vec<Choice>>,
+    ctx: &ResolverContext,
+) -> std::result::Result<Vec<Choice>, ErrorDependencyResolution>
 where
     R: Resolver,
 {
-    resolve_choice_for_var(resolver, var, choices).map_err(|err| {
+    resolve_choice_for_var(resolver, var, choices, ctx).map_err(|err| {
         ErrorDependencyResolution::NoChoiceForVar {
             var_name: var.name(),
             error: err,
@@ -128,19 +137,41 @@ where
 fn resolve_choice_for_var<'repository, R>(
     resolver: &'repository R,
     var: &'repository Var,
-    choices: &'repository HashMap<Identifier, Choice>,
-) -> std::result::Result<Choice, ErrorsResolver>
+    choices: &'repository HashMap<Identifier, Vec<Choice>>,
+    ctx: &ResolverContext,
+) -> std::result::Result<Vec<Choice>, ErrorsResolver>
 where
     R: Resolver,
 {
     if var.is_command() {
-        let command = var.substitute_for_choices(choices)?;
-        resolver.resolve_dynamic(var.name(), ShellCommand::new(command))
+        let mut choices_out: Vec<Choice> = vec![];
+        let mut has_one_rep = true;
+        let commands: Vec<String> = var
+            .substitute_for_choices(choices)?
+            .iter()
+            .map(Clone::clone)
+            .collect();
+        for command in commands {
+            let mut choices = resolver.resolve_dynamic(var, command, ctx)?;
+            has_one_rep &= choices.len() == 1;
+            choices_out.append(&mut choices);
+        }
+        if choices_out.is_empty() {
+            Err(ErrorsResolver::DynamicResolveEmpty(
+                var.name(),
+                String::new(),
+                String::new(),
+            ))
+        } else if has_one_rep {
+            Ok(choices_out)
+        } else {
+            resolver.resolve_static(var, choices_out.into_iter(), ctx)
+        }
     } else if var.is_input() {
         let prompt = var.prompt().unwrap_or("no provided prompt");
-        resolver.resolve_input(var.name(), prompt)
+        resolver.resolve_input(var, prompt, ctx).map(|c| vec![c])
     } else {
-        resolver.resolve_static(var.name(), var.choices().into_iter())
+        resolver.resolve_static(var, var.choices().into_iter(), ctx)
     }
 }
 
@@ -152,7 +183,7 @@ pub mod mocks {
     use super::{VarsCollection, VarsDefaultValues};
 
     #[derive(Default)]
-    pub struct VarsDefaultValuesMock(pub HashMap<Identifier, Choice>);
+    pub struct VarsDefaultValuesMock(pub HashMap<Identifier, Vec<Choice>>);
     #[derive(Default)]
     pub struct VarsCollectionMock(pub HashMap<Identifier, Var>);
 
@@ -163,7 +194,7 @@ pub mod mocks {
     }
     impl VarsDefaultValues for VarsDefaultValuesMock {
         fn default_value(&self, id: &Identifier) -> Option<&Choice> {
-            self.0.get(id)
+            self.0.get(id).and_then(|v| v.first())
         }
     }
 }
@@ -174,9 +205,10 @@ mod tests {
         VarsCollectionMock, VarsDefaultValuesMock,
     };
     use crate::algorithms::dependency_resolution::resolve_choice_for_var;
+    use crate::algorithms::mocks::StaticResolver;
+    use crate::algorithms::resolver::ResolverContext;
     use crate::algorithms::{choices_for_execution_sequence, execution_sequence_for_dependencies};
     use crate::entities::choices::Choice;
-    use crate::entities::dependencies::mocks::StaticResolver;
     use crate::entities::identifiers::fixtures::*;
     use crate::entities::vars::fixtures::*;
     use maplit::hashmap;
@@ -184,8 +216,8 @@ mod tests {
     #[test]
     fn test_resolve() {
         let choices = hashmap! {
-            VAR_DIRECTORY_NAME.clone() => VAR_DIRECTORY_CHOICE_1.clone(),
-            VAR_PATTERN_NAME.clone() => VAR_PATTERN_CHOICE_2.clone(),
+            VAR_DIRECTORY_NAME.clone() => vec![VAR_DIRECTORY_CHOICE_1.clone()],
+            VAR_PATTERN_NAME.clone() => vec![VAR_PATTERN_CHOICE_2.clone()],
         };
         let command_final = format!(
             "ls -l {} |grep -v {}",
@@ -194,21 +226,31 @@ mod tests {
         );
         let choice_final = Choice::from_value("final_value");
         let dynamic_res = hashmap![
-            command_final => choice_final.clone(),
+            command_final => vec![choice_final.clone()],
         ];
         let static_res = hashmap![
-            VAR_DIRECTORY_NAME.clone() => VAR_DIRECTORY_CHOICE_1.clone(),
-            VAR_PATTERN_NAME.clone() => VAR_PATTERN_CHOICE_2.clone(),
+            VAR_DIRECTORY_NAME.clone() => vec![VAR_DIRECTORY_CHOICE_1.clone()],
+            VAR_PATTERN_NAME.clone() => vec![VAR_PATTERN_CHOICE_2.clone()],
         ];
-        let resolver = StaticResolver::new(dynamic_res, static_res, None);
         let var1 = VAR_LISTING.clone();
-        let ret_var1 = resolve_choice_for_var(&resolver, &var1, &choices);
+        let alias = crate::entities::aliases::fixtures::ALIAS_GREP_DIR.clone();
+        let resolver = StaticResolver::new(Some(alias.identifier()), dynamic_res, static_res);
+        let ctx = ResolverContext {
+            alias: alias.clone(),
+            full_name: alias.full_name().to_string(),
+            choices: choices.clone(),
+            execution_sequence: vec![],
+        };
+        let ret_var1 = resolve_choice_for_var(&resolver, &var1, &choices, &ctx);
         assert!(ret_var1.is_ok());
-        assert_eq!(ret_var1.unwrap(), choice_final);
+        assert_eq!(*ret_var1.unwrap().first().unwrap(), choice_final);
         let var2 = VAR_PATTERN.clone();
-        let ret_var2 = resolve_choice_for_var(&resolver, &var2, &choices);
+        let ret_var2 = resolve_choice_for_var(&resolver, &var2, &choices, &ctx);
         assert!(ret_var2.is_ok());
-        assert_eq!(ret_var2.unwrap(), VAR_PATTERN_CHOICE_2.clone());
+        assert_eq!(
+            *ret_var2.unwrap().first().unwrap(),
+            VAR_PATTERN_CHOICE_2.clone()
+        );
     }
 
     #[test]
@@ -238,14 +280,15 @@ mod tests {
             VAR_DIRECTORY_CHOICE_1.value(),
             VAR_PATTERN_CHOICE_2.value()
         );
+
         let dynamic_res = hashmap![
-            command_final => choice_final.clone(),
+            command_final => vec![choice_final.clone()],
         ];
         let static_res = hashmap![
-            VAR_DIRECTORY_NAME.clone() => VAR_DIRECTORY_CHOICE_1.clone(),
-            VAR_PATTERN_NAME.clone() => VAR_PATTERN_CHOICE_2.clone(),
+            VAR_DIRECTORY_NAME.clone() => vec![ VAR_DIRECTORY_CHOICE_1.clone()],
+            VAR_PATTERN_NAME.clone() => vec![VAR_PATTERN_CHOICE_2.clone()],
         ];
-        let resolver = StaticResolver::new(dynamic_res, static_res, None);
+        let resolver = StaticResolver::new(None, dynamic_res, static_res);
         let full = vec![
             VAR_DIRECTORY.clone(),
             VAR_LISTING.clone(),
@@ -253,15 +296,21 @@ mod tests {
         ];
         let repo = VarsCollectionMock(full.into_iter().map(|c| (c.name(), c)).collect());
         let defaults = VarsDefaultValuesMock::default();
+        let alias = &crate::entities::aliases::fixtures::ALIAS_GREP_DIR;
         let seq = execution_sequence_for_dependencies(&repo, VAR_USE_LISTING.clone()).unwrap();
-        let res = choices_for_execution_sequence(&repo, &defaults, &resolver, seq);
+        let res = choices_for_execution_sequence(alias, &repo, &defaults, &resolver, seq);
         assert!(res.is_ok());
-        let expected = vec![
-            (VAR_PATTERN_NAME.clone(), VAR_PATTERN_CHOICE_2.clone()),
-            (VAR_LISTING_NAME.clone(), choice_final),
-            (VAR_DIRECTORY_NAME.clone(), VAR_DIRECTORY_CHOICE_1.clone()),
-        ]
-        .sort();
-        assert_eq!(res.unwrap().sort(), expected);
+        let mut expected = vec![
+            (VAR_PATTERN_NAME.clone(), vec![VAR_PATTERN_CHOICE_2.clone()]),
+            (VAR_LISTING_NAME.clone(), vec![choice_final]),
+            (
+                VAR_DIRECTORY_NAME.clone(),
+                vec![VAR_DIRECTORY_CHOICE_1.clone()],
+            ),
+        ];
+        let mut result = res.unwrap();
+        result.sort();
+        expected.sort();
+        assert_eq!(result, expected);
     }
 }

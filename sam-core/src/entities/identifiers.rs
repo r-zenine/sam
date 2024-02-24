@@ -41,7 +41,7 @@ impl Identifier {
                 .into()
                 .replace("{{ ", "{{")
                 .replace(" }}", "}}")
-                .replace(" ", "")
+                .replace(' ', "")
                 .replace("{{", "")
                 .replace("}}", ""),
             namespace: None,
@@ -122,7 +122,7 @@ impl Identifier {
     fn sanitize_identifier(s: String) -> String {
         s.replace("{ ", "{")
             .replace(" }", "}")
-            .replace(" ", "")
+            .replace(' ', "")
             .replace("{{", "")
             .replace("}}", "")
             .replace("]]", "")

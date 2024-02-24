@@ -14,6 +14,8 @@ use std::time::Duration;
 use thiserror::Error;
 
 const CONFIG_FILE_NAME: &str = ".sam_rc.toml";
+const HISTORY_DIR: &str = ".local/share/sam/";
+const CACHE_DIR: &str = ".cache/";
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct AppSettings {
@@ -32,7 +34,7 @@ pub struct AppSettings {
     #[serde(skip)]
     pub no_cache: bool,
     #[serde(skip)]
-    pub defaults: HashMap<Identifier, Choice>,
+    pub defaults: HashMap<Identifier, Vec<Choice>>,
 }
 
 type Result<T> = std::result::Result<T, ErrorsSettings>;
@@ -54,8 +56,10 @@ impl AppSettings {
         let config_home_dir = Self::read_config(home_dir_o);
         let config_current_dir = current_dir_o.and_then(Self::read_config);
 
-        let cache_dir = Self::cache_dir_path()?;
-        let history_file = Self::history_file_path()?;
+        let cache_dir =
+            Self::file_path_with_suffix(CACHE_DIR, "sam", ErrorsSettings::CantFindCurrentDirectory)?;
+        let history_file =
+            Self::file_path_with_suffix(HISTORY_DIR, "history", ErrorsSettings::CantFindHistoryDirectory(HISTORY_DIR.to_string()))?;
 
         let mut settings = config_current_dir
             .or(config_home_dir)
@@ -80,7 +84,7 @@ impl AppSettings {
         self.defaults = cmd_args.default_choices.0;
     }
 
-    pub fn ttl(&self) -> Duration {
+    pub const fn ttl(&self) -> Duration {
         Duration::from_secs(self.ttl)
     }
 
@@ -109,16 +113,11 @@ impl AppSettings {
             .ok_or(ErrorsSettings::CantFindHomeDirectory)
     }
 
-    fn cache_dir_path() -> Result<PathBuf> {
+    fn file_path_with_suffix(path: &str, file_name: &str, err: ErrorsSettings) -> Result<PathBuf> {
         dirs::home_dir()
-            .map(|e| e.join(".cache").join("sam"))
-            .ok_or(ErrorsSettings::CantFindCacheDirectory)
-    }
-
-    fn history_file_path() -> Result<PathBuf> {
-        dirs::home_dir()
-            .map(|e| e.join(".local").join("share").join("sam").join("history"))
-            .ok_or(ErrorsSettings::CantFindCacheDirectory)
+            .map(|e| e.join(path))
+            .and_then(|path| path.exists().then(|| path.join(file_name)))
+            .ok_or(err)
     }
 
     fn current_dir_config_path() -> Result<PathBuf> {
@@ -130,7 +129,7 @@ impl AppSettings {
         self.env_variables.clone()
     }
 
-    fn sam_files(&self) -> impl Iterator<Item = PathBuf> + '_ {
+    fn sam_files(&self) -> impl Iterator<Item=PathBuf> + '_ {
         self.root_dir
             .iter()
             .map(AsRef::as_ref)
@@ -138,7 +137,7 @@ impl AppSettings {
             .flatten()
     }
 
-    pub fn aliases_files(&self) -> impl Iterator<Item = PathBuf> + '_ {
+    pub fn aliases_files(&self) -> impl Iterator<Item=PathBuf> + '_ {
         self.sam_files().filter(|f| {
             if let Some(file_name) = f.file_name() {
                 file_name == "aliases.yaml" || file_name == "aliases.yml"
@@ -148,7 +147,7 @@ impl AppSettings {
         })
     }
 
-    pub fn vars_files(&self) -> impl Iterator<Item = PathBuf> + '_ {
+    pub fn vars_files(&self) -> impl Iterator<Item=PathBuf> + '_ {
         self.sam_files().filter(|f| {
             if let Some(file_name) = f.file_name() {
                 file_name == "vars.yaml" || file_name == "vars.yml"
@@ -175,4 +174,6 @@ pub enum ErrorsSettings {
     CantFindCacheDirectory,
     #[error("we were unable to locate the current directory for the current user")]
     CantFindCurrentDirectory,
+    #[error("we were unable to locate the history directory for the current user, make sure {0} exists")]
+    CantFindHistoryDirectory(String),
 }

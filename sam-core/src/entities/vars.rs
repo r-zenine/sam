@@ -65,11 +65,11 @@ impl Var {
         }
     }
 
-    pub fn is_command(&self) -> bool {
+    pub const fn is_command(&self) -> bool {
         self.from_command.is_some()
     }
 
-    pub fn is_input(&self) -> bool {
+    pub const fn is_input(&self) -> bool {
         self.from_input.is_some()
     }
 
@@ -148,7 +148,7 @@ impl Eq for Var {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entities::dependencies::ErrorsResolver;
+    use crate::entities::dependencies::ErrorsDependencies;
     use crate::entities::identifiers::fixtures::*;
     use crate::entities::vars::fixtures::*;
     use maplit::hashmap;
@@ -183,8 +183,8 @@ mod tests {
     fn test_substitute_for_choices() {
         // case 1: all is good.
         let choices = hashmap! {
-            VAR_DIRECTORY_NAME.clone() => VAR_DIRECTORY_CHOICE_1.clone(),
-            VAR_PATTERN_NAME.clone() => VAR_PATTERN_CHOICE_2.clone(),
+            VAR_DIRECTORY_NAME.clone() => vec![VAR_DIRECTORY_CHOICE_1.clone()],
+            VAR_PATTERN_NAME.clone() => vec![VAR_PATTERN_CHOICE_2.clone()],
         };
 
         let var = VAR_LISTING.clone();
@@ -195,18 +195,17 @@ mod tests {
             VAR_PATTERN_CHOICE_2.value()
         );
         assert!(r.is_ok());
-        assert_eq!(r.unwrap(), output);
+        assert_eq!(r.unwrap(), vec![output]);
         // case 2: we are missing a var choice.
         let missing_choices = hashmap! {
-            VAR_PATTERN_NAME.clone() => VAR_PATTERN_CHOICE_2.clone(),
+            VAR_PATTERN_NAME.clone() => vec![VAR_PATTERN_CHOICE_2.clone()],
         };
         let r2 = var.substitute_for_choices(&missing_choices);
         assert!(r2.is_err());
         match r2.unwrap_err() {
-            ErrorsResolver::NoChoiceWasAvailable(name) => {
+            ErrorsDependencies::MissingChoicesForVar(name) => {
                 assert_eq!(name, VAR_DIRECTORY_NAME.clone())
             }
-            _ => assert!(false),
         }
     }
 }

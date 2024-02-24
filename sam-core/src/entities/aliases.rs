@@ -1,11 +1,9 @@
 use crate::entities::choices::Choice;
 use crate::entities::commands::Command;
 use crate::entities::dependencies::Dependencies;
-use crate::entities::dependencies::ErrorsResolver;
 use crate::entities::identifiers::Identifier;
 use crate::entities::namespaces::Namespace;
 use crate::entities::namespaces::NamespaceUpdater;
-use crate::entities::processes::ShellCommand;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -13,6 +11,8 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::fmt::Formatter;
+
+use super::dependencies::ErrorsDependencies;
 
 lazy_static! {
     // matches the following patters :
@@ -22,7 +22,7 @@ lazy_static! {
     pub static ref VARS_NO_NS_RE: Regex = Regex::new("\\{\\{ ?(?P<vars>[a-zA-Z0-9_]+) ?\\}\\}").unwrap();
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Alias {
     #[serde(flatten)]
     name: Identifier,
@@ -60,14 +60,14 @@ impl Alias {
 
     pub fn with_choices(
         &self,
-        choices: &HashMap<Identifier, Choice>,
-    ) -> Result<ResolvedAlias, ErrorsResolver> {
+        choices: &HashMap<Identifier, Vec<Choice>>,
+    ) -> Result<ResolvedAlias, ErrorsDependencies> {
         let res = self.substitute_for_choices(choices)?;
         Ok(ResolvedAlias {
             name: self.name.clone(),
             desc: self.desc.clone(),
             original_alias: self.alias.clone(),
-            resolved_alias: res,
+            resolved_aliases: res,
             choices: choices.clone(),
         })
     }
@@ -140,36 +140,48 @@ impl Command for Alias {
 impl Dependencies for &Alias {}
 impl Dependencies for Alias {}
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct AliasAndDependencies {
+    pub alias: Alias,
+    pub full_name: String,
+    pub dependencies: Vec<Identifier>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ResolvedAlias {
     name: Identifier,
     desc: String,
     original_alias: String,
-    resolved_alias: String,
-    choices: HashMap<Identifier, Choice>,
+    resolved_aliases: Vec<String>,
+    choices: HashMap<Identifier, Vec<Choice>>,
 }
 
 impl ResolvedAlias {
-    pub fn new(
+    pub const fn new(
         name: Identifier,
         desc: String,
         original_alias: String,
-        resolved_alias: String,
-        choices: HashMap<Identifier, Choice>,
+        resolved_aliases: Vec<String>,
+        choices: HashMap<Identifier, Vec<Choice>>,
     ) -> Self {
         ResolvedAlias {
             name,
             desc,
             original_alias,
-            resolved_alias,
+            resolved_aliases,
             choices,
         }
     }
-    pub fn choice(&self, identifier: &Identifier) -> Option<Choice> {
+
+    pub fn commands(&self) -> &[String] {
+        self.resolved_aliases.as_slice()
+    }
+
+    pub fn choice(&self, identifier: &Identifier) -> Option<Vec<Choice>> {
         self.choices.get(identifier).map(Clone::clone)
     }
 
-    pub fn name(&self) -> &Identifier {
+    pub const fn name(&self) -> &Identifier {
         &self.name
     }
 
@@ -177,14 +189,14 @@ impl ResolvedAlias {
         &self.desc
     }
 
-    pub fn choices(&self) -> &HashMap<Identifier, Choice> {
+    pub const fn choices(&self) -> &HashMap<Identifier, Vec<Choice>> {
         &self.choices
     }
     pub fn original_alias(&self) -> &str {
         &self.original_alias
     }
-    pub fn resolved_alias(&self) -> &str {
-        &self.resolved_alias
+    pub fn resolved_alias(&self) -> &[String] {
+        &self.resolved_aliases
     }
 }
 
@@ -210,69 +222,30 @@ impl Namespace for ResolvedAlias {
     }
 }
 
-impl Command for &ResolvedAlias {
-    fn command(&self) -> &str {
-        self.resolved_alias.as_str()
-    }
-}
-
-impl Command for ResolvedAlias {
-    fn command(&self) -> &str {
-        self.resolved_alias.as_str()
-    }
-}
-
 impl Display for ResolvedAlias {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        writeln!(
-            f,
-            "{}{}Alias:{} {}",
-            termion::color::Fg(termion::color::LightCyan),
-            termion::style::Bold,
-            termion::style::Reset,
-            self.name,
-        )?;
-        writeln!(
-            f,
-            "{}{}Choices:{}\n",
-            termion::color::Fg(termion::color::LightCyan),
-            termion::style::Bold,
-            termion::style::Reset,
-        )?;
-        for (choice, value) in &self.choices {
-            writeln!(
-                f,
-                "\t{}{}{} =\t{}",
-                termion::style::Bold,
-                choice,
-                termion::style::Reset,
-                value,
-            )?;
+        writeln!(f, "Alias: {}\n", self.name,)?;
+        writeln!(f, "Choices:",)?;
+
+        for (choice, values) in &self.choices {
+            write!(f, " - {} = ", choice,)?;
+            for val in values {
+                write!(f, "{} ", val)?;
+            }
+            writeln!(f)?;
         }
-        writeln!(
-            f,
-            "\n{}{}{}Executed command:{} {}",
-            termion::color::Fg(termion::color::LightCyan),
-            termion::style::Bold,
-            termion::style::Italic,
-            termion::style::Reset,
-            self.resolved_alias
-        )
+        writeln!(f, "\nExecuted commands:",)?;
+        for cmd in &self.resolved_aliases {
+            writeln!(f, " - {}", cmd)?;
+        }
+        Ok(())
     }
 }
 
 #[allow(clippy::from_over_into)]
 impl<'a> Into<String> for &'a Alias {
     fn into(self) -> String {
-        format!("{}\t{}", &self.name, &self.desc)
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl Into<ShellCommand<String>> for Alias {
-    // todo: implement command parsing logic to support pipes and logical symbols etc....
-    fn into(self) -> ShellCommand<String> {
-        ShellCommand::new(self.alias)
+        format!("{} {}", &self.name, &self.desc)
     }
 }
 

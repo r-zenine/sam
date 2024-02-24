@@ -1,18 +1,64 @@
 # sam
+
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fr-zenine%2Fsam.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fr-zenine%2Fsam?ref=badge_shield)
 
-![](demo.gif)
+[![asciicast](https://asciinema.org/a/487681.svg)](https://asciinema.org/a/487681)
 
-sam stands for **small aliases manager**. It is a command line tool that helps you manage your **aliases** and other common command.
 
-Let's say you have multiple `kubernetes` clusters, running in several cloud regions for different purposes, and several `namespaces`. Or, multiple kafka clusters and several `topics`. Everytime, you want to interact with one of these tools from the command line, you have to specify which region/environment/cluster/topic etc... you want your command to be apllied to. `sam` allows, you to express all your command commandes in a `templated` from and guides you to chose a value for each template variable you introduce. 
+sam is a command line tool that allows you to define and manage 
+templates of complex command line commands and let's chose 
+template values through a command line argument.
 
-`sam` can handle dependencies between template variables ( for ex, the namespaces depends on the chosen cluster, or the kafka topics depend on the chose cluster ) and will build a dependency graph and generate a terminal user interface dynamically to prompt you to chose an appropriate value for each variable.
+Let's take an example, you are building an application and you 
+would like to interract with a dockerized service that is running 
+on your local machine to get some metrics. if you service exposes 
+metrics through http, a typical call would look like:
+
+```sh
+curl http://{{container_ip}}:{{ container_port }}/metrics
+```
+In this setup the `{{container_ip}}` and `{{container_port}}` are dynamic. 
+
+You will most likely have to run other commands to run them. The workflow 
+might look as follow : 
+
+1. Select a `{{container}}` from the running ones using 
+```sh
+docker ps --format="{{.ID}}\t{{.Names}}"
+```
+2. Run a command to get `{{container_ip}}` and `{{container_port}}`, most likely:
+```sh 
+docker inspect {{container}}
+```
+3. run the curl command described above. 
+
+with sam you can configure such a process as follow : 
+```yaml
+- name: container
+  desc: the id of a docker a runing container
+  from_command: 'docker ps --format="{{.ID}}\t{{.Names}}"'
+
+- name: container_ip
+  desc: the ip address of a runing container
+  from_command: 'docker inspect {{container}} |jq ''.[0]["NetworkSettings"]["IPAddress"]''|sed ''s/"//g'''
+
+- name: container_port
+  desc: the ports exposed by the container
+  from_command: 'docker inspect {{ container }}|jq ''.[0]["NetworkSettings"]["Ports"] | keys''|awk -F''/'' ''/"/ {print $1}''|sed ''s/ *"//g'''
+```
+
+then if you want to run:
+```sh
+curl http://{{container_ip}}:{{ container_port }}/metrics
+```
+
+sam will figure out the dependency graph on his own and for each step described above 
+sam will generate a small terminal user interface to let you select 
+the values you want.
 
 ## Getting started :
 
 Run `cargo run run` on the root of this repository to see a demo. 
-
 
 You can also take a look at my own configuration here [r-zenine/oneliners](https://github.com/r-zenine/oneliners)
 
@@ -25,17 +71,11 @@ You can also use a package manager :
 brew tap r-zenine/sam
 brew install sam
 ```
-### Ubuntu using snap
-As I am still waiting for the manual validation on snap, you can only install it from the edge channel with the devmode confinment. 
-```bash
-snap install --edge --devmode sam
-```
-
 ## How to configure sam:
 Fist, you want to start by creating a repository that will hold your scripts and aliases. 
 Ideally, we recommend it's stucture to be as follow : 
 ```bash
-root_aliases_directory
+aliases_directory
 -------------------
         ├── aliases.yaml
         ├── vars.yaml
@@ -50,13 +90,14 @@ Once it's done, you can continue by editing a configuration file in `$HOME/.sam_
 that should look as follow: 
 
 ```toml
-root_dir="./examples/oneliners/" # the location of your `root_aliases_directory`
+root_dir=["./examples/oneliners/", ".sam"] # the locations of your `aliases_directory`
 # the time in seconds for which sam will keep the output of
 # a from_command var in it's internal cache
 ttl=1800 
+
 # Arbitrary key value pairs
 # You can refer to the keys/value pairs defined below 
-# as if they were environment varialbes
+# as if they were environment variables
 PAGER_OPT="-p -v"
 ```
 
@@ -106,3 +147,11 @@ In your `vars_file`, you can define variables. Variables can either have a stati
 
 ## License
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fr-zenine%2Fsam.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fr-zenine%2Fsam?ref=badge_large)
+
+## Keybindings 
+
+while selecting choices for variables, you can use 
+
+* Ctrl-s to select multiple values
+* Ctrl-a to select all values
+

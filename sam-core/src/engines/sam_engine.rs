@@ -1,11 +1,10 @@
+use crate::algorithms::resolver::{ErrorsResolver, Resolver};
 use crate::algorithms::{
     choices_for_execution_sequence, execution_sequence_for_dependencies, ErrorDependencyResolution,
     VarsCollection, VarsDefaultValues,
 };
-use crate::entities::aliases::{Alias, ResolvedAlias};
+use crate::entities::aliases::{Alias, AliasAndDependencies, ResolvedAlias};
 use crate::entities::choices::Choice;
-use crate::entities::commands::Command;
-use crate::entities::dependencies::{ErrorsResolver, Resolver};
 use crate::entities::identifiers::Identifier;
 use std::cell::RefCell;
 // TODO get rid of this import
@@ -17,24 +16,34 @@ use thiserror::Error;
 const PROMPT: &str = "Choose an alias to run > ";
 
 pub trait VarsDefaultValuesSetter {
-    fn set_defaults(&mut self, defaults: &HashMap<Identifier, Choice>);
+    fn set_defaults(&mut self, defaults: &HashMap<Identifier, Vec<Choice>>);
 }
 
 pub trait AliasCollection {
     fn select_alias<R: Resolver>(
         &self,
         r: &R,
+        vars: &dyn VarsCollection,
         prompt: &str,
     ) -> std::result::Result<&Alias, ErrorsAliasCollection> {
-        let identifiers = self.identifiers();
-        let descriptions = self.descriptions();
-        let selection = r.select_identifier(&identifiers, Some(&descriptions), prompt)?;
-        self.get(&selection)
+        let mut qualified_aliases = vec![];
+        for dep in self.aliases() {
+            let exec_seq = execution_sequence_for_dependencies(vars, dep)?;
+            let q_alias = AliasAndDependencies {
+                alias: dep.clone(),
+                full_name: dep.full_name().to_string(),
+                dependencies: exec_seq.identifiers(),
+            };
+            qualified_aliases.push(q_alias);
+        }
+        let selection = r.select_identifier(&qualified_aliases, prompt)?;
+        self.get(&selection.alias.identifier()).ok_or_else(|| {
+            ErrorsAliasCollection::AliasInvalidSelection(selection.alias.identifier())
+        })
     }
 
-    fn get(&self, id: &Identifier) -> std::result::Result<&Alias, ErrorsAliasCollection>;
-    fn identifiers(&self) -> Vec<Identifier>;
-    fn descriptions(&self) -> Vec<&str>;
+    fn get(&self, id: &Identifier) -> Option<&Alias>;
+    fn aliases(&self) -> Vec<&Alias>;
 }
 
 #[derive(Debug, Error)]
@@ -43,6 +52,8 @@ pub enum ErrorsAliasCollection {
     AliasSelectionFailure(#[from] ErrorsResolver),
     #[error("Invalid alias selected {0}")]
     AliasInvalidSelection(Identifier),
+    #[error("Can't figure out dependencies for alias")]
+    AliasDependencyResolution(#[from] ErrorDependencyResolution),
 }
 
 // Changes:
@@ -58,10 +69,6 @@ pub enum ErrorsAliasCollection {
 pub enum SamCommand {
     ChooseAndExecuteAlias,
     ExecuteAlias { alias: Identifier },
-    DisplayLastExecutedAlias,
-    ExecuteLastExecutedAlias,
-    ModifyThenExecuteLastAlias,
-    DisplayHistory,
 }
 
 // TODO Rename to UseCaseAliasExec
@@ -77,7 +84,6 @@ pub struct SamEngine<
     pub defaults: DV,
     pub logger: Rc<dyn SamLogger>,
     pub history: RefCell<Box<dyn SamHistory>>,
-    // TODO this should be handled elsewhere, most likely in the executor
     pub env_variables: HashMap<String, String>,
     pub executor: Rc<dyn SamExecutor>,
 }
@@ -94,98 +100,40 @@ impl<
         match command {
             ChooseAndExecuteAlias => self.choose_and_execute_alias(),
             ExecuteAlias { alias } => self.execute_alias(&alias),
-            DisplayLastExecutedAlias => self.display_last_executed_alias(),
-            ExecuteLastExecutedAlias => self.execute_last_executed_alias(),
-            ModifyThenExecuteLastAlias => self.modify_then_execute_last_executed_alias(),
-            DisplayHistory => self.display_history(),
         }
     }
 
     fn choose_and_execute_alias(&self) -> Result<i32> {
-        let id = self.aliases.select_alias(&self.resolver, PROMPT)?;
+        let id = self
+            .aliases
+            .select_alias(&self.resolver, &self.vars, PROMPT)?;
         self.run_alias(id)
     }
 
     fn execute_alias(&self, alias_id: &Identifier) -> Result<i32> {
-        let alias = self.aliases.get(alias_id)?;
+        let alias = self
+            .aliases
+            .get(alias_id)
+            .ok_or_else(|| ErrorsAliasCollection::AliasInvalidSelection(alias_id.clone()))?;
         self.run_alias(alias)
     }
 
     fn run_alias(&self, alias: &Alias) -> Result<i32> {
+        self.logger.alias(alias);
         let exec_seq = execution_sequence_for_dependencies(&self.vars, alias)?;
-        let choices: HashMap<Identifier, Choice> =
-            choices_for_execution_sequence(&self.vars, &self.defaults, &self.resolver, exec_seq)?
-                .into_iter()
-                .collect();
-
+        let choices: HashMap<Identifier, Vec<Choice>> = choices_for_execution_sequence(
+            alias,
+            &self.vars,
+            &self.defaults,
+            &self.resolver,
+            exec_seq,
+        )?
+        .into_iter()
+        .collect();
         let final_alias = alias.with_choices(&choices).unwrap();
         self.history.borrow_mut().put(final_alias.clone())?;
-        self.logger.final_command(alias, &final_alias.command());
         self.executor
             .execute_resolved_alias(&final_alias, &self.env_variables)
-    }
-
-    fn display_last_executed_alias(&self) -> Result<i32> {
-        let resolved_alias_o = self.history.borrow().get_last()?;
-        if let Some(alias) = resolved_alias_o {
-            println!("Alias: {}", &alias.name());
-            println!("{}", &alias.command());
-        }
-        Ok(0)
-    }
-
-    fn display_history(&self) -> Result<i32> {
-        let resolved_alias_o = self.history.borrow().get_last_n(10)?;
-        for alias in resolved_alias_o {
-            println!("\n=============\n");
-            print!("{}", alias);
-            print!("\n=============\n");
-        }
-        Ok(0)
-    }
-
-    fn modify_then_execute_last_executed_alias(&mut self) -> Result<i32> {
-        let resolved_alias_o = self.history.borrow().get_last()?;
-        if let Some(resolved_alias) = resolved_alias_o {
-            let original_alias = Alias::from(resolved_alias.clone());
-            let exec_seq = execution_sequence_for_dependencies(&self.vars, original_alias.clone())?;
-            let identifiers = exec_seq.identifiers();
-            if !identifiers.is_empty() {
-                let selected_var = self.resolver.select_identifier(
-                    &identifiers,
-                    None,
-                    "Select the variable to override:",
-                )?;
-
-                let var_position = identifiers
-                    .iter()
-                    .position(|x| x == &selected_var)
-                    .unwrap_or_default();
-
-                let new_defaults: HashMap<Identifier, Choice> = identifiers
-                    .into_iter()
-                    .skip(var_position + 1)
-                    .flat_map(|e| resolved_alias.choice(&e).map(|choice| (e, choice)))
-                    .collect();
-
-                self.defaults.set_defaults(&new_defaults);
-            }
-            self.execute_alias(&original_alias.identifier())
-        } else {
-            println!("history empty");
-            Ok(0)
-        }
-    }
-
-    fn execute_last_executed_alias(&self) -> Result<i32> {
-        let resolved_alias_o = self.history.borrow().get_last()?;
-        if let Some(alias) = resolved_alias_o {
-            self.executor
-                .execute_resolved_alias(&alias, &self.env_variables)
-        } else {
-            println!("history empty");
-            Ok(0)
-        }
     }
 }
 
@@ -219,6 +167,8 @@ pub type Result<T> = std::result::Result<T, ErrorSamEngine>;
 pub enum ErrorSamEngine {
     #[error("could not return an exit code.")]
     ExitCode,
+    #[error("could not run commands because {0}")]
+    ExecutorFailure(Box<dyn std::error::Error>),
     #[error("the requested alias was not found")]
     InvalidAliasSelection,
     #[error("could not resolve the dependency because\n-> {0}")]
@@ -238,10 +188,9 @@ mod tests {
     use std::cell::RefCell;
     use std::{collections::HashMap, rc::Rc};
 
+    use crate::algorithms::mocks::StaticResolver;
     use crate::algorithms::mocks::{VarsCollectionMock, VarsDefaultValuesMock};
-    use crate::entities::{
-        choices::Choice, dependencies::mocks::StaticResolver, identifiers::Identifier,
-    };
+    use crate::entities::{choices::Choice, identifiers::Identifier};
     use maplit::hashmap;
 
     use crate::engines::mocks::{InMemoryHistory, LogExecutor, SilentLogger};
@@ -259,18 +208,18 @@ mod tests {
         let choice_v_2 = Choice::new("toto", None);
 
         let static_res = hashmap! {
-            variable_1.clone() => choice_v_1.clone(),
+            variable_1.clone() => vec![choice_v_1.clone()],
         };
         let dynamic_res = hashmap! {
-            String::from("echo '$SOME_ENV_VAR\\ntoto'") => Choice::new("toto", None)
+            String::from("echo '$SOME_ENV_VAR\\ntoto'") => vec![Choice::new("toto", None)]
         };
 
         let executor = Rc::new(LogExecutor::default());
         let selected_identifier = Identifier::new("alias_1");
         let mut engine = make_engine(
+            Some(selected_identifier.clone()),
             dynamic_res,
             static_res,
-            Some(selected_identifier.clone()),
             executor.clone(),
         );
         engine
@@ -283,9 +232,16 @@ mod tests {
         let (resolved_alias, _env_vars) = resolved_aliases.first().unwrap();
         assert_eq!(resolved_alias.name(), &selected_identifier);
         assert!(resolved_alias.choice(&variable_1).is_some());
+
         assert_eq!(resolved_alias.choices().len(), 2);
-        assert_eq!(resolved_alias.choice(&variable_1).unwrap(), choice_v_1);
-        assert_eq!(resolved_alias.choice(&variable_2).unwrap(), choice_v_2);
+        assert_eq!(
+            *resolved_alias.choice(&variable_1).unwrap().first().unwrap(),
+            choice_v_1
+        );
+        assert_eq!(
+            *resolved_alias.choice(&variable_2).unwrap().first().unwrap(),
+            choice_v_2
+        );
         assert_eq!(
             &engine.history.borrow().get_last().unwrap().unwrap(),
             resolved_alias
@@ -301,14 +257,14 @@ mod tests {
         let choice_v_2 = Choice::new("toto", None);
 
         let static_res = hashmap! {
-            variable_1.clone() => choice_v_1.clone(),
+            variable_1.clone() => vec![ choice_v_1.clone()],
         };
         let dynamic_res = hashmap! {
-            String::from("echo '$SOME_ENV_VAR\\ntoto'") => Choice::new("toto", None)
+            String::from("echo '$SOME_ENV_VAR\\ntoto'") => vec![Choice::new("toto", None)]
         };
 
         let executor = Rc::new(LogExecutor::default());
-        let mut engine = make_engine(dynamic_res, static_res, None, executor.clone());
+        let mut engine = make_engine(None, dynamic_res, static_res, executor.clone());
         engine
             .run(SamCommand::ExecuteAlias {
                 alias: chosen_alias,
@@ -319,10 +275,17 @@ mod tests {
         // Only one alias was executed
         assert_eq!(resolved_aliases.len(), 1);
         let (resolved_alias, _env_vars) = resolved_aliases.first().unwrap();
-        assert!(resolved_alias.choice(&variable_1).is_some());
+        let choices_for_var1 = resolved_alias
+            .choice(&variable_1)
+            .expect("expected to find choices for variable1");
+        let choices_for_var2 = resolved_alias
+            .choice(&variable_2)
+            .expect("expected to find choices for variable1");
+
+        assert!(choices_for_var1.len() == 1);
         assert_eq!(resolved_alias.choices().len(), 2);
-        assert_eq!(resolved_alias.choice(&variable_1).unwrap(), choice_v_1);
-        assert_eq!(resolved_alias.choice(&variable_2).unwrap(), choice_v_2);
+        assert_eq!(choices_for_var1[0], choice_v_1);
+        assert_eq!(choices_for_var2[0], choice_v_2);
         assert_eq!(
             &engine.history.borrow().get_last().unwrap().unwrap(),
             resolved_alias
@@ -330,16 +293,16 @@ mod tests {
     }
 
     fn make_engine(
-        dynamic_res: HashMap<String, Choice>,
-        static_res: HashMap<Identifier, Choice>,
-        selected_identifier: Option<Identifier>,
+        identifier_to_select: Option<Identifier>,
+        dynamic_res: HashMap<String, Vec<Choice>>,
+        static_res: HashMap<Identifier, Vec<Choice>>,
         executor: Rc<dyn SamExecutor>,
     ) -> SamEngine<StaticResolver, StaticAliasRepository, VarsCollectionMock, VarsDefaultValuesMock>
     {
         let history = RefCell::new(Box::new(InMemoryHistory::default()));
         let logger = Rc::new(SilentLogger {});
         let sam_data = fixtures::multi_namespace_aliases_and_vars();
-        let resolver = StaticResolver::new(dynamic_res, static_res, selected_identifier);
+        let resolver = StaticResolver::new(identifier_to_select, dynamic_res, static_res);
         SamEngine {
             resolver,
             aliases: sam_data.aliases,
@@ -356,7 +319,7 @@ mod tests {
 #[cfg(test)]
 mod mocks {
     use crate::algorithms::mocks::VarsDefaultValuesMock;
-    use crate::engines::{AliasCollection, ErrorsAliasCollection};
+    use crate::engines::AliasCollection;
     use crate::entities::aliases::Alias;
     use crate::entities::aliases::ResolvedAlias;
     use crate::entities::choices::Choice;
@@ -368,7 +331,7 @@ mod mocks {
     use super::{SamHistory, VarsDefaultValuesSetter};
 
     impl VarsDefaultValuesSetter for VarsDefaultValuesMock {
-        fn set_defaults(&mut self, defaults: &HashMap<Identifier, Choice>) {
+        fn set_defaults(&mut self, defaults: &HashMap<Identifier, Vec<Choice>>) {
             for (key, value) in defaults {
                 self.0.insert(key.clone(), value.clone());
             }
@@ -418,18 +381,12 @@ mod mocks {
     }
 
     impl AliasCollection for StaticAliasRepository {
-        fn get(&self, id: &Identifier) -> std::result::Result<&Alias, ErrorsAliasCollection> {
-            self.aliases
-                .get(id)
-                .ok_or_else(|| ErrorsAliasCollection::AliasInvalidSelection(id.clone()))
+        fn get(&self, id: &Identifier) -> Option<&Alias> {
+            self.aliases.get(id)
         }
 
-        fn identifiers(&self) -> Vec<Identifier> {
-            self.aliases.values().map(Alias::identifier).collect()
-        }
-
-        fn descriptions(&self) -> Vec<&str> {
-            self.aliases.values().map(Alias::desc).collect()
+        fn aliases(&self) -> Vec<&Alias> {
+            self.aliases.values().collect()
         }
     }
 }

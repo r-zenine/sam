@@ -1,6 +1,6 @@
 [package]
 name = "sam-cli"
-version = "0.17.2"
+version = "1.2.2"
 edition = "2021"
 # Example of customizing binaries in Cargo.toml.
 
@@ -14,12 +14,16 @@ sam-utils = {path="../sam-utils"}
 sam-tui = {path="../sam-tui"}
 sam-readers = {path="../sam-readers"}
 sam-persistence = {path="../sam-persistence"}
-clap = "2.33.3"
+sam-terminals = {path="../sam-terminals"}
+clap = "2.34.0"
 thiserror = "1.0.30"
 termion = "1.5.6"
 toml = "0.5.8"
-serde = { version = "1.0.130", features = ["derive"] }
+serde = { version = "1.0.136", features = ["derive"] }
 dirs = "4.0.0"
+tmux_interface = "0.2.1"
+log = "0.4.16"
+flexi_logger = "0.22.3"
 
 [dev-dependencies]
 maplit = "1.0.2"

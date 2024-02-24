@@ -25,7 +25,7 @@ pub enum ErrorAssociativeState {
     CreationFailure(RustbreakError),
     #[error("failed to initialize associative state because\n->{0}")]
     InitFailure(RustbreakError),
-    #[error("failed to load associative state because\n->{0}")]
+    #[error("failed to load associative state because\n-> {0}")]
     OpenFailure(RustbreakError),
     #[error("failed to write to associative state because\n->{0}")]
     WriteFailures(RustbreakError),
@@ -56,7 +56,7 @@ impl<V> StateEntry<V> {
     }
 }
 
-type FDB<V> = FileDatabase<HashMap<String, StateEntry<V>>, Ron>;
+type Fdb<V> = FileDatabase<HashMap<String, StateEntry<V>>, Ron>;
 
 impl<V> AssociativeStateWithTTL<V>
 where
@@ -72,6 +72,7 @@ where
         Ok(db)
     }
 
+    #[allow(dead_code)]
     pub fn new(p: impl AsRef<Path>) -> Result<Self, ErrorAssociativeState> {
         let db = AssociativeStateWithTTL {
             path: p.as_ref().to_owned(),
@@ -128,10 +129,10 @@ where
             .map_err(ErrorAssociativeState::ReadFailure)
     }
 
-    fn open_db(&self) -> Result<FDB<V>, ErrorAssociativeState> {
-        Ok(FDB::<V>::load_from_path(&self.path)
-            .or(FDB::<V>::create_at_path(&self.path, HashMap::default()))
-            .map_err(ErrorAssociativeState::OpenFailure)?)
+    fn open_db(&self) -> Result<Fdb<V>, ErrorAssociativeState> {
+        Fdb::<V>::load_from_path(&self.path)
+            .or_else(|_| Fdb::<V>::create_at_path(&self.path, HashMap::default()))
+            .map_err(ErrorAssociativeState::OpenFailure)
     }
     fn is_value_valid(&self, c: &StateEntry<V>) -> bool {
         let now = SystemTime::now()
@@ -142,79 +143,6 @@ where
         } else {
             true
         }
-    }
-}
-
-pub trait EntrySelector<V> {
-    fn select_entry(
-        &self,
-        data: impl Iterator<Item = (String, V)>,
-    ) -> Result<Option<String>, Box<dyn std::error::Error>>;
-}
-
-pub trait EntryUpdater<V> {
-    fn update_value(&self, key: &str, value: &V) -> Result<Option<V>, Box<dyn std::error::Error>>;
-}
-
-pub struct AssociativeStateInteractor<V, D> {
-    state: AssociativeStateWithTTL<V>,
-    delegate: D,
-}
-
-impl<V, D> AssociativeStateInteractor<V, D> {
-    fn new(path: impl AsRef<Path>, ttl: Option<Duration>, delegate: D) -> Self {
-        AssociativeStateInteractor {
-            state: AssociativeStateWithTTL {
-                path: path.as_ref().to_path_buf(),
-                ttl,
-                _marker: PhantomData::default(),
-            },
-            delegate,
-        }
-    }
-}
-
-impl<V, D> AssociativeStateInteractor<V, D>
-where
-    D: EntrySelector<V>,
-    V: Value,
-{
-    fn delete_entry(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let state_iterator = self.entries()?;
-        let selected_element = self.delegate.select_entry(state_iterator)?;
-        if let Some(key) = selected_element {
-            self.state.delete(key)?;
-        }
-        Ok(())
-    }
-}
-
-impl<V, D> AssociativeStateInteractor<V, D>
-where
-    D: EntrySelector<V> + EntryUpdater<V>,
-    V: Value,
-{
-    fn update_entry(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let state_iterator = self.entries()?;
-        let selected_key = self.delegate.select_entry(state_iterator)?;
-        let selected_value = selected_key
-            .as_deref()
-            .and_then(|k| self.state.get(k).transpose())
-            .transpose()?;
-        if let Some((k, v)) = selected_key.zip(selected_value) {
-            let updated_value = self.delegate.update_value(&k, &v)?;
-            updated_value.map(|v| self.state.put(k, v));
-        }
-        Ok(())
-    }
-}
-
-impl<V, D> AssociativeStateInteractor<V, D>
-where
-    V: Value,
-{
-    fn entries(&self) -> Result<impl Iterator<Item = (String, V)>, ErrorAssociativeState> {
-        self.state.entries()
     }
 }
 
@@ -232,7 +160,7 @@ mod tests {
     #[test]
     fn test_associative_state() {
         let db = make_temp_state::<i32>();
-        let values = vec![
+        let mut values = vec![
             (String::from("str"), 1),
             (String::from("str_1"), 2),
             (String::from("str_2"), 3),
@@ -242,8 +170,10 @@ mod tests {
             db.put(k, *v).expect("could not put");
         }
 
-        let entries: Vec<(String, i32)> = db.entries().expect("can't get entries").collect();
-        assert_eq!(entries.clone().sort(), values.clone().sort());
+        let mut entries: Vec<(String, i32)> = db.entries().expect("can't get entries").collect();
+        entries.sort();
+        values.sort();
+        assert_eq!(entries, values);
 
         let value = db
             .get(String::from("str"))
@@ -263,13 +193,4 @@ mod tests {
             .expect("can't get data from state")
             .is_none());
     }
-
-    #[test]
-    fn test_associative_state_interactor_delete_entry() {}
-
-    #[test]
-    fn test_associative_state_interactor_update_entry() {}
-
-    #[test]
-    fn test_associative_state_interactor_entries() {}
 }

@@ -16,7 +16,6 @@ lazy_static! {
     static ref SUBCMD_NESTED_RE: Regex = Regex::new("[\"']+(?P<sub_nest>[^'\"]+)[\"']+").unwrap();
 }
 
-// TODO extract from core
 pub trait Command: Namespace {
     // Returns a string representation of a command
     fn command(&self) -> &str;
@@ -78,9 +77,13 @@ fn extract_programs_from_command(cmd: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
 
-    use crate::entities::commands::Command;
-    use crate::entities::commands::{extract_env_vars, unset_env_vars};
-    use crate::entities::namespaces::Namespace;
+    use crate::entities::{
+        commands::{extract_env_vars, unset_env_vars},
+        namespaces::Namespace,
+    };
+
+    use super::Command;
+
     #[test]
     fn test_extract_env_vars() {
         let result: Vec<&'static str> = vec!["Some_VAR"];

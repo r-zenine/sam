@@ -1,17 +1,19 @@
 [package]
-name = "sam-core"
+name = "sam-terminals"
 version = "1.2.2"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
+sam-core = {path="../sam-core"}
+tmux_interface = { version = "0.2.1", features = ["tmux_2_9a"]}
+thiserror = "1.0.31"
+log = "0.4.16"
+shellwords = "1.1.0"
 lazy_static = "1.4.0"
 regex = "1.5.5"
-serde = { version = "1.0.136", features = ["derive"] }
-thiserror = "1.0.30"
-comma = "1.0.0"
 
 [dev-dependencies]
-serde_yaml = "0.8.23"
 maplit = "1.0.2"

@@ -24,9 +24,12 @@ case $1 in
         ;;
     "minor")
         VERSION_MINOR=$(echo $CARGO_VERSION| awk 'BEGIN { FS = "." };{print $2+1}')
+        VERSION_PATCH="0"
         ;;
     "major")
         VERSION_MAJOR=$(echo $CARGO_VERSION| awk 'BEGIN { FS = "." };{print $1+1}')
+        VERSION_MINOR="0"
+        VERSION_PATCH="0"
         ;;
     *)
         echo "Only 'major', 'minor' and 'patch' are supported" && exit 1
