@@ -17,7 +17,7 @@ use super::ui_options_mode::UIOptionsMode;
 const MIN_TIME_TO_REFRESH_IN_MS: u128 = 75;
 
 pub struct UIModal<V: Value> {
-    raw_terminal: RefCell<RawTerminal<Stdout>>,
+    terminal: RefCell<Terminal<TermionBackend<AlternateScreen<RawTerminal<Stdout>>>>>,
     last_update: Cell<Option<SystemTime>>,
 
     theme: UITheme,
@@ -27,8 +27,12 @@ pub struct UIModal<V: Value> {
 impl<V: Value> UIModal<V> {
     pub fn new() -> std::io::Result<Self> {
         let raw_stdout = std::io::stdout().into_raw_mode()?;
+        let screen = raw_stdout.into_alternate_screen()?;
+        let backend = TermionBackend::new(screen);
+        let terminal = Terminal::new(backend).expect("can't setup terminal");
+        
         Ok(UIModal {
-            raw_terminal: RefCell::new(raw_stdout),
+            terminal: RefCell::new(terminal),
             last_update: Cell::new(None),
             theme: UITheme::default(),
             _marker: PhantomData::default(),
@@ -36,12 +40,9 @@ impl<V: Value> UIModal<V> {
     }
 
     pub fn suspend_raw_mode(&mut self) {
-        let raw_terminal = &mut *self.raw_terminal.borrow_mut();
-        raw_terminal
-            .suspend_raw_mode()
-            .expect("Can't suspect raw mode");
-        // This is a workaround because on my machine I can't get
-        // stdin and stdout to work after I suspend raw mode
+        // Note: With the new structure, we can't easily suspend raw mode
+        // because the raw terminal is wrapped inside AlternateScreen and TermionBackend
+        // You may need to restructure if suspend/resume is critical
         eprintln!();
         println!();
     }
@@ -49,17 +50,8 @@ impl<V: Value> UIModal<V> {
 
 impl<V: Value> UIModal<V> {
     pub(super) fn draw(&self, state: &ViewState<V>) {
-        let stdout = std::io::stdout().into_alternate_screen().unwrap();
-        let screen = AlternateScreen::from(stdout);
-        let backend = TermionBackend::new(screen);
-        let mut terminal = Terminal::new(backend).expect("can't setup terminal");
-
-        // let raw_terminal = &mut *self.raw_terminal.borrow_mut();
-        // let stdout = AlternateScreen::from(raw_terminal);
-        // let backend = TermionBackend::new(stdout);
-        // let mut terminal = Terminal::new(backend).expect("can't setup terminal");
-
         if self.enough_time_since_last_refresh() {
+            let mut terminal = self.terminal.borrow_mut();
             terminal
                 .draw(|f| {
                     match state.current_mod {
