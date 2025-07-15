@@ -9,7 +9,7 @@ edition = "2021"
 lazy_static = "1.4.0"
 regex = "1.5.5"
 serde = { version = "1.0.136", features = ["derive"] }
-thiserror = "1.0.30"
+thiserror = "2.0.12"
 comma = "1.0.0"
 
 [dev-dependencies]

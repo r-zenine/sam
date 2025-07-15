@@ -2,7 +2,7 @@ use std::{fmt::Display, io::BufRead};
 
 use log::debug;
 use thiserror::Error;
-use tmux_interface::{self, TmuxCommand};
+use tmux_interface::{self, display_message, list_windows, new_window, select_layout, split_window};
 
 pub struct Tmux {
     target_session: String,
@@ -10,10 +10,10 @@ pub struct Tmux {
 
 impl Tmux {
     pub fn current_session_name() -> Result<String, TmuxError> {
-        TmuxCommand::new()
-            .display_message()
+            display_message!()
             .print()
             .message("#S")
+            .build().into_tmux()
             .output()?
             .stdout()
             .lines()
@@ -31,12 +31,10 @@ impl Tmux {
     }
 
     pub fn list_windows(&self) -> Result<Vec<String>, TmuxError> {
-        let output = TmuxCommand::new()
-            .list_windows()
+        let output = list_windows!()
             .target_session(&self.target_session)
             .format("#{window_name}")
-            .output()?
-            .stdout();
+            .build().into_tmux().output()?.stdout();
         Ok(parsers::parse_list_windows_output(output)?)
     }
 
@@ -48,13 +46,13 @@ impl Tmux {
     ) -> Result<bool, TmuxError> {
         if self.list_windows()?.iter().any(|e| *e == target_window) {
             debug!("target window {:?} was found!", target_window);
-            let output = TmuxCommand::new()
-                .split_window()
+            let output = split_window!()
                 .target_window(target_window)
                 .vertical()
                 .start_directory(directory)
                 .shell_command(command)
-                .output();
+                .build()
+                .into_tmux().output();
             debug!("executed command {:?} and got output {:?}", command, output);
 
             Ok(output.map(|out| out.success())?)
@@ -63,12 +61,13 @@ impl Tmux {
                 "target window {:?} was not found! creating it",
                 target_window
             );
-            let output = TmuxCommand::new()
-                .new_window()
+            let output = new_window!()
                 .window_name(target_window)
                 .start_directory(directory)
                 .shell_command(command)
-                .output();
+                .build()
+                .into_tmux().output();
+
             debug!("executed command {:?} and got output {:?}", command, output);
 
             Ok(output.map(|out| out.success())?)
@@ -76,10 +75,10 @@ impl Tmux {
     }
 
     pub fn set_layout(&self, layout: WindowLayout, target_window: &str) -> Result<bool, TmuxError> {
-        Ok(TmuxCommand::new()
-            .select_layout()
+        Ok(select_layout!()
             .target_pane(target_window)
             .layout_name(format!("{}", layout))
+            .build().into_tmux()
             .output()
             .map(|out| out.success())?)
     }

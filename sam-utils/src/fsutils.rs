@@ -17,7 +17,7 @@ pub struct TempDirectory {
 
 impl TempDirectory {
     pub fn new() -> Result<Self> {
-        let seed: u16 = rand::thread_rng().gen();
+        let seed: u16 = rand::rng().random();
         let dir_name = format!("sam-temp-dir-{}", seed);
         let path = temp_dir().join(dir_name);
         std::fs::create_dir(path.clone()).map_err(ErrorsFS::UnexpectedIOError)?;

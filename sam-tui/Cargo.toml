@@ -11,7 +11,7 @@ sam-persistence = {path="../sam-persistence"}
 sam-utils = {path="../sam-utils"}
 sam-readers = {path="../sam-readers"}
 sam-terminals = {path="../sam-terminals"}
-thiserror = "1.0.30"
-tui = { version = "0.17", default-features = false, features = ["termion"] }
+thiserror = "2.0.12"
+tui = { version = "0.19.0", default-features = false, features = ["termion"] }
 fzy-rs = "0.1.0"
-termion = "1.5.6"
+termion = "4.0.5"

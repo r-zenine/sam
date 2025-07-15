@@ -3,7 +3,7 @@ use std::io::Stdout;
 use std::marker::PhantomData;
 use std::time::SystemTime;
 use termion::raw::{IntoRawMode, RawTerminal};
-use termion::screen::AlternateScreen;
+use termion::screen::{AlternateScreen, IntoAlternateScreen};
 use tui::backend::TermionBackend;
 
 use tui::Terminal;
@@ -49,10 +49,15 @@ impl<V: Value> UIModal<V> {
 
 impl<V: Value> UIModal<V> {
     pub(super) fn draw(&self, state: &ViewState<V>) {
-        let raw_terminal = &mut *self.raw_terminal.borrow_mut();
-        let stdout = AlternateScreen::from(raw_terminal);
-        let backend = TermionBackend::new(stdout);
+        let stdout = std::io::stdout().into_alternate_screen().unwrap();
+        let screen = AlternateScreen::from(stdout);
+        let backend = TermionBackend::new(screen);
         let mut terminal = Terminal::new(backend).expect("can't setup terminal");
+
+        // let raw_terminal = &mut *self.raw_terminal.borrow_mut();
+        // let stdout = AlternateScreen::from(raw_terminal);
+        // let backend = TermionBackend::new(stdout);
+        // let mut terminal = Terminal::new(backend).expect("can't setup terminal");
 
         if self.enough_time_since_last_refresh() {
             terminal

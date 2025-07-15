@@ -16,7 +16,7 @@ impl OptionsState {
     }
 
     pub fn toggle_option(&mut self, key: char) {
-        for mut a in &mut self.options {
+        for a in &mut self.options {
             if a.key == key {
                 a.active = !a.active;
             }

@@ -8,8 +8,8 @@ edition = "2021"
 [dependencies]
 
 sam-core = {path="../sam-core"}
-tmux_interface = { version = "0.2.1", features = ["tmux_2_9a"]}
-thiserror = "1.0.31"
+tmux_interface = { version = "0.3.2", features = ["tmux_2_9a"]}
+thiserror = "2.0.12"
 log = "0.4.16"
 shellwords = "1.1.0"
 lazy_static = "1.4.0"

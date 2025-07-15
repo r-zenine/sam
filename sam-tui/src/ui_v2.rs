@@ -43,6 +43,7 @@ impl<'a> UserInterfaceV2 {
             .ok_or(ErrorsUIV2::EmptySelection)
     }
 }
+
 #[derive(Debug, Error)]
 pub enum ErrorsUIV2 {
     #[error("no selection was provided")]
