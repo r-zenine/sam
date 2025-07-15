@@ -4,9 +4,15 @@
 class Sam < Formula
     desc "${PROJECT_DESCRIPTION}"
     homepage "${PROJECT_URL}"
-    url "${PROJECT_URL}/releases/download/v${APP_VERSION}/sam_macos_x86_64_v${APP_VERSION}.tar.gz"
-    sha256 "${RELEASE_HASH}"
     version "${APP_VERSION}"
+
+    if Hardware::CPU.intel?
+      url "${PROJECT_URL}/releases/download/v${APP_VERSION}/sam_macos_x86_64_v${APP_VERSION}.tar.gz"
+      sha256 "${RELEASE_HASH_X86_64}"
+    elsif Hardware::CPU.arm?
+      url "${PROJECT_URL}/releases/download/v${APP_VERSION}/sam_macos_aarch64_v${APP_VERSION}.tar.gz"
+      sha256 "${RELEASE_HASH_AARCH64}"
+    end
   
     def install
       bin.install "sam"
