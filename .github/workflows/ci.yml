@@ -26,7 +26,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y clang-11
+        sudo apt install -y clang
         
     - name: Cache cargo registry
       uses: actions/cache@v3
