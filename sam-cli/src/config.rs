@@ -56,10 +56,16 @@ impl AppSettings {
         let config_home_dir = Self::read_config(home_dir_o);
         let config_current_dir = current_dir_o.and_then(Self::read_config);
 
-        let cache_dir =
-            Self::file_path_with_suffix(CACHE_DIR, "sam", ErrorsSettings::CantFindCurrentDirectory)?;
-        let history_file =
-            Self::file_path_with_suffix(HISTORY_DIR, "history", ErrorsSettings::CantFindHistoryDirectory(HISTORY_DIR.to_string()))?;
+        let cache_dir = Self::file_path_with_suffix(
+            CACHE_DIR,
+            "sam",
+            ErrorsSettings::CantFindCurrentDirectory,
+        )?;
+        let history_file = Self::file_path_with_suffix(
+            HISTORY_DIR,
+            "history",
+            ErrorsSettings::CantFindHistoryDirectory(HISTORY_DIR.to_string()),
+        )?;
 
         let mut settings = config_current_dir
             .or(config_home_dir)
@@ -129,7 +135,7 @@ impl AppSettings {
         self.env_variables.clone()
     }
 
-    fn sam_files(&self) -> impl Iterator<Item=PathBuf> + '_ {
+    fn sam_files(&self) -> impl Iterator<Item = PathBuf> + '_ {
         self.root_dir
             .iter()
             .map(AsRef::as_ref)
@@ -137,7 +143,7 @@ impl AppSettings {
             .flatten()
     }
 
-    pub fn aliases_files(&self) -> impl Iterator<Item=PathBuf> + '_ {
+    pub fn aliases_files(&self) -> impl Iterator<Item = PathBuf> + '_ {
         self.sam_files().filter(|f| {
             if let Some(file_name) = f.file_name() {
                 file_name == "aliases.yaml" || file_name == "aliases.yml"
@@ -147,7 +153,7 @@ impl AppSettings {
         })
     }
 
-    pub fn vars_files(&self) -> impl Iterator<Item=PathBuf> + '_ {
+    pub fn vars_files(&self) -> impl Iterator<Item = PathBuf> + '_ {
         self.sam_files().filter(|f| {
             if let Some(file_name) = f.file_name() {
                 file_name == "vars.yaml" || file_name == "vars.yml"
@@ -174,6 +180,8 @@ pub enum ErrorsSettings {
     CantFindCacheDirectory,
     #[error("we were unable to locate the current directory for the current user")]
     CantFindCurrentDirectory,
-    #[error("we were unable to locate the history directory for the current user, make sure {0} exists")]
+    #[error(
+        "we were unable to locate the history directory for the current user, make sure {0} exists"
+    )]
     CantFindHistoryDirectory(String),
 }

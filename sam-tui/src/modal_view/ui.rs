@@ -30,7 +30,7 @@ impl<V: Value> UIModal<V> {
         let screen = raw_stdout.into_alternate_screen()?;
         let backend = TermionBackend::new(screen);
         let terminal = Terminal::new(backend).expect("can't setup terminal");
-        
+
         Ok(UIModal {
             terminal: RefCell::new(terminal),
             last_update: Cell::new(None),

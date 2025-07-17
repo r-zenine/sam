@@ -2,7 +2,9 @@ use std::{fmt::Display, io::BufRead};
 
 use log::debug;
 use thiserror::Error;
-use tmux_interface::{self, display_message, list_windows, new_window, select_layout, split_window};
+use tmux_interface::{
+    self, display_message, list_windows, new_window, select_layout, split_window,
+};
 
 pub struct Tmux {
     target_session: String,
@@ -10,10 +12,11 @@ pub struct Tmux {
 
 impl Tmux {
     pub fn current_session_name() -> Result<String, TmuxError> {
-            display_message!()
+        display_message!()
             .print()
             .message("#S")
-            .build().into_tmux()
+            .build()
+            .into_tmux()
             .output()?
             .stdout()
             .lines()
@@ -34,7 +37,10 @@ impl Tmux {
         let output = list_windows!()
             .target_session(&self.target_session)
             .format("#{window_name}")
-            .build().into_tmux().output()?.stdout();
+            .build()
+            .into_tmux()
+            .output()?
+            .stdout();
         Ok(parsers::parse_list_windows_output(output)?)
     }
 
@@ -52,7 +58,8 @@ impl Tmux {
                 .start_directory(directory)
                 .shell_command(command)
                 .build()
-                .into_tmux().output();
+                .into_tmux()
+                .output();
             debug!("executed command {:?} and got output {:?}", command, output);
 
             Ok(output.map(|out| out.success())?)
@@ -66,7 +73,8 @@ impl Tmux {
                 .start_directory(directory)
                 .shell_command(command)
                 .build()
-                .into_tmux().output();
+                .into_tmux()
+                .output();
 
             debug!("executed command {:?} and got output {:?}", command, output);
 
@@ -78,7 +86,8 @@ impl Tmux {
         Ok(select_layout!()
             .target_pane(target_window)
             .layout_name(format!("{}", layout))
-            .build().into_tmux()
+            .build()
+            .into_tmux()
             .output()
             .map(|out| out.success())?)
     }
