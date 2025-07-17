@@ -99,10 +99,22 @@ impl<V: Value> ModalView<V> {
             | Key::BackTab
             | Key::Insert
             | Key::F(_)
-            | Key::Alt(_)| Key::AltLeft | Key::AltRight | Key::AltUp | Key::AltDown
+            | Key::Alt(_)
+            | Key::AltLeft
+            | Key::AltRight
+            | Key::AltUp
+            | Key::AltDown
             | Key::Null
-            | Key::ShiftLeft| Key::ShiftRight | Key::ShiftUp | Key::ShiftDown
-            | Key::CtrlLeft | Key::CtrlRight | Key::CtrlDown | Key::CtrlUp | Key::CtrlHome | Key::CtrlEnd
+            | Key::ShiftLeft
+            | Key::ShiftRight
+            | Key::ShiftUp
+            | Key::ShiftDown
+            | Key::CtrlLeft
+            | Key::CtrlRight
+            | Key::CtrlDown
+            | Key::CtrlUp
+            | Key::CtrlHome
+            | Key::CtrlEnd
             | Key::__IsNotComplete => None,
         }
     }
