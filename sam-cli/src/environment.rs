@@ -40,6 +40,11 @@ impl Environment {
     ) -> SamEngine<UserInterfaceV2, AliasesRepository, VarsRepository, VarsRepository> {
         let executor: Rc<dyn SamExecutor> = make_executor(self.config.dry)
             .expect("Could not initialize executors, please open a ticket");
+
+        // Create session saver before moving other fields
+        let session_saver: Option<Rc<dyn sam_core::engines::SessionSaver>> = 
+            self.create_session_saver().map(|s| Rc::new(s) as Rc<dyn sam_core::engines::SessionSaver>);
+
         let resolver = UserInterfaceV2::new(self.env_variables.clone(), self.cache);
 
         SamEngine {
@@ -51,7 +56,15 @@ impl Environment {
             env_variables: self.env_variables,
             history: RefCell::new(Box::new(self.history)),
             executor,
+            session_saver,
         }
+    }
+
+    fn create_session_saver(&self) -> Option<SessionEngine> {
+        let cache_parent = self.config.cache_dir().parent()?.to_path_buf();
+        let session_file = cache_parent.join("session_storage");
+        let session_ttl = std::time::Duration::from_secs(24 * 60 * 60);
+        SessionEngine::new(session_file, session_ttl).ok()
     }
 
     pub fn cache_engine(self) -> CacheEngine {

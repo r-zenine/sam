@@ -86,6 +86,7 @@ pub struct SamEngine<
     pub history: RefCell<Box<dyn SamHistory>>,
     pub env_variables: HashMap<String, String>,
     pub executor: Rc<dyn SamExecutor>,
+    pub session_saver: Option<Rc<dyn SessionSaver>>,
 }
 
 impl<
@@ -130,6 +131,12 @@ impl<
         )?
         .into_iter()
         .collect();
+        
+        // Save choices to session if session saver is available
+        if let Some(session_saver) = &self.session_saver {
+            let _ = session_saver.save_choices(&choices);
+        }
+        
         let final_alias = alias.with_choices(&choices).unwrap();
         self.history.borrow_mut().put(final_alias.clone())?;
         self.executor
@@ -144,6 +151,10 @@ pub trait SamHistory {
         let mut last = self.get_last_n(1)?;
         Ok(last.pop())
     }
+}
+
+pub trait SessionSaver {
+    fn save_choices(&self, choices: &HashMap<Identifier, Vec<Choice>>) -> std::result::Result<(), Box<dyn std::error::Error>>;
 }
 
 pub trait SamLogger {
@@ -312,6 +323,7 @@ mod tests {
             history,
             env_variables: sam_data.env_variables,
             executor,
+            session_saver: None,
         }
     }
 }

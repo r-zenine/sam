@@ -1,6 +1,8 @@
+use sam_core::engines::{SessionSaver};
 use sam_core::entities::choices::Choice;
 use sam_core::entities::identifiers::Identifier;
 use sam_persistence::{SessionError, SessionStorage};
+use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
 use thiserror::Error;
@@ -59,6 +61,18 @@ impl SessionEngine {
             defaults.insert(identifier, vec![choice]);
         }
         Ok(defaults)
+    }
+}
+
+impl SessionSaver for SessionEngine {
+    fn save_choices(&self, choices: &HashMap<Identifier, Vec<Choice>>) -> std::result::Result<(), Box<dyn std::error::Error>> {
+        for (identifier, choice_vec) in choices {
+            // Only save the first choice (user's selection)
+            if let Some(choice) = choice_vec.first() {
+                self.storage.set_choice(identifier.clone(), choice.clone())?;
+            }
+        }
+        Ok(())
     }
 }
 
