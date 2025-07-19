@@ -110,6 +110,6 @@ impl SessionSaver for SessionEngine {
 pub enum ErrorSessionEngine {
     #[error("Session storage error: {0}")]
     Storage(#[from] SessionError),
-    #[error("Variable '{0}' does not exist in the configuration")]
+    #[error("you are trying to set a Variable '{0}' that does not exist in the configuration.")]
     VariableNotFound(String),
 }

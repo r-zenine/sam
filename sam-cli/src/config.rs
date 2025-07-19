@@ -15,7 +15,7 @@ use thiserror::Error;
 
 const CONFIG_FILE_NAME: &str = ".sam_rc.toml";
 const HISTORY_DIR: &str = ".local/share/sam/";
-const CACHE_DIR: &str = ".cache/sam/";
+const CACHE_DIR: &str = ".cache/";
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct AppSettings {
@@ -59,7 +59,7 @@ impl AppSettings {
         let cache_dir = Self::file_path_with_suffix(
             CACHE_DIR,
             "sam",
-            ErrorsSettings::CantFindCurrentDirectory,
+            ErrorsSettings::CantFindCacheDirectory,
         )?;
         let history_file = Self::file_path_with_suffix(
             HISTORY_DIR,
