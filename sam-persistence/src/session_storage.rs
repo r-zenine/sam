@@ -152,22 +152,24 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let session_path = temp_dir.path().join("session_test");
         let ttl = Duration::from_secs(3600);
-        
+
         let storage = SessionStorage::with_ttl(&session_path, &ttl).unwrap();
-        
+
         let var_name = Identifier::new("test_var");
         let choice = Choice::new("test_value", Some("test description"));
-        
+
         // Test setting and getting a choice
-        storage.set_choice(var_name.clone(), choice.clone()).unwrap();
+        storage
+            .set_choice(var_name.clone(), choice.clone())
+            .unwrap();
         let retrieved = storage.get_choice(&var_name).unwrap();
         assert_eq!(retrieved, Some(choice.clone()));
-        
+
         // Test getting all choices
         let all_choices = storage.get_all_choices().unwrap();
         assert_eq!(all_choices.len(), 1);
         assert_eq!(all_choices.get(&var_name), Some(&choice));
-        
+
         // Test clearing session
         storage.clear_session().unwrap();
         let cleared = storage.get_choice(&var_name).unwrap();
@@ -179,23 +181,25 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let session_path = temp_dir.path().join("session_isolation_test");
         let ttl = Duration::from_secs(3600);
-        
+
         // Create storage instances that would have different session IDs in real usage
         let storage1 = SessionStorage::with_ttl(&session_path, &ttl).unwrap();
         let storage2 = SessionStorage::with_ttl(&session_path, &ttl).unwrap();
-        
+
         // They should have the same session ID in tests (same process)
         assert_eq!(storage1.session_id(), storage2.session_id());
-        
+
         let var_name = Identifier::new("test_var");
         let choice = Choice::new("test_value", Some("test description"));
-        
-        storage1.set_choice(var_name.clone(), choice.clone()).unwrap();
-        
+
+        storage1
+            .set_choice(var_name.clone(), choice.clone())
+            .unwrap();
+
         // Both should see the same data since they're in the same session
         let retrieved1 = storage1.get_choice(&var_name).unwrap();
         let retrieved2 = storage2.get_choice(&var_name).unwrap();
-        
+
         assert_eq!(retrieved1, Some(choice.clone()));
         assert_eq!(retrieved2, Some(choice));
     }

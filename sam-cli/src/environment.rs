@@ -10,8 +10,8 @@ use sam_persistence::repositories::{
     AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
 };
 use sam_persistence::{
-    AliasHistory, CacheError, ErrorAliasHistory, NoopVarsCache, RustBreakCache, VarsCache,
-    SessionError,
+    AliasHistory, CacheError, ErrorAliasHistory, NoopVarsCache, RustBreakCache, SessionError,
+    VarsCache,
 };
 use sam_readers::read_aliases_from_path;
 use sam_readers::read_vars_repository;
@@ -42,8 +42,9 @@ impl Environment {
             .expect("Could not initialize executors, please open a ticket");
 
         // Create session saver before moving other fields
-        let session_saver: Option<Rc<dyn sam_core::engines::SessionSaver>> = 
-            self.create_session_saver().map(|s| Rc::new(s) as Rc<dyn sam_core::engines::SessionSaver>);
+        let session_saver: Option<Rc<dyn sam_core::engines::SessionSaver>> = self
+            .create_session_saver()
+            .map(|s| Rc::new(s) as Rc<dyn sam_core::engines::SessionSaver>);
 
         let resolver = UserInterfaceV2::new(self.env_variables.clone(), self.cache);
 
@@ -96,14 +97,16 @@ impl Environment {
 
     pub fn session_engine(self) -> SessionEngine {
         // Use the cache directory's parent for sessions since cache_dir is actually a file path
-        let cache_parent = self.config.cache_dir().parent()
+        let cache_parent = self
+            .config
+            .cache_dir()
+            .parent()
             .expect("Cache directory should have a parent")
             .to_path_buf();
         let session_file = cache_parent.join("session_storage");
         // Sessions have longer TTL than cache (24 hours vs default cache TTL)
         let session_ttl = std::time::Duration::from_secs(24 * 60 * 60);
-        SessionEngine::new(session_file, session_ttl)
-            .expect("Could not initialize session engine")
+        SessionEngine::new(session_file, session_ttl).expect("Could not initialize session engine")
     }
 }
 
@@ -146,19 +149,21 @@ pub fn from_settings(mut config: AppSettings) -> Result<Environment> {
 
 fn load_and_merge_session_defaults(config: &mut AppSettings) -> Result<()> {
     // Create a temporary session engine to load defaults
-    let cache_parent = config.cache_dir().parent()
+    let cache_parent = config
+        .cache_dir()
+        .parent()
         .expect("Cache directory should have a parent")
         .to_path_buf();
     let session_file = cache_parent.join("session_storage");
     let session_ttl = std::time::Duration::from_secs(24 * 60 * 60);
-    
+
     // Try to load session defaults - if it fails, just continue without session defaults
     if let Ok(session_engine) = SessionEngine::new(session_file, session_ttl) {
         if let Ok(session_defaults) = session_engine.get_session_defaults() {
             config.merge_session_defaults(session_defaults);
         }
     }
-    
+
     Ok(())
 }
 
