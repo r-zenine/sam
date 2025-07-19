@@ -65,7 +65,9 @@ impl Environment {
         let cache_parent = self.config.cache_dir().parent()?.to_path_buf();
         let session_file = cache_parent.join("session_storage");
         let session_ttl = std::time::Duration::from_secs(24 * 60 * 60);
-        SessionEngine::new(session_file, session_ttl).ok()
+        // For session saver, variable validation is not needed since we only read from it
+        let temp_vars = VarsRepository::default();
+        SessionEngine::new(session_file, session_ttl, temp_vars).ok()
     }
 
     pub fn cache_engine(self) -> CacheEngine {
@@ -106,12 +108,12 @@ impl Environment {
         let session_file = cache_parent.join("session_storage");
         // Sessions have longer TTL than cache (24 hours vs default cache TTL)
         let session_ttl = std::time::Duration::from_secs(24 * 60 * 60);
-        SessionEngine::new(session_file, session_ttl).expect("Could not initialize session engine")
+        SessionEngine::new(session_file, session_ttl, self.vars).expect("Could not initialize session engine")
     }
 }
 
 pub fn from_settings(mut config: AppSettings) -> Result<Environment> {
-    // Load session defaults and merge them with config defaults
+    // Load session defaults early to include them in configuration
     load_and_merge_session_defaults(&mut config)?;
 
     let cache: Box<dyn VarsCache> = if !config.no_cache {
@@ -133,6 +135,7 @@ pub fn from_settings(mut config: AppSettings) -> Result<Environment> {
     for f in config.vars_files() {
         vars.merge(read_vars_repository(&f)?);
     }
+    
     vars.set_defaults(&config.defaults);
     vars.ensure_no_missing_dependency()?;
 
@@ -157,8 +160,12 @@ fn load_and_merge_session_defaults(config: &mut AppSettings) -> Result<()> {
     let session_file = cache_parent.join("session_storage");
     let session_ttl = std::time::Duration::from_secs(24 * 60 * 60);
 
+    // For initialization, we create a temporary empty VarsRepository to allow session creation
+    // Variable validation will happen only when explicitly setting session variables via CLI
+    let temp_vars = VarsRepository::default();
+
     // Try to load session defaults - if it fails, just continue without session defaults
-    if let Ok(session_engine) = SessionEngine::new(session_file, session_ttl) {
+    if let Ok(session_engine) = SessionEngine::new(session_file, session_ttl, temp_vars) {
         if let Ok(session_defaults) = session_engine.get_session_defaults() {
             config.merge_session_defaults(session_defaults);
         }
