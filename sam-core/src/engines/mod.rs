@@ -8,4 +8,5 @@ pub use sam_engine::SamEngine;
 pub use sam_engine::SamExecutor;
 pub use sam_engine::SamHistory;
 pub use sam_engine::SamLogger;
+pub use sam_engine::SessionSaver;
 pub use sam_engine::VarsDefaultValuesSetter;
