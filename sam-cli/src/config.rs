@@ -15,7 +15,7 @@ use thiserror::Error;
 
 const CONFIG_FILE_NAME: &str = ".sam_rc.toml";
 const HISTORY_DIR: &str = ".local/share/sam/";
-const CACHE_DIR: &str = ".cache/";
+const CACHE_DIR: &str = ".cache/sam/";
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct AppSettings {
@@ -88,6 +88,14 @@ impl AppSettings {
         self.silent = cmd_args.silent;
         self.no_cache = cmd_args.no_cache;
         self.defaults = cmd_args.default_choices.0;
+    }
+
+    pub fn merge_session_defaults(&mut self, session_defaults: HashMap<Identifier, Vec<Choice>>) {
+        // Session defaults have lower priority than CLI defaults
+        // So we add session defaults first, then CLI defaults override them
+        for (identifier, choices) in session_defaults {
+            self.defaults.entry(identifier).or_insert(choices);
+        }
     }
 
     pub const fn ttl(&self) -> Duration {

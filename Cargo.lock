@@ -606,6 +606,7 @@ dependencies = [
  "sam-core",
  "sam-utils",
  "serde",
+ "tempfile",
  "thiserror 2.0.12",
 ]
 
