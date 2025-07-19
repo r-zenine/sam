@@ -131,11 +131,9 @@ fn app_init() -> App<'static, 'static> {
         )
         .about(ABOUT_SUB_SESSION_SET);
 
-    let subc_session_clear = App::new("session-clear")
-        .about(ABOUT_SUB_SESSION_CLEAR);
+    let subc_session_clear = App::new("session-clear").about(ABOUT_SUB_SESSION_CLEAR);
 
-    let subc_session_list = App::new("session-list")
-        .about(ABOUT_SUB_SESSION_LIST);
+    let subc_session_list = App::new("session-list").about(ABOUT_SUB_SESSION_LIST);
 
     App::new("sam")
         .version(VERSION)
@@ -185,10 +183,14 @@ where
         ("cache-keys", Some(_)) => SubCommand::CacheCommand(CacheCommand::PrintKeys),
         ("cache-keys-delete", Some(_)) => SubCommand::CacheCommand(CacheCommand::DeleteEntries),
         ("session-set", Some(e)) => {
-            let variable_assignment = e.value_of("variable")
+            let variable_assignment = e
+                .value_of("variable")
                 .ok_or(CLIError::MissingSessionVariable)?;
             let (var_name, choice_value) = parse_session_assignment(variable_assignment)?;
-            SubCommand::SessionCommand(SessionCommand::Set { var_name, choice_value })
+            SubCommand::SessionCommand(SessionCommand::Set {
+                var_name,
+                choice_value,
+            })
         }
         ("session-clear", Some(_)) => SubCommand::SessionCommand(SessionCommand::Clear),
         ("session-list", Some(_)) => SubCommand::SessionCommand(SessionCommand::List),

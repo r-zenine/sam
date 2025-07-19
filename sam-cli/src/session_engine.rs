@@ -1,4 +1,4 @@
-use sam_core::engines::{SessionSaver};
+use sam_core::engines::SessionSaver;
 use sam_core::entities::choices::Choice;
 use sam_core::entities::identifiers::Identifier;
 use sam_persistence::{SessionError, SessionStorage};
@@ -9,7 +9,10 @@ use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SessionCommand {
-    Set { var_name: String, choice_value: String },
+    Set {
+        var_name: String,
+        choice_value: String,
+    },
     Clear,
     List,
 }
@@ -26,7 +29,10 @@ impl SessionEngine {
 
     pub fn run(&self, command: SessionCommand) -> Result<i32, ErrorSessionEngine> {
         match command {
-            SessionCommand::Set { var_name, choice_value } => {
+            SessionCommand::Set {
+                var_name,
+                choice_value,
+            } => {
                 let identifier = Identifier::new(var_name.clone());
                 let choice = Choice::from_value(choice_value.clone());
                 self.storage.set_choice(identifier, choice)?;
@@ -35,15 +41,24 @@ impl SessionEngine {
             }
             SessionCommand::Clear => {
                 self.storage.clear_session()?;
-                println!("Session defaults cleared for session: {}", self.storage.session_id());
+                println!(
+                    "Session defaults cleared for session: {}",
+                    self.storage.session_id()
+                );
                 Ok(0)
             }
             SessionCommand::List => {
                 let choices = self.storage.get_all_choices()?;
                 if choices.is_empty() {
-                    println!("No session defaults set for session: {}", self.storage.session_id());
+                    println!(
+                        "No session defaults set for session: {}",
+                        self.storage.session_id()
+                    );
                 } else {
-                    println!("Session defaults for session: {}", self.storage.session_id());
+                    println!(
+                        "Session defaults for session: {}",
+                        self.storage.session_id()
+                    );
                     for (var_name, choice) in choices {
                         println!("  {} = {}", var_name, choice);
                     }
@@ -53,7 +68,9 @@ impl SessionEngine {
         }
     }
 
-    pub fn get_session_defaults(&self) -> Result<std::collections::HashMap<Identifier, Vec<Choice>>, ErrorSessionEngine> {
+    pub fn get_session_defaults(
+        &self,
+    ) -> Result<std::collections::HashMap<Identifier, Vec<Choice>>, ErrorSessionEngine> {
         let session_choices = self.storage.get_all_choices()?;
         // Convert single choices to Vec<Choice> to match expected format
         let mut defaults = std::collections::HashMap::new();
@@ -65,11 +82,15 @@ impl SessionEngine {
 }
 
 impl SessionSaver for SessionEngine {
-    fn save_choices(&self, choices: &HashMap<Identifier, Vec<Choice>>) -> std::result::Result<(), Box<dyn std::error::Error>> {
+    fn save_choices(
+        &self,
+        choices: &HashMap<Identifier, Vec<Choice>>,
+    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
         for (identifier, choice_vec) in choices {
             // Only save the first choice (user's selection)
             if let Some(choice) = choice_vec.first() {
-                self.storage.set_choice(identifier.clone(), choice.clone())?;
+                self.storage
+                    .set_choice(identifier.clone(), choice.clone())?;
             }
         }
         Ok(())
