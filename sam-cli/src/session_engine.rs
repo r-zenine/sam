@@ -1,6 +1,8 @@
+use sam_core::algorithms::VarsCollection;
 use sam_core::engines::SessionSaver;
 use sam_core::entities::choices::Choice;
 use sam_core::entities::identifiers::Identifier;
+use sam_persistence::repositories::VarsRepository;
 use sam_persistence::{SessionError, SessionStorage};
 use std::collections::HashMap;
 use std::path::Path;
@@ -19,12 +21,13 @@ pub enum SessionCommand {
 
 pub struct SessionEngine {
     storage: SessionStorage,
+    vars_repository: VarsRepository,
 }
 
 impl SessionEngine {
-    pub fn new(session_dir: impl AsRef<Path>, ttl: Duration) -> Result<Self, ErrorSessionEngine> {
+    pub fn new(session_dir: impl AsRef<Path>, ttl: Duration, vars_repository: VarsRepository) -> Result<Self, ErrorSessionEngine> {
         let storage = SessionStorage::with_ttl(session_dir, &ttl)?;
-        Ok(SessionEngine { storage })
+        Ok(SessionEngine { storage, vars_repository })
     }
 
     pub fn run(&self, command: SessionCommand) -> Result<i32, ErrorSessionEngine> {
@@ -33,7 +36,13 @@ impl SessionEngine {
                 var_name,
                 choice_value,
             } => {
-                let identifier = Identifier::new(var_name.clone());
+                let identifier = Identifier::from_str(&var_name);
+                
+                // Check if the variable exists in the configuration
+                if self.vars_repository.get(&identifier).is_none() {
+                    return Err(ErrorSessionEngine::VariableNotFound(var_name));
+                }
+                
                 let choice = Choice::from_value(choice_value.clone());
                 self.storage.set_choice(identifier, choice)?;
                 println!("Session default set: {} = {}", var_name, choice_value);
@@ -101,4 +110,6 @@ impl SessionSaver for SessionEngine {
 pub enum ErrorSessionEngine {
     #[error("Session storage error: {0}")]
     Storage(#[from] SessionError),
+    #[error("Variable '{0}' does not exist in the configuration")]
+    VariableNotFound(String),
 }
