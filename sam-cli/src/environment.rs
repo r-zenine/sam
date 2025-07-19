@@ -4,12 +4,14 @@ use crate::config_engine::ConfigEngine;
 use crate::executors::make_executor;
 use crate::history_engine::HistoryEngine;
 use crate::logger::{ErrorLogger, FileLogger, SilentLogger};
+use crate::session_engine::SessionEngine;
 use sam_core::engines::{SamEngine, SamExecutor, SamLogger, VarsDefaultValuesSetter};
 use sam_persistence::repositories::{
     AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
 };
 use sam_persistence::{
     AliasHistory, CacheError, ErrorAliasHistory, NoopVarsCache, RustBreakCache, VarsCache,
+    SessionError,
 };
 use sam_readers::read_aliases_from_path;
 use sam_readers::read_vars_repository;
@@ -78,9 +80,24 @@ impl Environment {
             env_variables: self.env_variables,
         }
     }
+
+    pub fn session_engine(self) -> SessionEngine {
+        // Use the cache directory's parent for sessions since cache_dir is actually a file path
+        let cache_parent = self.config.cache_dir().parent()
+            .expect("Cache directory should have a parent")
+            .to_path_buf();
+        let session_file = cache_parent.join("session_storage");
+        // Sessions have longer TTL than cache (24 hours vs default cache TTL)
+        let session_ttl = std::time::Duration::from_secs(24 * 60 * 60);
+        SessionEngine::new(session_file, session_ttl)
+            .expect("Could not initialize session engine")
+    }
 }
 
-pub fn from_settings(config: AppSettings) -> Result<Environment> {
+pub fn from_settings(mut config: AppSettings) -> Result<Environment> {
+    // Load session defaults and merge them with config defaults
+    load_and_merge_session_defaults(&mut config)?;
+
     let cache: Box<dyn VarsCache> = if !config.no_cache {
         Box::new(RustBreakCache::with_ttl(config.cache_dir(), &config.ttl())?)
     } else {
@@ -114,6 +131,24 @@ pub fn from_settings(config: AppSettings) -> Result<Environment> {
     })
 }
 
+fn load_and_merge_session_defaults(config: &mut AppSettings) -> Result<()> {
+    // Create a temporary session engine to load defaults
+    let cache_parent = config.cache_dir().parent()
+        .expect("Cache directory should have a parent")
+        .to_path_buf();
+    let session_file = cache_parent.join("session_storage");
+    let session_ttl = std::time::Duration::from_secs(24 * 60 * 60);
+    
+    // Try to load session defaults - if it fails, just continue without session defaults
+    if let Ok(session_engine) = SessionEngine::new(session_file, session_ttl) {
+        if let Ok(session_defaults) = session_engine.get_session_defaults() {
+            config.merge_session_defaults(session_defaults);
+        }
+    }
+    
+    Ok(())
+}
+
 fn logger_instance(silent: bool) -> Result<Rc<dyn SamLogger>> {
     if !silent {
         Ok(Rc::new(FileLogger::new()))
@@ -143,4 +178,6 @@ pub enum ErrorEnvironment {
     CacheError(#[from] CacheError),
     #[error("could not initialize logger -> {0}")]
     LoggerError(#[from] ErrorLogger),
+    #[error("could not initialize session storage -> {0}")]
+    SessionError(#[from] SessionError),
 }

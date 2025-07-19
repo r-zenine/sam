@@ -1,6 +1,7 @@
 use crate::cache_engine::CacheCommand;
 use crate::config_engine::ConfigCommand;
 use crate::history_engine::HistoryCommand;
+use crate::session_engine::SessionCommand;
 use crate::HashMap;
 use clap::{App, Arg, ArgMatches, Values};
 use sam_core::engines::SamCommand;
@@ -26,6 +27,9 @@ const ABOUT_SUB_CACHE_KEYS: &str = "lists all the cache keys";
 const ABOUT_SUB_CACHE_DELETE: &str =
     "explore the content of the command cache in order to delete entries";
 const ABOUT_SUB_ALIAS: &str = "run's a provided alias";
+const ABOUT_SUB_SESSION_SET: &str = "set a default value for a variable in the current session";
+const ABOUT_SUB_SESSION_CLEAR: &str = "clear all session defaults for the current session";
+const ABOUT_SUB_SESSION_LIST: &str = "list all session defaults for the current session";
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SubCommand {
@@ -33,6 +37,7 @@ pub enum SubCommand {
     HistoryCommand(HistoryCommand),
     CacheCommand(CacheCommand),
     ConfigCheck(ConfigCommand),
+    SessionCommand(SessionCommand),
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct CLIRequest {
@@ -117,6 +122,21 @@ fn app_init() -> App<'static, 'static> {
         .arg(arg_choices.clone())
         .about(ABOUT_SUB_ALIAS);
 
+    let subc_session_set = App::new("session-set")
+        .arg(
+            Arg::with_name("variable")
+                .help("the variable assignment in format 'var=value'")
+                .required(true)
+                .index(1),
+        )
+        .about(ABOUT_SUB_SESSION_SET);
+
+    let subc_session_clear = App::new("session-clear")
+        .about(ABOUT_SUB_SESSION_CLEAR);
+
+    let subc_session_list = App::new("session-list")
+        .about(ABOUT_SUB_SESSION_LIST);
+
     App::new("sam")
         .version(VERSION)
         .author(AUTHORS)
@@ -134,6 +154,9 @@ fn app_init() -> App<'static, 'static> {
         .subcommand(App::new("cache-clear").about(ABOUT_SUB_CACHE_CLEAR))
         .subcommand(App::new("cache-keys").about(ABOUT_SUB_CACHE_KEYS))
         .subcommand(App::new("cache-keys-delete").about(ABOUT_SUB_CACHE_DELETE))
+        .subcommand(subc_session_set)
+        .subcommand(subc_session_clear)
+        .subcommand(subc_session_list)
 }
 
 fn make_cli_request<'a, T, I>(app: App<'a, 'a>, args: I) -> Result<CLIRequest, CLIError>
@@ -161,6 +184,14 @@ where
         ("cache-clear", Some(_)) => SubCommand::CacheCommand(CacheCommand::Clear),
         ("cache-keys", Some(_)) => SubCommand::CacheCommand(CacheCommand::PrintKeys),
         ("cache-keys-delete", Some(_)) => SubCommand::CacheCommand(CacheCommand::DeleteEntries),
+        ("session-set", Some(e)) => {
+            let variable_assignment = e.value_of("variable")
+                .ok_or(CLIError::MissingSessionVariable)?;
+            let (var_name, choice_value) = parse_session_assignment(variable_assignment)?;
+            SubCommand::SessionCommand(SessionCommand::Set { var_name, choice_value })
+        }
+        ("session-clear", Some(_)) => SubCommand::SessionCommand(SessionCommand::Clear),
+        ("session-list", Some(_)) => SubCommand::SessionCommand(SessionCommand::List),
 
         (&_, _) => SubCommand::SamCommand(SamCommand::ChooseAndExecuteAlias),
     };
@@ -212,6 +243,15 @@ fn parse_choice(default: &str) -> Result<(Identifier, Choice), CLIError> {
     }
 }
 
+fn parse_session_assignment(assignment: &str) -> Result<(String, String), CLIError> {
+    let parts: Vec<&str> = assignment.split('=').collect();
+    if parts.len() == 2 {
+        Ok((parts[0].to_string(), parts[1].to_string()))
+    } else {
+        Err(CLIError::MalformedSessionAssignment(assignment.to_string()))
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum CLIError {
     #[error("the alias identifier that was provided does not exist")]
@@ -220,6 +260,10 @@ pub enum CLIError {
     MissingNamespaceForChoice(Identifier, String),
     #[error("malformed choice {0}, it should be -c namespace::var_name=choice")]
     MalformedChoice(String),
+    #[error("missing variable assignment for session command")]
+    MissingSessionVariable,
+    #[error("malformed session assignment {0}, it should be var=value")]
+    MalformedSessionAssignment(String),
 }
 
 #[cfg(test)]

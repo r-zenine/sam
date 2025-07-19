@@ -1,6 +1,7 @@
 use crate::config::{AppSettings, ErrorsSettings};
 use crate::config_engine::ErrorsConfigEngine;
 use crate::environment::ErrorEnvironment;
+use crate::session_engine::ErrorSessionEngine;
 use cache_engine::ErrorCacheEngine;
 use cli::SubCommand;
 use flexi_logger::{FileSpec, Logger, LoggerHandle, WriteMode};
@@ -18,6 +19,7 @@ mod environment;
 mod executors;
 mod history_engine;
 mod logger;
+mod session_engine;
 
 fn main() {
     let _logger = init_logger().expect("can't initialize logs");
@@ -46,6 +48,7 @@ fn run_command(sub_command: SubCommand, env: environment::Environment) -> Result
         SubCommand::CacheCommand(s) => Ok(env.cache_engine().run(s)?),
         SubCommand::ConfigCheck(s) => Ok(env.config_engine().run(s)?),
         SubCommand::HistoryCommand(s) => Ok(env.history_engine().run(s)?),
+        SubCommand::SessionCommand(s) => Ok(env.session_engine().run(s)?),
     }
 }
 
@@ -75,6 +78,8 @@ pub enum ErrorMain {
     ConfigError(#[from] ErrorsConfigEngine),
     #[error("{0}")]
     HistoryError(#[from] ErrorHistoryEngine),
+    #[error("{0}")]
+    SessionError(#[from] ErrorSessionEngine),
     #[error("Can't initialise logging because {0}")]
     LoggingError(#[from] flexi_logger::FlexiLoggerError),
 }
