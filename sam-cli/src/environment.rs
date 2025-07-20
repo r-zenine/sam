@@ -108,7 +108,8 @@ impl Environment {
         let session_file = cache_parent.join("session_storage");
         // Sessions have longer TTL than cache (24 hours vs default cache TTL)
         let session_ttl = std::time::Duration::from_secs(24 * 60 * 60);
-        SessionEngine::new(session_file, session_ttl, self.vars).expect("Could not initialize session engine")
+        SessionEngine::new(session_file, session_ttl, self.vars)
+            .expect("Could not initialize session engine")
     }
 }
 
@@ -135,7 +136,7 @@ pub fn from_settings(mut config: AppSettings) -> Result<Environment> {
     for f in config.vars_files() {
         vars.merge(read_vars_repository(&f)?);
     }
-    
+
     vars.set_defaults(&config.defaults);
     vars.ensure_no_missing_dependency()?;
 

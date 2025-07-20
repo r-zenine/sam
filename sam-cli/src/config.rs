@@ -56,11 +56,8 @@ impl AppSettings {
         let config_home_dir = Self::read_config(home_dir_o);
         let config_current_dir = current_dir_o.and_then(Self::read_config);
 
-        let cache_dir = Self::file_path_with_suffix(
-            CACHE_DIR,
-            "sam",
-            ErrorsSettings::CantFindCacheDirectory,
-        )?;
+        let cache_dir =
+            Self::file_path_with_suffix(CACHE_DIR, "sam", ErrorsSettings::CantFindCacheDirectory)?;
         let history_file = Self::file_path_with_suffix(
             HISTORY_DIR,
             "history",
