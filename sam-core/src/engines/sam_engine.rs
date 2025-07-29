@@ -304,13 +304,13 @@ mod tests {
     #[test]
     fn normal_execution_does_not_save_to_session() {
         // Test that normal execution doesn't automatically save choices to session
-        use std::cell::RefCell;
         use super::SessionSaver;
-        
+        use std::cell::RefCell;
+
         struct MockSessionSaver {
             save_called: RefCell<bool>,
         }
-        
+
         impl SessionSaver for MockSessionSaver {
             fn save_choices(
                 &self,
@@ -336,7 +336,7 @@ mod tests {
         let mock_session_saver = Rc::new(MockSessionSaver {
             save_called: RefCell::new(false),
         });
-        
+
         let mut engine = make_engine_with_session_saver(
             Some(chosen_alias.clone()),
             dynamic_res,
@@ -344,7 +344,7 @@ mod tests {
             executor.clone(),
             Some(mock_session_saver.clone()),
         );
-        
+
         engine
             .run(SamCommand::ExecuteAlias {
                 alias: chosen_alias,
@@ -352,8 +352,10 @@ mod tests {
             .expect("Should not return an error");
 
         // Verify that session save was NOT called during normal execution
-        assert!(!*mock_session_saver.save_called.borrow(), 
-                "Session saver should not be called during normal alias execution");
+        assert!(
+            !*mock_session_saver.save_called.borrow(),
+            "Session saver should not be called during normal alias execution"
+        );
     }
 
     fn make_engine(
