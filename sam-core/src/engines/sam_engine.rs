@@ -132,11 +132,6 @@ impl<
         .into_iter()
         .collect();
 
-        // Save choices to session if session saver is available
-        if let Some(session_saver) = &self.session_saver {
-            let _ = session_saver.save_choices(&choices);
-        }
-
         let final_alias = alias.with_choices(&choices).unwrap();
         self.history.borrow_mut().put(final_alias.clone())?;
         self.executor
@@ -306,6 +301,61 @@ mod tests {
         );
     }
 
+    #[test]
+    fn normal_execution_does_not_save_to_session() {
+        // Test that normal execution doesn't automatically save choices to session
+        use std::cell::RefCell;
+        use super::SessionSaver;
+        
+        struct MockSessionSaver {
+            save_called: RefCell<bool>,
+        }
+        
+        impl SessionSaver for MockSessionSaver {
+            fn save_choices(
+                &self,
+                _choices: &HashMap<Identifier, Vec<Choice>>,
+            ) -> std::result::Result<(), Box<dyn std::error::Error>> {
+                *self.save_called.borrow_mut() = true;
+                Ok(())
+            }
+        }
+
+        let chosen_alias = Identifier::new("alias_1");
+        let variable_1 = Identifier::new("variable_1");
+        let choice_v_1 = Choice::new("value_1", None);
+
+        let static_res = hashmap! {
+            variable_1.clone() => vec![choice_v_1.clone()],
+        };
+        let dynamic_res = hashmap! {
+            String::from("echo '$SOME_ENV_VAR\\ntoto'") => vec![Choice::new("toto", None)]
+        };
+
+        let executor = Rc::new(LogExecutor::default());
+        let mock_session_saver = Rc::new(MockSessionSaver {
+            save_called: RefCell::new(false),
+        });
+        
+        let mut engine = make_engine_with_session_saver(
+            Some(chosen_alias.clone()),
+            dynamic_res,
+            static_res,
+            executor.clone(),
+            Some(mock_session_saver.clone()),
+        );
+        
+        engine
+            .run(SamCommand::ExecuteAlias {
+                alias: chosen_alias,
+            })
+            .expect("Should not return an error");
+
+        // Verify that session save was NOT called during normal execution
+        assert!(!*mock_session_saver.save_called.borrow(), 
+                "Session saver should not be called during normal alias execution");
+    }
+
     fn make_engine(
         identifier_to_select: Option<Identifier>,
         dynamic_res: HashMap<String, Vec<Choice>>,
@@ -327,6 +377,31 @@ mod tests {
             env_variables: sam_data.env_variables,
             executor,
             session_saver: None,
+        }
+    }
+
+    fn make_engine_with_session_saver(
+        identifier_to_select: Option<Identifier>,
+        dynamic_res: HashMap<String, Vec<Choice>>,
+        static_res: HashMap<Identifier, Vec<Choice>>,
+        executor: Rc<dyn SamExecutor>,
+        session_saver: Option<Rc<dyn super::SessionSaver>>,
+    ) -> SamEngine<StaticResolver, StaticAliasRepository, VarsCollectionMock, VarsDefaultValuesMock>
+    {
+        let history = RefCell::new(Box::new(InMemoryHistory::default()));
+        let logger = Rc::new(SilentLogger {});
+        let sam_data = fixtures::multi_namespace_aliases_and_vars();
+        let resolver = StaticResolver::new(identifier_to_select, dynamic_res, static_res);
+        SamEngine {
+            resolver,
+            aliases: sam_data.aliases,
+            vars: sam_data.vars,
+            defaults: sam_data.defaults,
+            logger,
+            history,
+            env_variables: sam_data.env_variables,
+            executor,
+            session_saver,
         }
     }
 }
