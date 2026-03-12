@@ -114,7 +114,7 @@ pub enum ErrorsFS {
     PathNotDirectory(PathBuf),
     #[error("provided path {0} is not a file")]
     PathNotFile(PathBuf),
-    #[error("provided path {0} is not exist")]
+    #[error("provided path {0} does not exist")]
     PathDoesNotExist(PathBuf),
     #[error("insufficient permission for provided path {0}")]
     PathInsufficientPermission(PathBuf),
