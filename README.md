@@ -1,148 +1,243 @@
 # sam
+
 [![asciicast](https://asciinema.org/a/487681.svg)](https://asciinema.org/a/487681)
 
-sam is a command line tool that allows you to define and manage 
-templates of complex command line commands and let's chose 
-template values through a command line argument.
+SAM turns multi-step shell workflows into interactive, parameterized commands. You define command templates in YAML, SAM resolves dependencies between variables automatically, prompts you to select values through a terminal UI, then executes the final command.
 
-Let's take an example, you are building an application and you 
-would like to interract with a dockerized service that is running 
-on your local machine to get some metrics. if you service exposes 
-metrics through http, a typical call would look like:
+## Why
 
-```sh
-curl http://{{container_ip}}:{{ container_port }}/metrics
-```
-In this setup the `{{container_ip}}` and `{{container_port}}` are dynamic. 
+Complex workflows often require running 2–3 preparatory commands just to collect the values you need for the real command. With shell aliases or scripts, you either hardcode values (brittle) or rewrite the same lookup logic everywhere (tedious). SAM lets you define the lookup logic once as named variables, compose them into command templates, and reuse them across all your aliases.
 
-You will most likely have to run other commands to run them. The workflow 
-might look as follow : 
+Concrete example: querying metrics from a running Docker container requires selecting a container, running `docker inspect` to get its IP and port, then assembling the `curl` command. With SAM, you define those steps once and run them with a single command.
 
-1. Select a `{{container}}` from the running ones using 
-```sh
-docker ps --format="{{.ID}}\t{{.Names}}"
-```
-2. Run a command to get `{{container_ip}}` and `{{container_port}}`, most likely:
-```sh 
-docker inspect {{container}}
-```
-3. run the curl command described above. 
+## Features
 
-with sam you can configure such a process as follow : 
-```yaml
-- name: container
-  desc: the id of a docker a runing container
-  from_command: 'docker ps --format="{{.ID}}\t{{.Names}}"'
+- **Dependency resolution** — variables can depend on other variables; SAM computes the execution order automatically
+- **Dynamic choices** — populate selection menus from any shell command's output (`from_command`)
+- **Free-text input** — prompt for typed values when a fixed list isn't appropriate (`from_input`)
+- **TTL caching** — expensive `from_command` lookups are cached so repeated invocations stay fast
+- **Session defaults** — set variable values for the duration of a terminal session to skip repeated prompts
+- **History** — view and re-run previous commands
+- **Namespaces** — directory structure maps to namespaces; aliases and variables are scoped automatically
+- **Alias composition** — embed one alias inside another with `[[ namespace::alias ]]`
+- **MCP server** — exposes SAM aliases to AI assistants (Claude, etc.) via the Model Context Protocol
 
-- name: container_ip
-  desc: the ip address of a runing container
-  from_command: 'docker inspect {{container}} |jq ''.[0]["NetworkSettings"]["IPAddress"]''|sed ''s/"//g'''
+## Install
 
-- name: container_port
-  desc: the ports exposed by the container
-  from_command: 'docker inspect {{ container }}|jq ''.[0]["NetworkSettings"]["Ports"] | keys''|awk -F''/'' ''/"/ {print $1}''|sed ''s/ *"//g'''
-```
-
-then if you want to run:
-```sh
-curl http://{{container_ip}}:{{ container_port }}/metrics
-```
-
-sam will figure out the dependency graph on his own and for each step described above 
-sam will generate a small terminal user interface to let you select 
-the values you want.
-
-## Getting started :
-
-Run `cargo run run` on the root of this repository to see a demo. 
-
-You can also take a look at my own configuration here [r-zenine/oneliners](https://github.com/r-zenine/oneliners)
-
-## Installing sam
-You can download binaries for `linux` and `macos` from the release page. 
-You can also use a package manager : 
-
-### MacOS with homebrew: 
+**macOS (Homebrew):**
 ```bash
 brew tap r-zenine/sam
 brew install sam
 ```
-## How to configure sam:
-Fist, you want to start by creating a repository that will hold your scripts and aliases. 
-Ideally, we recommend it's stucture to be as follow : 
+
+**Linux / macOS (binary):**
+
+Download the latest binary for your platform from the [releases page](https://github.com/r-zenine/sam/releases).
+
+**Build from source:**
 ```bash
-aliases_directory
--------------------
-        ├── aliases.yaml
-        ├── vars.yaml
-        ├── docker # your docker related alias for example
-        │   ├── aliases.yaml
-        │   └── vars.yaml
-        └─── kubernetes # your kubernetes related aliases
-            ├── aliases.yaml
-            └── vars.yaml
+cargo build --release -p sam-cli
+# binary: target/release/sam
 ```
-Once it's done, you can continue by editing a configuration file in `$HOME/.sam_rc.toml`
-that should look as follow: 
+
+## Quick start
+
+```bash
+# run an alias interactively (select from all available)
+sam run
+
+# run a specific alias directly
+sam alias docker::get_metrics
+
+# preview the resolved command without executing
+sam alias docker::get_metrics --dry
+
+# re-run the last command
+sam run-last
+```
+
+To try the bundled examples:
+```bash
+cargo run --bin sam run
+```
+
+See a real-world configuration: [r-zenine/oneliners](https://github.com/r-zenine/oneliners)
+
+## Configuration
+
+Create `~/.sam_rc.toml`:
 
 ```toml
-root_dir=["./examples/oneliners/", ".sam"] # the locations of your `aliases_directory`
-# the time in seconds for which sam will keep the output of
-# a from_command var in it's internal cache
-ttl=1800 
+# one or more directories containing your aliases and vars files
+root_dir = ["~/.sam", "~/work/.sam"]
 
-# Arbitrary key value pairs
-# You can refer to the keys/value pairs defined below 
-# as if they were environment variables
-PAGER_OPT="-p -v"
+# how long (in seconds) to cache from_command outputs
+ttl = 1800
+
+# arbitrary key/value pairs available as environment variables in your aliases
+REGISTRY = "registry.example.com"
 ```
 
-### Aliases:
-The `aliases.yaml` file can look like this : 
-```yaml
-- name: echo_hello
-  desc: echo hello
-  alias: echo hello
+## Defining aliases
 
-- name: list_stuff
-  desc: list current directory. 
-  alias: [[ echo_hello ]] && cd {{directory}} && {{pager}} $(PAGER_OPT) {{file}} 
+Aliases live in `aliases.yaml` files. A template can reference variables with `{{ var_name }}` and embed other aliases with `[[ namespace::alias_name ]]`.
+
+```yaml
+- name: get_metrics
+  desc: Query metrics from a running container
+  alias: curl http://{{ container_ip }}:{{ container_port }}/metrics
+
+- name: deploy
+  desc: Tag and push an image, then restart the service
+  alias: "[[ docker::tag_image ]] && [[ kubernetes::rollout ]]"
 ```
-You can use the `{{ variable }}` syntax to refer to variables defined in your `vars_file`
 
-You can use the `[[ ns::alias ]]` syntax to insert the content of an alias in another one.
+SAM resolves all variable references before executing. If an alias embeds another alias, that alias's variables are resolved first.
 
-`sam` will first prompt your for a choice for each dependant `variable`. Once this is done, it will replace each `variable` with it's corresponding choice and run the resulting command.
+## Defining variables
 
-### Variables : 
-In your `vars_file`, you can define variables. Variables can either have a static list of choices or can get their choices dynamically by running a command. The `from_command` option expects one choice per line in the output command. Each line is split by tab (\t) to extract the value and its description.
+Variables live in `vars.yaml` files alongside your `aliases.yaml`. There are three kinds:
+
+### Static choices
 
 ```yaml
-- name: directory
-  desc: an example variable
+- name: environment
+  desc: target environment
   choices:
-    - value: /etc/default
-      desc: etc default directory
-    - value: /etc
-      desc: etc directory
-
-- name: pager
-  desc: the pager tool to use
-  choices: 
-    - value: less
-      desc: use less
-    - value: cat
-      desc: use cat
-
-
-- name: file
-  desc: file selection
-  from_command: ls -1 {{ directory }}
+    - value: staging
+      desc: staging environment
+    - value: production
+      desc: production environment
 ```
 
-## Keybindings 
+### Dynamic choices from a command
 
-while selecting choices for variables, you can use 
+The command runs at resolution time. Each line of output becomes one choice. If a line contains a tab (`\t`), the part before the tab is the value and the part after is the description.
 
-* Ctrl-s to select multiple values
-* Ctrl-a to select all values
+```yaml
+- name: container
+  desc: a running Docker container
+  from_command: 'docker ps --format="{{.ID}}\t{{.Names}}"'
+
+- name: container_ip
+  desc: IP address of the selected container
+  from_command: "docker inspect {{ container }} | jq -r '.[0].NetworkSettings.IPAddress'"
+```
+
+SAM detects that `container_ip` depends on `container` and prompts for `container` first. The output is cached for `ttl` seconds.
+
+### Free-text input
+
+```yaml
+- name: tag
+  desc: Docker image tag
+  from_input: "enter a tag (e.g. v1.2.3)"
+```
+
+## Directory structure and namespaces
+
+SAM derives namespaces from the directory tree under your `root_dir`. Files at the top level have no namespace; files in subdirectories inherit the directory name as their namespace.
+
+```
+~/.sam/
+├── aliases.yaml        # no namespace  →  my_alias
+├── vars.yaml
+├── docker/
+│   ├── aliases.yaml    # namespace: docker  →  docker::my_alias
+│   └── vars.yaml       # namespace: docker  →  docker::my_var
+└── kubernetes/
+    ├── aliases.yaml    # namespace: kubernetes
+    └── vars.yaml
+```
+
+Cross-namespace references work in both variable templates and alias templates:
+
+```yaml
+# in docker/aliases.yaml
+- name: push
+  alias: docker push {{ kubernetes::registry }}/{{ image }}:{{ tag }}
+```
+
+## CLI reference
+
+| Command | Description |
+|---|---|
+| `sam run` | Select and run an alias interactively |
+| `sam alias <name>` | Run a specific alias by name (e.g. `docker::push`) |
+| `sam history` | Show previously executed commands |
+| `sam run-last` / `sam %` | Re-run the last command |
+| `sam show-last` / `sam s` | Print the last command without running it |
+| `sam check-config` | Validate your configuration and alias files |
+| `sam cache-clear` | Clear all cached `from_command` outputs |
+| `sam cache-keys` | List all cache keys |
+| `sam cache-keys-delete` | Remove specific cache entries |
+| `sam session-set <var=value>` | Set a session default for a variable |
+| `sam session-list` | Show active session defaults |
+| `sam session-clear` | Clear all session defaults |
+
+### Flags
+
+| Flag | Description |
+|---|---|
+| `--dry` / `-d` | Print the resolved command without executing |
+| `--choices <var=value>` | Pre-supply a variable value, skipping its prompt |
+| `--silent` / `-s` | Run without caching `from_command` outputs |
+| `--no-cache` / `-n` | Disable caching entirely for this invocation |
+
+`--choices` can be specified multiple times:
+```bash
+sam alias docker::push --choices docker::image=nginx --choices docker::tag=latest
+```
+
+## Keybindings
+
+When selecting variable values in the TUI:
+
+| Key | Action |
+|---|---|
+| `↑` / `↓` | Move selection |
+| `Enter` | Confirm selection |
+| `Ctrl-s` | Toggle multi-select on the current item |
+| `Ctrl-a` | Select all items |
+
+## MCP server
+
+`sam-mcp` is an MCP server that exposes your SAM aliases to AI assistants. It provides two tools:
+
+- **`list_aliases`** — returns all aliases, optionally filtered by namespace or keyword
+- **`resolve_alias`** — resolves an alias to a runnable command via a stateless loop: each call either returns the next variable that needs a value (with its choices), or returns the final resolved command
+
+This lets an AI assistant like Claude discover your aliases and guide you through variable selection without needing to know the underlying shell commands.
+
+### Setup with Claude Desktop
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "sam": {
+      "command": "/usr/local/bin/sam-mcp"
+    }
+  }
+}
+```
+
+With a custom config file:
+
+```json
+{
+  "mcpServers": {
+    "sam": {
+      "command": "/usr/local/bin/sam-mcp",
+      "args": ["--config", "/path/to/.sam_rc.toml"]
+    }
+  }
+}
+```
+
+Build the MCP server:
+```bash
+cargo build --release -p sam-mcp
+# binary: target/release/sam-mcp
+```
