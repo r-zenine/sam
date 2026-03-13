@@ -3,6 +3,7 @@ resolver="2"
 members = [
     "sam-cli",
     "sam-config",
+    "sam-mcp",
     "sam-persistence",
     "sam-readers",
     "sam-tui",

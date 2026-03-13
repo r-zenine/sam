@@ -9,7 +9,8 @@
       "WebFetch(domain:spec.modelcontextprotocol.io)",
       "Skill(dev-continue)",
       "Bash(cargo build:*)",
-      "Bash(cargo test:*)"
+      "Bash(cargo test:*)",
+      "Skill(dev-contribute)"
     ]
   }
 }

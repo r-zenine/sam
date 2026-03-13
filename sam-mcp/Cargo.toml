@@ -1,0 +1,20 @@
+[package]
+name = "sam-mcp"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "sam-mcp"
+path = "src/main.rs"
+
+[dependencies]
+rmcp = { version = "1.2.0", features = ["server", "macros", "transport-io"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+schemars = "1"
+thiserror = "1"
+sam-config = { path = "../sam-config" }
+sam-core = { path = "../sam-core" }
+sam-persistence = { path = "../sam-persistence" }
+sam-readers = { path = "../sam-readers" }
