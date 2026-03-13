@@ -18,3 +18,4 @@ sam-config = { path = "../sam-config" }
 sam-core = { path = "../sam-core" }
 sam-persistence = { path = "../sam-persistence" }
 sam-readers = { path = "../sam-readers" }
+sam-terminals = { path = "../sam-terminals" }

@@ -904,6 +904,7 @@ dependencies = [
  "sam-core",
  "sam-persistence",
  "sam-readers",
+ "sam-terminals",
  "schemars",
  "serde",
  "serde_json",

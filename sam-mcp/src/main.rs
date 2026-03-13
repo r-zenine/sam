@@ -1,4 +1,5 @@
 mod loader;
+mod resolver;
 mod server;
 
 use rmcp::transport::stdio;
