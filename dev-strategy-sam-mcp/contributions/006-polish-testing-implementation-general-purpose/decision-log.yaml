@@ -1,0 +1,21 @@
+decisions:
+  - id: D001
+    title: Use UFCS for NamespaceUpdater::update in test fixtures
+    decision: >
+      Call `NamespaceUpdater::update(&mut alias, "ns")` rather than `alias.update("ns")`.
+      Alias has an inherent update(String) method (for the template) that shadows the trait
+      method during method resolution.
+    rationale: Rust inherent methods take priority over trait methods with the same name.
+    alternatives_considered:
+      - Import NamespaceUpdater and call alias.update() — fails silently (calls wrong method)
+    impact: Must use UFCS for any future test fixture code that sets namespace on Alias or Var.
+
+  - id: D002
+    title: Use NoopVarsCache instead of RustBreakCache with tempdir
+    decision: >
+      `sam_persistence::NoopVarsCache` is used for the test SamContext. No filesystem setup needed.
+    rationale: Tests only use static choices (no from_command vars), so cache is never hit.
+      NoopVarsCache is simpler than creating a tempdir for RustBreakCache.
+    alternatives_considered:
+      - RustBreakCache with tempfile::TempDir — works but unnecessary complexity
+    impact: If future tests cover from_command vars, they will need RustBreakCache or a mock.

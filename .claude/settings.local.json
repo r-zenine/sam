@@ -11,7 +11,11 @@
       "Bash(cargo build:*)",
       "Bash(cargo test:*)",
       "Skill(dev-contribute)",
-      "Bash(cargo clippy:*)"
+      "Bash(cargo clippy:*)",
+      "Skill(read-contribution)",
+      "Bash(grep -r \"#\\\\[test\\\\]\\\\|#\\\\[cfg\\(test\\)\\\\]\\\\|mod tests\" /Users/ryad/workspace/sam --include=\"*.rs\" -l 2>/dev/null | grep -v target | sort)",
+      "Skill(design-contribute)",
+      "WebSearch"
     ]
   }
 }

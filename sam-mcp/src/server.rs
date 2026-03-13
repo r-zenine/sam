@@ -130,6 +130,8 @@ list_aliases(keyword=\"run\") → aliases whose name or description contains \"r
         &self,
         Parameters(req): Parameters<ListAliasesRequest>,
     ) -> Result<CallToolResult, ErrorData> {
+        tracing::debug!(ns = ?req.namespace, keyword = ?req.keyword, "list_aliases called");
+
         let mut aliases = self.ctx.aliases.aliases();
 
         if let Some(ns) = &req.namespace {
@@ -153,6 +155,7 @@ list_aliases(keyword=\"run\") → aliases whose name or description contains \"r
             })
             .collect();
 
+        tracing::info!(count = result.len(), "list_aliases ok");
         Ok(CallToolResult::success(vec![Content::text(serialize(&result)?)]))
     }
 
@@ -168,6 +171,8 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
         &self,
         Parameters(req): Parameters<ResolveAliasRequest>,
     ) -> Result<CallToolResult, ErrorData> {
+        tracing::debug!(alias = %req.alias, vars_count = req.vars.len(), "resolve_alias called");
+
         let id = Identifier::from_str(&req.alias);
         let alias = self
             .ctx
@@ -188,6 +193,7 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
                     .take(5)
                     .collect();
                 if similar.is_empty() {
+                    tracing::error!(alias = %req.alias, "alias not found");
                     ErrorData::internal_error(
                         format!(
                             "alias '{}' not found. Use list_aliases() to see available aliases.",
@@ -196,6 +202,7 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
                         None,
                     )
                 } else {
+                    tracing::error!(alias = %req.alias, suggestions = %similar.join(", "), "alias not found");
                     ErrorData::internal_error(
                         format!(
                             "alias '{}' not found. Did you mean: {}?",
@@ -238,6 +245,7 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
                 .vars
                 .get(var_id)
                 .ok_or_else(|| {
+                    tracing::error!(var_id = %var_id, "var not found");
                     ErrorData::internal_error(format!("var '{var_id}' not found"), None)
                 })?;
 
@@ -275,6 +283,9 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
                 Err(e) => return Err(ErrorData::internal_error(e.to_string(), None)),
             };
 
+            if let ResolveAliasResponse::NeedsVar { var: ref v } = response {
+                tracing::debug!(var_name = %v.name, kind = ?v.kind, "resolve_alias needs_var");
+            }
             return Ok(CallToolResult::success(vec![Content::text(serialize(&response)?)]));
         }
 
@@ -282,6 +293,7 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
             .with_choices(&choices)
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
 
+        tracing::info!(alias = %req.alias, commands_count = resolved_alias.commands().len(), "resolve_alias resolved");
         let response = ResolveAliasResponse::Resolved {
             commands: resolved_alias.commands().to_vec(),
         };
@@ -295,5 +307,126 @@ impl ServerHandler for SamMcpServer {
         let mut info = ServerInfo::default();
         info.server_info = Implementation::new("sam-mcp", env!("CARGO_PKG_VERSION"));
         info
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::loader::SamContext;
+    use rmcp::model::RawContent;
+    use sam_core::entities::aliases::Alias;
+    use sam_core::entities::choices::Choice;
+    use sam_core::entities::namespaces::NamespaceUpdater;
+    use sam_core::entities::vars::Var;
+    use sam_persistence::repositories::{AliasesRepository, VarsRepository};
+    use sam_persistence::NoopVarsCache;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    fn make_test_ctx() -> SamContext {
+        // docker::run — one static var: docker::image
+        let mut alias_run = Alias::new("run", "Run a container", "docker run {{ docker::image }}");
+        NamespaceUpdater::update(&mut alias_run, "docker");
+
+        // git::push — no vars
+        let mut alias_push = Alias::new("push", "Push to remote", "git push");
+        NamespaceUpdater::update(&mut alias_push, "git");
+
+        let aliases =
+            AliasesRepository::new(vec![alias_run, alias_push].into_iter()).unwrap();
+
+        let mut var_image = Var::new(
+            "image",
+            "Docker image",
+            vec![Choice::new("nginx", None::<&str>), Choice::new("redis", None::<&str>)],
+        );
+        NamespaceUpdater::update(&mut var_image, "docker");
+
+        let vars = VarsRepository::new(vec![var_image].into_iter());
+
+        SamContext {
+            aliases,
+            vars,
+            cache: Box::new(NoopVarsCache {}),
+            env_variables: HashMap::new(),
+        }
+    }
+
+    fn text_from(result: &CallToolResult) -> &str {
+        if let RawContent::Text(t) = &result.content[0].raw {
+            &t.text
+        } else {
+            panic!("expected text content")
+        }
+    }
+
+    #[tokio::test]
+    async fn list_aliases_no_filter_returns_all() {
+        let server = SamMcpServer::new(Arc::new(make_test_ctx()));
+        let result = server
+            .list_aliases(Parameters(ListAliasesRequest::default()))
+            .await
+            .unwrap();
+        let entries: serde_json::Value = serde_json::from_str(text_from(&result)).unwrap();
+        assert_eq!(entries.as_array().unwrap().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn list_aliases_filtering() {
+        let server = SamMcpServer::new(Arc::new(make_test_ctx()));
+
+        let result = server
+            .list_aliases(Parameters(ListAliasesRequest {
+                namespace: Some("docker".into()),
+                keyword: None,
+            }))
+            .await
+            .unwrap();
+        let entries: serde_json::Value = serde_json::from_str(text_from(&result)).unwrap();
+        assert_eq!(entries.as_array().unwrap().len(), 1);
+
+        let result = server
+            .list_aliases(Parameters(ListAliasesRequest {
+                namespace: None,
+                keyword: Some("zzznomatch".into()),
+            }))
+            .await
+            .unwrap();
+        let entries: serde_json::Value = serde_json::from_str(text_from(&result)).unwrap();
+        assert_eq!(entries.as_array().unwrap().len(), 0);
+    }
+
+    #[tokio::test]
+    async fn resolve_alias_needs_var() {
+        let server = SamMcpServer::new(Arc::new(make_test_ctx()));
+        let result = server
+            .resolve_alias(Parameters(ResolveAliasRequest {
+                alias: "docker::run".into(),
+                vars: HashMap::new(),
+            }))
+            .await
+            .unwrap();
+        let resp: serde_json::Value = serde_json::from_str(text_from(&result)).unwrap();
+        assert_eq!(resp["status"], "needs_var");
+        assert_eq!(resp["var"]["kind"], "choices");
+        assert!(!resp["var"]["choices"].as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn resolve_alias_resolved() {
+        let server = SamMcpServer::new(Arc::new(make_test_ctx()));
+        let mut vars = HashMap::new();
+        vars.insert("docker::image".to_string(), "nginx".to_string());
+        let result = server
+            .resolve_alias(Parameters(ResolveAliasRequest {
+                alias: "docker::run".into(),
+                vars,
+            }))
+            .await
+            .unwrap();
+        let resp: serde_json::Value = serde_json::from_str(text_from(&result)).unwrap();
+        assert_eq!(resp["status"], "resolved");
+        assert!(!resp["commands"].as_array().unwrap().is_empty());
     }
 }
