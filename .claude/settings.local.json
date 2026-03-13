@@ -15,7 +15,8 @@
       "Skill(read-contribution)",
       "Bash(grep -r \"#\\\\[test\\\\]\\\\|#\\\\[cfg\\(test\\)\\\\]\\\\|mod tests\" /Users/ryad/workspace/sam --include=\"*.rs\" -l 2>/dev/null | grep -v target | sort)",
       "Skill(design-contribute)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(grep -r \"ServerCapabilities\\\\|enable_tools\\\\|CapabilitiesBuilder\" /Users/ryad/workspace/sam/target/debug/.cargo-lock/../../../.cargo/registry/src/ --include=\"*.rs\" -l 2>/dev/null | grep rmcp | head -5)"
     ]
   }
 }

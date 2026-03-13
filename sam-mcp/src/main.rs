@@ -2,6 +2,7 @@ mod loader;
 mod resolver;
 mod server;
 
+use rmcp::service::QuitReason;
 use rmcp::transport::stdio;
 use rmcp::ServiceExt;
 use server::SamMcpServer;
@@ -15,10 +16,38 @@ async fn main() {
 
     let config_path = parse_config_flag();
     let ctx = match config_path {
-        Some(path) => loader::load_from(path).expect("failed to load sam config"),
-        None => loader::load().expect("failed to load sam config"),
-    };
-    SamMcpServer::new(Arc::new(ctx)).serve(stdio()).await.unwrap();
+        Some(path) => loader::load_from(path),
+        None => loader::load(),
+    }
+    .unwrap_or_else(|e| {
+        tracing::error!(error = %e, "failed to load sam config");
+        std::process::exit(1);
+    });
+
+    let service = SamMcpServer::new(Arc::new(ctx))
+        .serve(stdio())
+        .await
+        .unwrap_or_else(|e| {
+            tracing::error!(error = %e, "failed to initialize MCP service");
+            std::process::exit(1);
+        });
+
+    match service.waiting().await {
+        Ok(QuitReason::Closed | QuitReason::Cancelled) => {
+            tracing::info!("sam-mcp stopped");
+        }
+        Ok(QuitReason::JoinError(e)) => {
+            tracing::error!(error = %e, "service task panicked");
+            std::process::exit(1);
+        }
+        Ok(reason) => {
+            tracing::warn!(?reason, "sam-mcp stopped with unexpected reason");
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "failed to join service task");
+            std::process::exit(1);
+        }
+    }
 }
 
 fn init_logging() {
@@ -38,7 +67,10 @@ fn init_logging() {
         .open(log_file_path)
     {
         Ok(f) => f,
-        Err(_) => return, // silently skip if log file can't be opened
+        Err(e) => {
+            eprintln!("sam-mcp: could not open log file {log_path}: {e}");
+            return;
+        }
     };
 
     let level = std::env::var("SAM_MCP_LOG").unwrap_or_else(|_| "info".to_string());

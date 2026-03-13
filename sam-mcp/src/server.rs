@@ -2,7 +2,7 @@ use crate::loader::SamContext;
 use crate::resolver::McpResolver;
 use rmcp::handler::server::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::{CallToolResult, Content, Implementation, ServerInfo};
+use rmcp::model::{CallToolResult, Content, Implementation, ServerCapabilities, ServerInfo};
 use rmcp::{tool, tool_handler, tool_router, ErrorData, ServerHandler};
 use sam_core::algorithms::{
     choice_for_var, execution_sequence_for_dependencies, ErrorDependencyResolution, VarsCollection,
@@ -47,6 +47,9 @@ struct ResolveAliasRequest {
     /// Variable values collected so far. Keys are "namespace::var" or "var"; values are the chosen string.
     #[serde(default)]
     vars: HashMap<String, String>,
+    /// Working directory for running `from_command` variables (e.g. "/home/user/myproject").
+    /// Always pass the absolute path of the relevant project directory.
+    working_dir: String,
 }
 
 // ── Response types ───────────────────────────────────────────────────────────
@@ -163,6 +166,8 @@ list_aliases(keyword=\"run\") → aliases whose name or description contains \"r
 Call this in a loop: each call either returns the next variable that needs a value \
 (status=\"needs_var\") or the final resolved command (status=\"resolved\"). \
 Pass all previously chosen variable values in the `vars` map. \
+For aliases with `from_command` variables (dynamic choices that depend on the project), \
+pass `working_dir` with the absolute path to the relevant project directory. \
 Example: resolve_alias(alias=\"docker::run\", vars={}) \
 → {status:\"needs_var\", var:{name:\"image\", kind:\"choices\", choices:[{\"value\":\"nginx\"}]}} \
 then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
@@ -227,6 +232,7 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
         let resolver = McpResolver {
             env_variables: &self.ctx.env_variables,
             cache: &*self.ctx.cache,
+            working_dir: &req.working_dir,
         };
 
         let ctx = ResolverContext {
@@ -304,9 +310,8 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
 #[tool_handler]
 impl ServerHandler for SamMcpServer {
     fn get_info(&self) -> ServerInfo {
-        let mut info = ServerInfo::default();
-        info.server_info = Implementation::new("sam-mcp", env!("CARGO_PKG_VERSION"));
-        info
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(Implementation::new("sam-mcp", env!("CARGO_PKG_VERSION")))
     }
 }
 
@@ -404,6 +409,7 @@ mod tests {
             .resolve_alias(Parameters(ResolveAliasRequest {
                 alias: "docker::run".into(),
                 vars: HashMap::new(),
+                working_dir: ".".into(),
             }))
             .await
             .unwrap();
@@ -422,6 +428,7 @@ mod tests {
             .resolve_alias(Parameters(ResolveAliasRequest {
                 alias: "docker::run".into(),
                 vars,
+                working_dir: ".".into(),
             }))
             .await
             .unwrap();

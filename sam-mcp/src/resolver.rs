@@ -13,6 +13,7 @@ use std::collections::HashMap;
 pub struct McpResolver<'a> {
     pub env_variables: &'a HashMap<String, String>,
     pub cache: &'a dyn VarsCache,
+    pub working_dir: &'a str,
 }
 
 impl Resolver for McpResolver<'_> {
@@ -44,6 +45,7 @@ impl Resolver for McpResolver<'_> {
         } else {
             let mut to_run = ShellCommand::make_command(sh_cmd);
             to_run.envs(self.env_variables);
+            to_run.current_dir(self.working_dir);
             let output = to_run
                 .output()
                 .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), Box::new(e)))?;
