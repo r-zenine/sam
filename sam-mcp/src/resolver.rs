@@ -56,9 +56,7 @@ impl Resolver for McpResolver<'_> {
                         cmd_key.value(),
                         &String::from_utf8_lossy(&output.stdout),
                     )
-                    .map_err(|e| {
-                        ErrorsResolver::DynamicResolveFailure(var.name(), Box::new(e))
-                    })?;
+                    .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), Box::new(e)))?;
             }
             output.stdout
         };

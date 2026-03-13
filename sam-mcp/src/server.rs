@@ -4,10 +4,10 @@ use rmcp::handler::server::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, Content, Implementation, ServerCapabilities, ServerInfo};
 use rmcp::{tool, tool_handler, tool_router, ErrorData, ServerHandler};
+use sam_core::algorithms::resolver::{ErrorsResolver, ResolverContext};
 use sam_core::algorithms::{
     choice_for_var, execution_sequence_for_dependencies, ErrorDependencyResolution, VarsCollection,
 };
-use sam_core::algorithms::resolver::{ErrorsResolver, ResolverContext};
 use sam_core::engines::AliasCollection;
 use sam_core::entities::choices::Choice;
 use sam_core::entities::identifiers::Identifier;
@@ -125,10 +125,12 @@ fn serialize<T: Serialize>(v: &T) -> Result<String, ErrorData> {
 
 #[tool_router]
 impl SamMcpServer {
-    #[tool(description = "List all SAM aliases, optionally filtered by namespace and/or keyword. \
+    #[tool(
+        description = "List all SAM aliases, optionally filtered by namespace and/or keyword. \
 Use this first to discover available aliases before calling resolve_alias. \
 Example: list_aliases() → all aliases; list_aliases(namespace=\"docker\") → docker aliases only; \
-list_aliases(keyword=\"run\") → aliases whose name or description contains \"run\".")]
+list_aliases(keyword=\"run\") → aliases whose name or description contains \"run\"."
+    )]
     async fn list_aliases(
         &self,
         Parameters(req): Parameters<ListAliasesRequest>,
@@ -159,7 +161,9 @@ list_aliases(keyword=\"run\") → aliases whose name or description contains \"r
             .collect();
 
         tracing::info!(count = result.len(), "list_aliases ok");
-        Ok(CallToolResult::success(vec![Content::text(serialize(&result)?)]))
+        Ok(CallToolResult::success(vec![Content::text(serialize(
+            &result,
+        )?)]))
     }
 
     #[tool(description = "Resolve a SAM alias to a runnable shell command. \
@@ -246,14 +250,10 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
             if choices.contains_key(var_id) {
                 continue;
             }
-            let var = self
-                .ctx
-                .vars
-                .get(var_id)
-                .ok_or_else(|| {
-                    tracing::error!(var_id = %var_id, "var not found");
-                    ErrorData::internal_error(format!("var '{var_id}' not found"), None)
-                })?;
+            let var = self.ctx.vars.get(var_id).ok_or_else(|| {
+                tracing::error!(var_id = %var_id, "var not found");
+                ErrorData::internal_error(format!("var '{var_id}' not found"), None)
+            })?;
 
             let var_name = var.name();
             let base = (
@@ -292,7 +292,9 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
             if let ResolveAliasResponse::NeedsVar { var: ref v } = response {
                 tracing::debug!(var_name = %v.name, kind = ?v.kind, "resolve_alias needs_var");
             }
-            return Ok(CallToolResult::success(vec![Content::text(serialize(&response)?)]));
+            return Ok(CallToolResult::success(vec![Content::text(serialize(
+                &response,
+            )?)]));
         }
 
         let resolved_alias = alias
@@ -303,7 +305,9 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
         let response = ResolveAliasResponse::Resolved {
             commands: resolved_alias.commands().to_vec(),
         };
-        Ok(CallToolResult::success(vec![Content::text(serialize(&response)?)]))
+        Ok(CallToolResult::success(vec![Content::text(serialize(
+            &response,
+        )?)]))
     }
 }
 
@@ -338,13 +342,15 @@ mod tests {
         let mut alias_push = Alias::new("push", "Push to remote", "git push");
         NamespaceUpdater::update(&mut alias_push, "git");
 
-        let aliases =
-            AliasesRepository::new(vec![alias_run, alias_push].into_iter()).unwrap();
+        let aliases = AliasesRepository::new(vec![alias_run, alias_push].into_iter()).unwrap();
 
         let mut var_image = Var::new(
             "image",
             "Docker image",
-            vec![Choice::new("nginx", None::<&str>), Choice::new("redis", None::<&str>)],
+            vec![
+                Choice::new("nginx", None::<&str>),
+                Choice::new("redis", None::<&str>),
+            ],
         );
         NamespaceUpdater::update(&mut var_image, "docker");
 
