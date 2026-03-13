@@ -1,5 +1,7 @@
 use crate::loader::SamContext;
 use crate::resolver::McpResolver;
+use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::FuzzyMatcher;
 use rmcp::handler::server::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, Content, Implementation, ServerCapabilities, ServerInfo};
@@ -121,6 +123,25 @@ fn serialize<T: Serialize>(v: &T) -> Result<String, ErrorData> {
     serde_json::to_string(v).map_err(|e| ErrorData::internal_error(e.to_string(), None))
 }
 
+/// Fuzzy-filter and rank aliases by `keyword` (fzf/skim style).
+/// Matches against "namespace::name desc" so partial queries work across both fields.
+/// Returns only matching aliases, sorted best-first.
+fn fuzzy_filter<'a>(
+    aliases: impl IntoIterator<Item = &'a sam_core::entities::aliases::Alias>,
+    keyword: &str,
+) -> Vec<&'a sam_core::entities::aliases::Alias> {
+    let matcher = SkimMatcherV2::default();
+    let mut scored: Vec<(i64, &sam_core::entities::aliases::Alias)> = aliases
+        .into_iter()
+        .filter_map(|a| {
+            let haystack = format!("{} {}", a.full_name(), a.desc());
+            matcher.fuzzy_match(&haystack, keyword).map(|s| (s, a))
+        })
+        .collect();
+    scored.sort_by(|a, b| b.0.cmp(&a.0));
+    scored.into_iter().map(|(_, a)| a).collect()
+}
+
 // ── Tool implementations ─────────────────────────────────────────────────────
 
 #[tool_router]
@@ -128,8 +149,10 @@ impl SamMcpServer {
     #[tool(
         description = "List all SAM aliases, optionally filtered by namespace and/or keyword. \
 Use this first to discover available aliases before calling resolve_alias. \
+The keyword uses fuzzy matching (fzf-style): characters must appear in order but need not \
+be contiguous, and results are ranked by match quality. \
 Example: list_aliases() → all aliases; list_aliases(namespace=\"docker\") → docker aliases only; \
-list_aliases(keyword=\"run\") → aliases whose name or description contains \"run\"."
+list_aliases(keyword=\"dkr run\") → fuzzy-matches name and description."
     )]
     async fn list_aliases(
         &self,
@@ -142,16 +165,14 @@ list_aliases(keyword=\"run\") → aliases whose name or description contains \"r
         if let Some(ns) = &req.namespace {
             aliases.retain(|a| a.namespace() == Some(ns.as_str()));
         }
-        if let Some(kw) = &req.keyword {
-            let kw_lower = kw.to_lowercase();
-            aliases.retain(|a| {
-                a.name().to_lowercase().contains(&kw_lower)
-                    || a.desc().to_lowercase().contains(&kw_lower)
-            });
-        }
 
-        let result: Vec<AliasEntry> = aliases
-            .iter()
+        let filtered: Vec<_> = match &req.keyword {
+            Some(kw) => fuzzy_filter(aliases.iter(), kw),
+            None => aliases.iter().collect(),
+        };
+
+        let result: Vec<AliasEntry> = filtered
+            .into_iter()
             .map(|a| AliasEntry {
                 name: a.name().to_string(),
                 namespace: a.namespace().map(str::to_owned),
@@ -188,18 +209,11 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
             .aliases
             .get(&id)
             .ok_or_else(|| {
-                let needle = req.alias.to_lowercase();
-                let similar: Vec<String> = self
-                    .ctx
-                    .aliases
-                    .aliases()
+                let all = self.ctx.aliases.aliases();
+                let similar: Vec<String> = fuzzy_filter(all.iter(), &req.alias)
                     .into_iter()
-                    .filter(|a| {
-                        let full = a.full_name().to_lowercase();
-                        full.contains(&needle) || needle.contains(full.as_str())
-                    })
-                    .map(|a| a.full_name().to_string())
                     .take(5)
+                    .map(|a| a.full_name().to_string())
                     .collect();
                 if similar.is_empty() {
                     tracing::error!(alias = %req.alias, "alias not found");

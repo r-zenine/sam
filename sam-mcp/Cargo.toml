@@ -21,3 +21,4 @@ sam-readers = { path = "../sam-readers" }
 sam-terminals = { path = "../sam-terminals" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+fuzzy-matcher = "0.3"
