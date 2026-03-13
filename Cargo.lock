@@ -569,6 +569,7 @@ dependencies = [
  "flexi_logger",
  "log",
  "maplit",
+ "sam-config",
  "sam-core",
  "sam-persistence",
  "sam-readers",
@@ -579,6 +580,19 @@ dependencies = [
  "termion 4.0.5",
  "thiserror 2.0.12",
  "tmux_interface",
+ "toml",
+]
+
+[[package]]
+name = "sam-config"
+version = "1.2.3"
+dependencies = [
+ "dirs",
+ "sam-core",
+ "sam-persistence",
+ "sam-utils",
+ "serde",
+ "thiserror 2.0.12",
  "toml",
 ]
 

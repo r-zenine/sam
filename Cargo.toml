@@ -1,11 +1,12 @@
 [workspace]
 resolver="2"
 members = [
-    "sam-cli", 
-    "sam-persistence", 
-    "sam-readers", 
-    "sam-tui", 
-    "sam-core", 
+    "sam-cli",
+    "sam-config",
+    "sam-persistence",
+    "sam-readers",
+    "sam-tui",
+    "sam-core",
     "sam-utils",
     "sam-terminals",
 ]

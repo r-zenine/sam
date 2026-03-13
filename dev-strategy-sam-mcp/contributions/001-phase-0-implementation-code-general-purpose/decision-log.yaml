@@ -1,0 +1,11 @@
+decisions:
+  - id: "001"
+    type: implementation
+    decision: "AppSettings::load() in sam-config takes no parameters; CLI overrides applied via a thin load_with_cli() wrapper in sam-cli"
+    rationale: "Cleanest boundary: sam-config knows nothing about CLISettings (a sam-cli type). sam-cli applies dry/silent/no_cache/defaults after load, which is what sam-mcp needs — just AppSettings::load() with no CLI coupling."
+    alternatives_rejected:
+      - alternative: "Keep CLISettings parameter on load() and add CLISettings to sam-config"
+        reason: "Would drag clap/CLI concepts into sam-config, defeating the purpose of the extraction"
+      - alternative: "Use an extension trait in sam-cli to add merge_cli to AppSettings"
+        reason: "More indirection than needed; a free function load_with_cli() is simpler and sufficient"
+    impact: "sam-mcp calls sam_config::AppSettings::load() directly; sam-cli calls config::load_with_cli(Some(settings)). No behavioral change."

@@ -1,4 +1,4 @@
-use crate::config::{AppSettings, ErrorsSettings};
+use crate::config::ErrorsSettings;
 use crate::config_engine::ErrorsConfigEngine;
 use crate::environment::ErrorEnvironment;
 use crate::session_engine::ErrorSessionEngine;
@@ -36,7 +36,7 @@ fn main() {
 
 fn run() -> Result<i32> {
     let cli_request = cli::read_cli_request()?;
-    let app_config = AppSettings::load(Some(cli_request.settings))?;
+    let app_config = config::load_with_cli(Some(cli_request.settings))?;
     let environment = environment::from_settings(app_config)?;
 
     run_command(cli_request.command, environment)

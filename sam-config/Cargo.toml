@@ -1,0 +1,13 @@
+[package]
+name = "sam-config"
+version = "1.2.3"
+edition = "2021"
+
+[dependencies]
+sam-core = {path="../sam-core"}
+sam-persistence = {path="../sam-persistence"}
+sam-utils = {path="../sam-utils"}
+serde = { version = "1.0.136", features = ["derive"] }
+toml = "0.8.23"
+dirs = "6.0.0"
+thiserror = "2.0.12"
