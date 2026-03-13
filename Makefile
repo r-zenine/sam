@@ -4,6 +4,7 @@ DIST_TYPE	?= snapshot
 BRANCH	?= $(shell git rev-parse --abbrev-ref HEAD)
 TARGET_PLATFORM = ${TARGET_PLATFORM}
 PROJECT = sam
+ARCH ?= $(shell uname -m | sed 's/arm64/aarch64/')
 
 build:
 	cargo build --release
@@ -20,11 +21,11 @@ test: build check
 unused_deps: 
 	cargo +nightly udeps --all-targets
 
-package_linux: test check build version 
-	cd ./target/release/ && tar -czvf $(PROJECT)_linux_x86_64_$(VERSION).tar.gz $(PROJECT)
+package_linux: test check build version
+	cd ./target/release/ && tar -czvf $(PROJECT)_linux_$(ARCH)_$(VERSION).tar.gz $(PROJECT) $(PROJECT)-mcp
 
-package_macos: test check build version 
-	cd ./target/release/ && tar -czvf $(PROJECT)_macos_x86_64_$(VERSION).tar.gz $(PROJECT)
+package_macos: test check build version
+	cd ./target/release/ && tar -czvf $(PROJECT)_macos_$(ARCH)_$(VERSION).tar.gz $(PROJECT) $(PROJECT)-mcp
 
 package_debian:
 	cargo deb -p sam-cli

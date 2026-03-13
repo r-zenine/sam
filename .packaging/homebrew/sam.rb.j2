@@ -1,20 +1,25 @@
-# Documentation: https://docs.brew.sh/Formula-Cookbook
-#                https://rubydoc.brew.sh/Formula
-# PLEASE REMOVE ALL GENERATED COMMENTS BEFORE SUBMITTING YOUR PULL REQUEST!
 class Sam < Formula
-    desc "${PROJECT_DESCRIPTION}"
-    homepage "${PROJECT_URL}"
-    version "${APP_VERSION}"
+  desc "${PROJECT_DESCRIPTION}"
+  homepage "${PROJECT_URL}"
+  version "${APP_VERSION}"
+  license "GPL-3.0-only"
 
-    if Hardware::CPU.intel?
-      url "${PROJECT_URL}/releases/download/v${APP_VERSION}/sam_macos_x86_64_v${APP_VERSION}.tar.gz"
-      sha256 "${RELEASE_HASH_X86_64}"
-    elsif Hardware::CPU.arm?
-      url "${PROJECT_URL}/releases/download/v${APP_VERSION}/sam_macos_aarch64_v${APP_VERSION}.tar.gz"
-      sha256 "${RELEASE_HASH_AARCH64}"
-    end
-  
-    def install
-      bin.install "sam"
-    end
+  bottle :unneeded
+
+  if Hardware::CPU.intel?
+    url "${PROJECT_URL}/releases/download/v${APP_VERSION}/sam_macos_x86_64_v${APP_VERSION}.tar.gz"
+    sha256 "${RELEASE_HASH_X86_64}"
+  elsif Hardware::CPU.arm?
+    url "${PROJECT_URL}/releases/download/v${APP_VERSION}/sam_macos_aarch64_v${APP_VERSION}.tar.gz"
+    sha256 "${RELEASE_HASH_AARCH64}"
   end
+
+  def install
+    bin.install "sam"
+    bin.install "sam-mcp"
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/sam --version")
+  end
+end
