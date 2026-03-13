@@ -10,7 +10,8 @@
       "Skill(dev-continue)",
       "Bash(cargo build:*)",
       "Bash(cargo test:*)",
-      "Skill(dev-contribute)"
+      "Skill(dev-contribute)",
+      "Bash(cargo clippy:*)"
     ]
   }
 }

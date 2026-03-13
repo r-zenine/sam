@@ -5,8 +5,11 @@ BRANCH	?= $(shell git rev-parse --abbrev-ref HEAD)
 TARGET_PLATFORM = ${TARGET_PLATFORM}
 PROJECT = sam
 
-build: 
+build:
 	cargo build --release
+
+build-mcp:
+	cargo build --release -p sam-mcp
 
 check: build
 	cargo clippy && cargo check && cargo fmt -- --check
@@ -52,4 +55,4 @@ ifneq ($(GIT_TAG),)
 	gh release upload $(GIT_TAG) ./target/release/$(PROJECT)_macos_x86_64_$(VERSION).tar.gz 
 endif
 
-.PHONY: version create_release publish_version
+.PHONY: version create_release publish_version build-mcp

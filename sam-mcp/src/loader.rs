@@ -1,4 +1,5 @@
 use sam_config::AppSettings;
+use std::path::PathBuf;
 use sam_core::engines::VarsDefaultValuesSetter;
 use sam_persistence::repositories::{AliasesRepository, ErrorsAliasesRepository, VarsRepository};
 use sam_persistence::{CacheError, NoopVarsCache, RustBreakCache, VarsCache};
@@ -27,9 +28,15 @@ pub enum LoadError {
     AliasRepository(#[from] ErrorsAliasesRepository),
 }
 
-pub fn load() -> Result<SamContext, LoadError> {
-    let config = AppSettings::load()?;
+pub fn load_from(path: PathBuf) -> Result<SamContext, LoadError> {
+    build_context(AppSettings::load_from(path)?)
+}
 
+pub fn load() -> Result<SamContext, LoadError> {
+    build_context(AppSettings::load()?)
+}
+
+fn build_context(config: AppSettings) -> Result<SamContext, LoadError> {
     let cache: Box<dyn VarsCache + Send + Sync> = if !config.no_cache {
         Box::new(RustBreakCache::with_ttl(config.cache_dir(), &config.ttl())?)
     } else {

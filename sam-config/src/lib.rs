@@ -48,6 +48,24 @@ impl AppSettings {
         Ok(conf)
     }
 
+    pub fn load_from(path: PathBuf) -> Result<Self> {
+        let cache_dir =
+            Self::file_path_with_suffix(CACHE_DIR, "sam", ErrorsSettings::CantFindCacheDirectory)?;
+        let history_file = Self::file_path_with_suffix(
+            HISTORY_DIR,
+            "history",
+            ErrorsSettings::CantFindHistoryDirectory(HISTORY_DIR.to_string()),
+        )?;
+
+        Self::read_config(path)
+            .and_then(AppSettings::validate)
+            .map(|mut e| {
+                e.cache_dir = cache_dir;
+                e.history_file = history_file;
+                e
+            })
+    }
+
     pub fn load() -> Result<Self> {
         let home_dir_o = Self::home_dir_config_path()?;
         let current_dir_o = Self::current_dir_config_path();

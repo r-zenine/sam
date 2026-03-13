@@ -122,7 +122,10 @@ fn serialize<T: Serialize>(v: &T) -> Result<String, ErrorData> {
 
 #[tool_router]
 impl SamMcpServer {
-    #[tool(description = "List SAM aliases. Filter by namespace and/or keyword (matched against name and description).")]
+    #[tool(description = "List all SAM aliases, optionally filtered by namespace and/or keyword. \
+Use this first to discover available aliases before calling resolve_alias. \
+Example: list_aliases() → all aliases; list_aliases(namespace=\"docker\") → docker aliases only; \
+list_aliases(keyword=\"run\") → aliases whose name or description contains \"run\".")]
     async fn list_aliases(
         &self,
         Parameters(req): Parameters<ListAliasesRequest>,
@@ -171,7 +174,37 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
             .aliases
             .get(&id)
             .ok_or_else(|| {
-                ErrorData::internal_error(format!("alias '{}' not found", req.alias), None)
+                let needle = req.alias.to_lowercase();
+                let similar: Vec<String> = self
+                    .ctx
+                    .aliases
+                    .aliases()
+                    .into_iter()
+                    .filter(|a| {
+                        let full = a.full_name().to_lowercase();
+                        full.contains(&needle) || needle.contains(full.as_str())
+                    })
+                    .map(|a| a.full_name().to_string())
+                    .take(5)
+                    .collect();
+                if similar.is_empty() {
+                    ErrorData::internal_error(
+                        format!(
+                            "alias '{}' not found. Use list_aliases() to see available aliases.",
+                            req.alias
+                        ),
+                        None,
+                    )
+                } else {
+                    ErrorData::internal_error(
+                        format!(
+                            "alias '{}' not found. Did you mean: {}?",
+                            req.alias,
+                            similar.join(", ")
+                        ),
+                        None,
+                    )
+                }
             })?
             .clone();
 
@@ -205,7 +238,7 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
                 .vars
                 .get(var_id)
                 .ok_or_else(|| {
-                    ErrorData::internal_error(format!("var '{}' not found", var_id), None)
+                    ErrorData::internal_error(format!("var '{var_id}' not found"), None)
                 })?;
 
             let var_name = var.name();

@@ -1,0 +1,22 @@
+decisions:
+  - id: D001
+    title: "parse --config with std::env::args() instead of clap"
+    decision: "Use a simple two-liner with std::env::args() to find the --config flag position, avoiding a clap dependency for a single flag."
+    rationale: "sam-mcp is a lean stdio binary. Adding clap for one flag would triple the compile-time dependency surface. The flag has no aliases, no defaults, and no validation needs beyond 'path exists at load time'."
+    alternatives_considered:
+      - "clap: rejected — too heavy for one flag"
+      - "custom ArgParser struct: over-engineered for the scope"
+
+  - id: D002
+    title: "add AppSettings::load_from() to sam-config rather than sam-mcp"
+    decision: "Placed load_from(path) on AppSettings in sam-config, mirroring the existing load() method. sam-mcp's loader.rs calls it, same as it calls load()."
+    rationale: "sam-config owns config loading logic. Putting path-based loading there keeps sam-mcp's loader.rs as a thin orchestrator, and makes load_from available to other crates (e.g. future sam-cli flag support) without duplication."
+    alternatives_considered:
+      - "Inline path handling in loader.rs: breaks separation of concerns"
+
+  - id: D003
+    title: "similar-alias suggestion via substring match, no fuzzy library"
+    decision: "Candidate aliases are those whose full_name contains req.alias as a substring, or vice versa. Cap at 5 results."
+    rationale: "Alias counts are small; no index or fuzzy library needed. The substring check covers the common 'typo in namespace' and 'partial name' cases without adding a dependency."
+    alternatives_considered:
+      - "Levenshtein distance: adds a dep and slower, overkill for this use case"
