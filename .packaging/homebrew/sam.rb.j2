@@ -4,8 +4,6 @@ class Sam < Formula
   version "${APP_VERSION}"
   license "GPL-3.0-only"
 
-  bottle :unneeded
-
   if Hardware::CPU.intel?
     url "${PROJECT_URL}/releases/download/v${APP_VERSION}/sam_macos_x86_64_v${APP_VERSION}.tar.gz"
     sha256 "${RELEASE_HASH_X86_64}"
