@@ -430,6 +430,22 @@ sam alias kubernetes::tail_logs --no-cache
 
 ---
 
+## Claude Code plugin
+
+SAM ships Claude Code skills that nudge coding agents to use your aliases and help author new ones.
+
+**Install:**
+```
+/plugin marketplace add r-zenine/sam
+/plugin install sam@sam
+```
+
+This installs two skills:
+- **sam-usage** — before running a raw shell command, checks whether a SAM alias already covers the task (requires `sam-mcp` configured as an MCP server)
+- **sam-authoring** — guides authoring of `aliases.yaml` and `vars.yaml` files
+
+---
+
 ## MCP server
 
 `sam-mcp` is a Model Context Protocol server that exposes your SAM aliases to AI assistants like Claude. It provides two tools:
