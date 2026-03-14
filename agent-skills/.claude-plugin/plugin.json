@@ -1,0 +1,13 @@
+{
+  "name": "sam",
+  "version": "1.0.0",
+  "description": "Skills for using and authoring SAM aliases via the sam-mcp MCP server",
+  "author": {
+    "name": "r-zenine",
+    "url": "https://github.com/r-zenine"
+  },
+  "repository": "https://github.com/r-zenine/sam",
+  "license": "MIT",
+  "keywords": ["sam", "aliases", "mcp", "shell", "workflows"],
+  "skills": "./"
+}
