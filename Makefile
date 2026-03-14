@@ -27,6 +27,10 @@ package_linux: test check build version
 package_macos: test check build version
 	cd ./target/release/ && tar -czvf $(PROJECT)_macos_$(ARCH)_$(VERSION).tar.gz $(PROJECT) $(PROJECT)-mcp
 
+package_macos_x86: test check version
+	cargo build --release --target x86_64-apple-darwin
+	cd ./target/x86_64-apple-darwin/release/ && tar -czvf ../../../target/release/$(PROJECT)_macos_x86_64_$(VERSION).tar.gz $(PROJECT) $(PROJECT)-mcp
+
 package_debian:
 	cargo deb -p sam-cli
 
