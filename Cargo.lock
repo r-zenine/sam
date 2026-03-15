@@ -909,7 +909,7 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
 name = "sam-cli"
-version = "1.2.3"
+version = "1.3.0"
 dependencies = [
  "clap",
  "dirs",
@@ -932,7 +932,7 @@ dependencies = [
 
 [[package]]
 name = "sam-config"
-version = "1.2.3"
+version = "1.3.0"
 dependencies = [
  "dirs",
  "sam-core",
@@ -945,7 +945,7 @@ dependencies = [
 
 [[package]]
 name = "sam-core"
-version = "1.2.3"
+version = "1.3.0"
 dependencies = [
  "comma",
  "lazy_static",
@@ -978,7 +978,7 @@ dependencies = [
 
 [[package]]
 name = "sam-persistence"
-version = "1.2.3"
+version = "1.3.0"
 dependencies = [
  "lazy_static",
  "maplit",
@@ -993,7 +993,7 @@ dependencies = [
 
 [[package]]
 name = "sam-readers"
-version = "1.2.3"
+version = "1.3.0"
 dependencies = [
  "sam-core",
  "sam-persistence",
@@ -1004,7 +1004,7 @@ dependencies = [
 
 [[package]]
 name = "sam-terminals"
-version = "1.2.3"
+version = "1.3.0"
 dependencies = [
  "lazy_static",
  "log",
@@ -1018,7 +1018,7 @@ dependencies = [
 
 [[package]]
 name = "sam-tui"
-version = "1.2.3"
+version = "1.3.0"
 dependencies = [
  "fzy-rs",
  "sam-core",
@@ -1033,7 +1033,7 @@ dependencies = [
 
 [[package]]
 name = "sam-utils"
-version = "1.2.3"
+version = "1.3.0"
 dependencies = [
  "dirs",
  "rand 0.9.1",

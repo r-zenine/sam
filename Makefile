@@ -17,6 +17,7 @@ check: build
 
 test: build check
 	cargo test --release --workspace
+	python3 agent-skills/hooks/test_block_sam_direct_access.py
 
 unused_deps: 
 	cargo +nightly udeps --all-targets
