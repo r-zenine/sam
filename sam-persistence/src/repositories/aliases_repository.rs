@@ -119,7 +119,7 @@ mod tests {
         assert!(parsed.len() == 2);
         assert!(parsed[0].0 == Range { start: 9, end: 19 });
         assert!(parsed[0].1.name() == "toto");
-        assert!(parsed[0].1.namespace == None);
+        assert!(parsed[0].1.namespace.is_none());
         assert!(parsed[1].0 == Range { start: 22, end: 35 });
         assert!(parsed[1].1.name() == "toto");
         assert!(parsed[1].1.namespace == Some("ns".to_string()));

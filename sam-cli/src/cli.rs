@@ -202,7 +202,7 @@ where
 
 pub fn read_cli_request() -> Result<CLIRequest, CLIError> {
     let app = app_init();
-    make_cli_request(app, &mut env::args_os())
+    make_cli_request(app, env::args_os())
 }
 
 #[derive(Clone, Debug, PartialEq)]

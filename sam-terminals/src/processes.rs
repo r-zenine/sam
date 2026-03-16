@@ -52,14 +52,13 @@ impl ShellCommand<String> {
             .replace_all(self.command.as_str(), replace_pattern.as_str())
             .to_string();
         let command_escaped = shellwords::escape(&sanitized);
-        let s = format!("echo \"{}\"|envsubst", command_escaped);
+        let s = format!("echo \"{command_escaped}\"|envsubst");
         let shell_cmd = ShellCommand::<String>::new(s);
         let mut cmd: Command = shell_cmd.into();
         cmd.envs(variables);
         let out = cmd.output()?;
         let new_cmd = String::from_utf8_lossy(out.stdout.as_slice())
-            .replace('\n', "")
-            .replace('\\', "");
+            .replace(['\n', '\\'], "");
         Ok(ShellCommand::<String>::new(new_cmd))
     }
 }

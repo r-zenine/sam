@@ -35,7 +35,7 @@ impl<V: Value> UIModal<V> {
             terminal: RefCell::new(terminal),
             last_update: Cell::new(None),
             theme: UITheme::default(),
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         })
     }
 

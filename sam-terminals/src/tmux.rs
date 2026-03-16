@@ -85,7 +85,7 @@ impl Tmux {
     pub fn set_layout(&self, layout: WindowLayout, target_window: &str) -> Result<bool, TmuxError> {
         Ok(select_layout!()
             .target_pane(target_window)
-            .layout_name(format!("{}", layout))
+            .layout_name(format!("{layout}"))
             .build()
             .into_tmux()
             .output()

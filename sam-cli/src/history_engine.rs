@@ -85,7 +85,7 @@ impl<
         let resolved_alias_o = self.history.get_last()?;
         if let Some(alias) = resolved_alias_o {
             for cmd in alias.commands() {
-                println!("{}", cmd);
+                println!("{cmd}");
             }
             Ok(0)
         } else {

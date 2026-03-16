@@ -22,7 +22,7 @@ pub struct UserInterfaceV2 {
     cache: Box<dyn VarsCache>,
 }
 
-impl<'a> UserInterfaceV2 {
+impl UserInterfaceV2 {
     pub fn new(variables: HashMap<String, String>, cache: Box<dyn VarsCache>) -> UserInterfaceV2 {
         UserInterfaceV2 {
             env_variables: variables,
@@ -58,7 +58,7 @@ pub enum ErrorsUIV2 {
     FSError(#[from] ErrorsFS),
 }
 
-impl<'a> Resolver for UserInterfaceV2 {
+impl Resolver for UserInterfaceV2 {
     fn resolve_input(
         &self,
         var: &Var,
@@ -104,7 +104,7 @@ impl<'a> Resolver for UserInterfaceV2 {
                     .put(
                         &var.name().to_string(),
                         cmd_key.value(),
-                        &String::from_utf8_lossy(output.stdout.as_slice()).to_owned(),
+                        &String::from_utf8_lossy(output.stdout.as_slice()).into_owned(),
                     )
                     .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), Box::new(e)))?;
             }
@@ -115,8 +115,8 @@ impl<'a> Resolver for UserInterfaceV2 {
             .map_err(|e| ErrorsResolver::DynamicResolveFailure(var.name(), e.into()))
     }
 
-    fn resolve_static<'b>(
-        &'b self,
+    fn resolve_static(
+        &self,
         var: &Var,
         cmd: impl Iterator<Item = Choice>,
         _ctx: &ResolverContext,
@@ -146,8 +146,8 @@ impl<'a> Resolver for UserInterfaceV2 {
         Ok(choice)
     }
 
-    fn select_identifier<'b>(
-        &'b self,
+    fn select_identifier(
+        &self,
         identifiers: &[AliasAndDependencies],
         prompt: &str,
     ) -> Result<AliasAndDependencies, ErrorsResolver> {
@@ -198,7 +198,7 @@ impl Value for AliasElement {
         if !self.0.dependencies.is_empty() {
             output.push_str("\nDependencies:\n");
             for id in &self.0.dependencies {
-                output.push_str(&format!("- {}\n", id));
+                output.push_str(&format!("- {id}\n"));
             }
         }
 
@@ -253,14 +253,14 @@ impl<'a> Value for ChoiceElement<'a> {
         if !self.resolver_context.execution_sequence.is_empty() {
             output.push_str("\nDependencies:\n");
             for id in &self.resolver_context.execution_sequence {
-                output.push_str(&format!("- {}\n", id));
+                output.push_str(&format!("- {id}\n"));
             }
         }
 
         if !self.resolver_context.choices.is_empty() {
             output.push_str("\nCurrent Choices:\n");
             for (id, choice) in self.resolver_context.choices.iter() {
-                output.push_str(&format!("- {} = {:?}", id, choice));
+                output.push_str(&format!("- {id} = {choice:?}"));
             }
         }
         output

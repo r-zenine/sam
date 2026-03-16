@@ -47,7 +47,7 @@ where
         let db = SequentialState {
             path: p.as_ref().to_owned(),
             max_size,
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         };
         db.open_db()?;
         Ok(db)
@@ -70,14 +70,14 @@ where
     #[allow(dead_code)]
     pub fn last(&self) -> ModResult<Option<V>> {
         let db = self.open_db()?;
-        db.read(|db| db.last().map(Clone::clone))
+        db.read(|db| db.last().cloned())
             .map_err(ErrorSequentialState::ReadFailure)
     }
 
     #[allow(dead_code)]
     pub fn first(&self) -> ModResult<Option<V>> {
         let db = self.open_db()?;
-        db.read(|db| db.first().map(Clone::clone))
+        db.read(|db| db.first().cloned())
             .map_err(ErrorSequentialState::ReadFailure)
     }
 

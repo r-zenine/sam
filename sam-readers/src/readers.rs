@@ -51,7 +51,7 @@ where
             continue;
         }
         let splits: Vec<&str> = line.split('\t').collect();
-        let value_o = splits.get(0).map(|e| e.to_string());
+        let value_o = splits.first().map(|e| e.to_string());
         let desc = splits.get(1).map(|e| e.to_string());
         if let Some(value) = value_o {
             out.push(Choice::new(value, desc));

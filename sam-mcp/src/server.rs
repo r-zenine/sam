@@ -303,18 +303,24 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
                     },
                 },
                 Err(ErrorDependencyResolution::NoChoiceForVar {
-                    error: ErrorsResolver::NoInputWasProvided(_, ref prompt),
+                    error: ref boxed_error,
                     ..
-                }) => ResolveAliasResponse::NeedsVar {
-                    var: VarInfo {
-                        name: base.0,
-                        namespace: base.1,
-                        desc: base.2,
-                        kind: VarKind::Input,
-                        choices: None,
-                        prompt: Some(prompt.clone()),
-                    },
-                },
+                }) if matches!(**boxed_error, ErrorsResolver::NoInputWasProvided(_, _)) => {
+                    if let ErrorsResolver::NoInputWasProvided(_, ref prompt) = **boxed_error {
+                        ResolveAliasResponse::NeedsVar {
+                            var: VarInfo {
+                                name: base.0,
+                                namespace: base.1,
+                                desc: base.2,
+                                kind: VarKind::Input,
+                                choices: None,
+                                prompt: Some(prompt.clone()),
+                            },
+                        }
+                    } else {
+                        unreachable!()
+                    }
+                }
                 Err(e) => return Err(ErrorData::internal_error(e.to_string(), None)),
             };
 

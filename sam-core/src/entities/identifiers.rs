@@ -168,7 +168,7 @@ pub struct Identifiers(pub Vec<Identifier>);
 impl Display for Identifiers {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for id in &self.0 {
-            writeln!(f, "- {}", id)?;
+            writeln!(f, "- {id}")?;
         }
         Ok(())
     }

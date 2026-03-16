@@ -52,7 +52,7 @@ impl SessionEngine {
 
                 let choice = Choice::from_value(choice_value.clone());
                 self.storage.set_choice(identifier, choice)?;
-                println!("Session default set: {} = {}", var_name, choice_value);
+                println!("Session default set: {var_name} = {choice_value}");
                 Ok(0)
             }
             SessionCommand::Clear => {
@@ -76,7 +76,7 @@ impl SessionEngine {
                         self.storage.session_id()
                     );
                     for (var_name, choice) in choices {
-                        println!("  {} = {}", var_name, choice);
+                        println!("  {var_name} = {choice}");
                     }
                 }
                 Ok(0)

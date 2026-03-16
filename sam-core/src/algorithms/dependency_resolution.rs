@@ -79,7 +79,7 @@ pub enum ErrorDependencyResolution {
     #[error("no choices available for var {var_name}\n-> {error}")]
     NoChoiceForVar {
         var_name: Identifier,
-        error: ErrorsResolver,
+        error: Box<ErrorsResolver>,
     },
 }
 
@@ -129,7 +129,7 @@ where
     resolve_choice_for_var(resolver, var, choices, ctx).map_err(|err| {
         ErrorDependencyResolution::NoChoiceForVar {
             var_name: var.name(),
-            error: err,
+            error: Box::new(err),
         }
     })
 }
@@ -265,11 +265,9 @@ mod tests {
         assert!(seq.is_ok());
         let seq = execution_sequence_for_dependencies(&repo, VAR_USE_LISTING.clone());
         assert!(seq.is_ok());
-        let expected = vec![
-            VAR_DIRECTORY_NAME.clone(),
+        let expected = [VAR_DIRECTORY_NAME.clone(),
             VAR_PATTERN_NAME.clone(),
-            VAR_LISTING_NAME.clone(),
-        ];
+            VAR_LISTING_NAME.clone()];
         assert_eq!(expected.iter().as_slice(), seq.unwrap().as_ref());
     }
     #[test]

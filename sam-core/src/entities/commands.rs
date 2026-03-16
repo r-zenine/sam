@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_unset_env_vars() {
-        let commands = vec![StringCommand::from_str("$SOME_CRAZY_ENV_VAR")];
+        let commands = [StringCommand::from_str("$SOME_CRAZY_ENV_VAR")];
         let unsets = unset_env_vars(commands.iter());
         assert_eq!(unsets.len(), 1);
         assert!(unsets.contains("SOME_CRAZY_ENV_VAR"));

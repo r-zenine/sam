@@ -92,7 +92,7 @@ impl Alias {
     pub fn full_name(&self) -> Cow<'_, str> {
         let n = self.name();
         if let Some(ns) = self.namespace() {
-            let full_name = format!("{}::{}", ns, n);
+            let full_name = format!("{ns}::{n}");
             Cow::Owned(full_name)
         } else {
             Cow::Borrowed(n)
@@ -100,7 +100,7 @@ impl Alias {
     }
 
     fn sanitize(alias_def: &str, namespace: &str) -> String {
-        let replace_pattern = format!("{{{{ {}::$vars }}}}", namespace);
+        let replace_pattern = format!("{{{{ {namespace}::$vars }}}}");
         VARS_NO_NS_RE
             .replace_all(alias_def, replace_pattern.as_str())
             .to_string()
@@ -178,7 +178,7 @@ impl ResolvedAlias {
     }
 
     pub fn choice(&self, identifier: &Identifier) -> Option<Vec<Choice>> {
-        self.choices.get(identifier).map(Clone::clone)
+        self.choices.get(identifier).cloned()
     }
 
     pub const fn name(&self) -> &Identifier {
@@ -228,22 +228,22 @@ impl Display for ResolvedAlias {
         writeln!(f, "Choices:",)?;
 
         for (choice, values) in &self.choices {
-            write!(f, " - {} = ", choice,)?;
+            write!(f, " - {choice} = ",)?;
             for val in values {
-                write!(f, "{} ", val)?;
+                write!(f, "{val} ")?;
             }
             writeln!(f)?;
         }
         writeln!(f, "\nExecuted commands:",)?;
         for cmd in &self.resolved_aliases {
-            writeln!(f, " - {}", cmd)?;
+            writeln!(f, " - {cmd}")?;
         }
         Ok(())
     }
 }
 
 #[allow(clippy::from_over_into)]
-impl<'a> Into<String> for &'a Alias {
+impl Into<String> for &Alias {
     fn into(self) -> String {
         format!("{} {}", &self.name, &self.desc)
     }

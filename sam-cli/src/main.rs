@@ -28,7 +28,7 @@ fn main() {
             std::process::exit(i);
         }
         Err(err) => {
-            eprintln!("An error happened while running the program {}", err);
+            eprintln!("An error happened while running the program {err}");
             std::process::exit(1);
         }
     }

@@ -66,7 +66,7 @@ where
         let db = AssociativeStateWithTTL {
             path: p.as_ref().to_owned(),
             ttl: Some(*ttl),
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         };
         db.open_db()?;
         Ok(db)
@@ -77,7 +77,7 @@ where
         let db = AssociativeStateWithTTL {
             path: p.as_ref().to_owned(),
             ttl: None,
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         };
         db.open_db()?;
         Ok(db)
@@ -108,7 +108,7 @@ where
         let db = self.open_db()?;
         let cache_key = command.as_ref();
         let entry = db
-            .read(|db| db.get(cache_key).map(Clone::clone))
+            .read(|db| db.get(cache_key).cloned())
             .map_err(ErrorAssociativeState::ReadFailure)?;
         Ok(entry.filter(|v| self.is_value_valid(v)).map(|e| e.entry))
     }
