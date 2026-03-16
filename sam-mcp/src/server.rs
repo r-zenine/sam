@@ -19,14 +19,17 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 pub struct SamMcpServer {
-    pub ctx: Arc<SamContext>,
+    ctx: Arc<tokio::sync::RwLock<SamContext>>,
+    #[allow(dead_code)]
+    config_path: Option<std::path::PathBuf>,
     tool_router: ToolRouter<Self>,
 }
 
 impl SamMcpServer {
-    pub fn new(ctx: Arc<SamContext>) -> Self {
+    pub fn new(ctx: SamContext, config_path: Option<std::path::PathBuf>) -> Self {
         Self {
-            ctx,
+            ctx: Arc::new(tokio::sync::RwLock::new(ctx)),
+            config_path,
             tool_router: Self::tool_router(),
         }
     }
@@ -160,7 +163,23 @@ list_aliases(keyword=\"dkr run\") → fuzzy-matches name and description."
     ) -> Result<CallToolResult, ErrorData> {
         tracing::debug!(ns = ?req.namespace, keyword = ?req.keyword, "list_aliases called");
 
-        let mut aliases = self.ctx.aliases.aliases();
+        #[cfg(not(test))]
+        {
+            let reload_result = match &self.config_path {
+                Some(p) => crate::loader::load_from(p.clone()),
+                None => crate::loader::load(),
+            };
+            match reload_result {
+                Ok(new_ctx) => {
+                    *self.ctx.write().await = new_ctx;
+                    tracing::debug!("sam context reloaded");
+                }
+                Err(e) => tracing::warn!(error = %e, "context reload failed, using stale data"),
+            }
+        }
+
+        let ctx = self.ctx.read().await;
+        let mut aliases = ctx.aliases.aliases();
 
         if let Some(ns) = &req.namespace {
             aliases.retain(|a| a.namespace() == Some(ns.as_str()));
@@ -182,9 +201,7 @@ list_aliases(keyword=\"dkr run\") → fuzzy-matches name and description."
             .collect();
 
         tracing::info!(count = result.len(), "list_aliases ok");
-        Ok(CallToolResult::success(vec![Content::text(serialize(
-            &result,
-        )?)]))
+        Ok(CallToolResult::success(vec![Content::text(serialize(&result)?)]))
     }
 
     #[tool(description = "Resolve a SAM alias to a runnable shell command. \
@@ -203,13 +220,13 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
     ) -> Result<CallToolResult, ErrorData> {
         tracing::debug!(alias = %req.alias, vars_count = req.vars.len(), "resolve_alias called");
 
+        let ctx = self.ctx.read().await;
         let id = Identifier::from_str(&req.alias);
-        let alias = self
-            .ctx
+        let alias = ctx
             .aliases
             .get(&id)
             .ok_or_else(|| {
-                let all = self.ctx.aliases.aliases();
+                let all = ctx.aliases.aliases();
                 let similar: Vec<String> = fuzzy_filter(all.iter(), &req.alias)
                     .into_iter()
                     .take(5)
@@ -238,7 +255,7 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
             })?
             .clone();
 
-        let exec_seq = execution_sequence_for_dependencies(&self.ctx.vars, alias.clone())
+        let exec_seq = execution_sequence_for_dependencies(&ctx.vars, alias.clone())
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
 
         let choices: HashMap<Identifier, Vec<Choice>> = req
@@ -248,12 +265,12 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
             .collect();
 
         let resolver = McpResolver {
-            env_variables: &self.ctx.env_variables,
-            cache: &*self.ctx.cache,
+            env_variables: &ctx.env_variables,
+            cache: &*ctx.cache,
             working_dir: &req.working_dir,
         };
 
-        let ctx = ResolverContext {
+        let resolver_ctx = ResolverContext {
             alias: alias.clone(),
             full_name: alias.full_name().to_string(),
             choices: choices.clone(),
@@ -264,7 +281,7 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
             if choices.contains_key(var_id) {
                 continue;
             }
-            let var = self.ctx.vars.get(var_id).ok_or_else(|| {
+            let var = ctx.vars.get(var_id).ok_or_else(|| {
                 tracing::error!(var_id = %var_id, "var not found");
                 ErrorData::internal_error(format!("var '{var_id}' not found"), None)
             })?;
@@ -276,7 +293,7 @@ then: resolve_alias(alias=\"docker::run\", vars={\"docker::image\":\"nginx\"}) \
                 var_desc(var),
             );
 
-            let response = match choice_for_var(&resolver, var, &choices, &ctx) {
+            let response = match choice_for_var(&resolver, var, &choices, &resolver_ctx) {
                 Ok(found_choices) => ResolveAliasResponse::NeedsVar {
                     var: VarInfo {
                         name: base.0,
@@ -345,7 +362,6 @@ mod tests {
     use sam_persistence::repositories::{AliasesRepository, VarsRepository};
     use sam_persistence::NoopVarsCache;
     use std::collections::HashMap;
-    use std::sync::Arc;
 
     fn make_test_ctx() -> SamContext {
         // docker::run — one static var: docker::image
@@ -388,7 +404,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_aliases_no_filter_returns_all() {
-        let server = SamMcpServer::new(Arc::new(make_test_ctx()));
+        let server = SamMcpServer::new(make_test_ctx(), None);
         let result = server
             .list_aliases(Parameters(ListAliasesRequest::default()))
             .await
@@ -399,7 +415,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_aliases_filtering() {
-        let server = SamMcpServer::new(Arc::new(make_test_ctx()));
+        let server = SamMcpServer::new(make_test_ctx(), None);
 
         let result = server
             .list_aliases(Parameters(ListAliasesRequest {
@@ -424,7 +440,7 @@ mod tests {
 
     #[tokio::test]
     async fn resolve_alias_needs_var() {
-        let server = SamMcpServer::new(Arc::new(make_test_ctx()));
+        let server = SamMcpServer::new(make_test_ctx(), None);
         let result = server
             .resolve_alias(Parameters(ResolveAliasRequest {
                 alias: "docker::run".into(),
@@ -441,7 +457,7 @@ mod tests {
 
     #[tokio::test]
     async fn resolve_alias_resolved() {
-        let server = SamMcpServer::new(Arc::new(make_test_ctx()));
+        let server = SamMcpServer::new(make_test_ctx(), None);
         let mut vars = HashMap::new();
         vars.insert("docker::image".to_string(), "nginx".to_string());
         let result = server

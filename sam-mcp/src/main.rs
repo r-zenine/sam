@@ -7,7 +7,6 @@ use rmcp::transport::stdio;
 use rmcp::ServiceExt;
 use server::SamMcpServer;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
@@ -15,8 +14,8 @@ async fn main() {
     tracing::info!(version = env!("CARGO_PKG_VERSION"), "sam-mcp started");
 
     let config_path = parse_config_flag();
-    let ctx = match config_path {
-        Some(path) => loader::load_from(path),
+    let ctx = match &config_path {
+        Some(path) => loader::load_from(path.clone()),
         None => loader::load(),
     }
     .unwrap_or_else(|e| {
@@ -24,7 +23,7 @@ async fn main() {
         std::process::exit(1);
     });
 
-    let service = SamMcpServer::new(Arc::new(ctx))
+    let service = SamMcpServer::new(ctx, config_path)
         .serve(stdio())
         .await
         .unwrap_or_else(|e| {
