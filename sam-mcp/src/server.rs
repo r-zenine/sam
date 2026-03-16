@@ -64,7 +64,6 @@ struct AliasEntry {
     name: String,
     namespace: Option<String>,
     desc: String,
-    template: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -196,7 +195,6 @@ list_aliases(keyword=\"dkr run\") → fuzzy-matches name and description."
                 name: a.name().to_string(),
                 namespace: a.namespace().map(str::to_owned),
                 desc: a.desc().to_string(),
-                template: a.alias().to_string(),
             })
             .collect();
 
