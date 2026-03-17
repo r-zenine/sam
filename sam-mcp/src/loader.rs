@@ -1,4 +1,5 @@
 use sam_config::AppSettings;
+use sam_core::entities::discover::generate_discover_aliases;
 use sam_core::engines::VarsDefaultValuesSetter;
 use sam_persistence::repositories::{AliasesRepository, ErrorsAliasesRepository, VarsRepository};
 use sam_persistence::{CacheError, NoopVarsCache, RustBreakCache, VarsCache};
@@ -43,17 +44,27 @@ fn build_context(config: AppSettings) -> Result<SamContext, LoadError> {
         Box::new(NoopVarsCache {})
     };
 
-    let mut aliases_vec = vec![];
-    for f in config.aliases_files() {
-        aliases_vec.extend(read_aliases_from_path(&f)?);
-    }
-    let aliases = AliasesRepository::new(aliases_vec.into_iter())?;
-
+    // Load vars first (needed for discover alias generation)
     let mut vars = VarsRepository::default();
     for f in config.vars_files() {
         vars.merge(read_vars_repository(&f)?);
     }
     vars.set_defaults(&config.defaults);
+
+    // Load aliases and add synthetic discover aliases
+    let mut aliases_vec = vec![];
+    for f in config.aliases_files() {
+        aliases_vec.extend(read_aliases_from_path(&f)?);
+    }
+
+    // Generate and add discover aliases for vars with discover: true
+    let discover_aliases: std::collections::HashSet<_> = vars
+        .vars_iter()
+        .cloned()
+        .collect();
+    aliases_vec.extend(generate_discover_aliases(&discover_aliases));
+
+    let aliases = AliasesRepository::new(aliases_vec.into_iter())?;
 
     Ok(SamContext {
         aliases,

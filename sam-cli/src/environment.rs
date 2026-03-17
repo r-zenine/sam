@@ -5,6 +5,7 @@ use crate::executors::make_executor;
 use crate::history_engine::HistoryEngine;
 use crate::logger::{ErrorLogger, FileLogger, SilentLogger};
 use crate::session_engine::SessionEngine;
+use sam_core::entities::discover::generate_discover_aliases;
 use sam_core::engines::{SamEngine, SamExecutor, SamLogger, VarsDefaultValuesSetter};
 use sam_persistence::repositories::{
     AliasesRepository, ErrorsAliasesRepository, ErrorsVarsRepository, VarsRepository,
@@ -126,12 +127,7 @@ pub fn from_settings(mut config: AppSettings) -> Result<Environment> {
 
     let logger = logger_instance(config.silent)?;
 
-    let mut aliases_vec = vec![];
-    for f in config.aliases_files() {
-        aliases_vec.extend(read_aliases_from_path(&f)?);
-    }
-    let aliases = AliasesRepository::new(aliases_vec.into_iter())?;
-
+    // Load vars first (needed for discover alias generation)
     let mut vars = VarsRepository::default();
     for f in config.vars_files() {
         vars.merge(read_vars_repository(&f)?);
@@ -139,6 +135,21 @@ pub fn from_settings(mut config: AppSettings) -> Result<Environment> {
 
     vars.set_defaults(&config.defaults);
     vars.ensure_no_missing_dependency()?;
+
+    // Load aliases and add synthetic discover aliases
+    let mut aliases_vec = vec![];
+    for f in config.aliases_files() {
+        aliases_vec.extend(read_aliases_from_path(&f)?);
+    }
+
+    // Generate and add discover aliases for vars with discover: true
+    let discover_aliases: std::collections::HashSet<_> = vars
+        .vars_iter()
+        .cloned()
+        .collect();
+    aliases_vec.extend(generate_discover_aliases(&discover_aliases));
+
+    let aliases = AliasesRepository::new(aliases_vec.into_iter())?;
 
     Ok(Environment {
         aliases,

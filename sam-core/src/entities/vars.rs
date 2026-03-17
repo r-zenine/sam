@@ -20,6 +20,8 @@ pub struct Var {
     from_command: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     from_input: Option<String>,
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    discover: bool,
 }
 
 impl Var {
@@ -34,6 +36,7 @@ impl Var {
             choices,
             from_command: None,
             from_input: None,
+            discover: false,
         }
     }
 
@@ -49,6 +52,7 @@ impl Var {
             choices: vec![],
             from_command: Some(from_command.into()),
             from_input: None,
+            discover: false,
         }
     }
 
@@ -62,6 +66,7 @@ impl Var {
             choices: vec![],
             from_command: None,
             from_input: Some(from_input.into()),
+            discover: false,
         }
     }
 
@@ -83,6 +88,10 @@ impl Var {
 
     pub fn prompt(&self) -> Option<&str> {
         self.from_input.as_deref()
+    }
+
+    pub fn discover(&self) -> bool {
+        self.discover
     }
 }
 
@@ -208,6 +217,18 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_discover_default_false() {
+        let var = VAR_DIRECTORY.clone();
+        assert!(!var.discover());
+    }
+
+    #[test]
+    fn test_discover_on_new_var() {
+        let var = Var::new("test", "test var", vec![]);
+        assert!(!var.discover());
+    }
 }
 
 pub mod fixtures {
@@ -229,6 +250,7 @@ pub mod fixtures {
             desc: VAR_USE_LISTING_DESC.clone(),
             choices: VAR_USE_LISTING_CHOICES.clone(),
             from_input: None,
+            discover: false,
         };
         pub static ref VAR_LISTING_COMMAND: String =
             String::from("ls -l {{directory}} |grep -v {{ ns::pattern }}");
@@ -246,6 +268,7 @@ pub mod fixtures {
             desc: VAR_LISTING_DESC.clone(),
             choices: VAR_LISTING_CHOICES.clone(),
             from_input: None,
+            discover: false,
         };
         pub static ref VAR_DIRECTORY_DESC: String =
             String::from("A list of safe directory paths where to perform commands.");
@@ -263,6 +286,7 @@ pub mod fixtures {
             desc: VAR_DIRECTORY_DESC.clone(),
             choices: VAR_DIRECTORY_CHOICES.clone(),
             from_input: None,
+            discover: false,
         };
         pub static ref VAR_PATTERN_DESC: String = String::from("A black list of patterns");
         pub static ref VAR_PATTERN_CHOICE_1: Choice =
@@ -277,6 +301,7 @@ pub mod fixtures {
             desc: VAR_PATTERN_DESC.clone(),
             choices: VAR_PATTERN_CHOICES.clone(),
             from_input: None,
+            discover: false,
         };
         pub static ref VAR_MISSING_COMMAND: String =
             String::from("ls -l {{directory}} |grep -v {{pattern2}}");
@@ -292,6 +317,7 @@ pub mod fixtures {
             desc: VAR_MISSING_DESC.clone(),
             choices: VAR_MISSING_CHOICES.clone(),
             from_input: None,
+            discover: false,
         };
     }
 }
